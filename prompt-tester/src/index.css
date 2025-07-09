@@ -1,0 +1,357 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.markdown-body {
+  font-size: 16px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  white-space: normal;
+  color: #24292e;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+/* 通用文本样式 */
+.markdown-body * {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* 标题样式 */
+.markdown-body .md-heading {
+  margin-top: 2rem;
+  margin-bottom: 8px;
+  font-weight: 600;
+  line-height: 1.25;
+  padding-bottom: 0.3em;
+}
+
+/* 确保第一个标题没有顶部边距 */
+.markdown-body > .md-heading:first-child {
+  margin-top: 0;
+}
+
+/* 确保标题前的元素有足够的下边距 */
+.markdown-body *:not(.md-heading) + .md-heading {
+  margin-top: 1rem;
+}
+
+.markdown-body .md-heading-1 {
+  font-size: 2em;
+  border-bottom: 1px solid #eaecef;
+}
+
+.markdown-body .md-heading-2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid #eaecef;
+}
+
+.markdown-body .md-heading-3 {
+  font-size: 1.25em;
+}
+
+/* 段落样式 */
+.markdown-body .md-paragraph {
+  margin-top: 0;
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
+
+/* 移除段落间的间距 */
+.markdown-body .md-paragraph + .md-paragraph {
+  margin-top: 0;
+}
+
+/* 列表样式 */
+.markdown-body .md-list {
+  margin-top: 0;
+  margin-bottom: 8px;
+  padding-left: 2em;
+}
+
+.markdown-body .md-list-item {
+  margin-bottom: 0;
+}
+
+/* 针对列表项内的段落，移除其默认的上下间距 */
+.markdown-body .md-list-item > p {
+  margin: 0;
+  display: inline;
+}
+
+/* 确保基础列表项样式正确 */
+.markdown-body li {
+  margin-bottom: 0;
+  list-style-position: outside;
+  padding-left: 0;
+}
+
+/* 确保列表项内的段落间距也减小 */
+.markdown-body li p {
+  margin-bottom: 0;
+  display: inline;
+}
+
+/* 调整基本段落样式 */
+.markdown-body p {
+  margin-top: 0;
+  margin-bottom: 4px;
+  white-space: normal;
+}
+
+/* 调整段落间距 */
+.markdown-body p + p {
+  margin-top: 0;
+}
+
+/* 完全移除br导致的间距问题 */
+.markdown-body br {
+  display: none;
+  content: "";
+  margin: 0;
+  line-height: 0;
+}
+
+.markdown-body pre {
+  margin-top: 0;
+  margin-bottom: 8px;
+  white-space: pre-wrap !important;
+  word-break: break-word;
+  background-color: #f6f8fa;
+  border-radius: 6px;
+  padding: 16px;
+  overflow: auto;
+}
+
+.markdown-body code {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+  background-color: rgba(27, 31, 35, 0.05);
+  border-radius: 3px;
+  padding: 0.2em 0.4em;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+/* 特殊字符样式，确保星号和下划线等正确显示 */
+.markdown-body em, 
+.markdown-body strong {
+  font-weight: inherit;
+  font-style: inherit;
+}
+
+.markdown-body em {
+  font-style: italic;
+}
+
+.markdown-body strong {
+  font-weight: bold;
+  color: #6366f1; /* 紫色文本 */
+  background-color: rgba(237, 233, 254, 0.5); /* 非常淡的紫色背景 */
+  padding: 0.1em 0.2em;
+  border-radius: 3px;
+}
+
+/* 引用块 */
+.markdown-body blockquote {
+  margin: 4px 0;
+  padding: 0 1em;
+  color: #6a737d;
+  border-left: 0.25em solid #dfe2e5;
+}
+
+.markdown-body table {
+  display: block;
+  width: 100%;
+  overflow: auto;
+  margin-top: 0;
+  margin-bottom: 16px;
+  border-spacing: 0;
+  border-collapse: collapse;
+}
+
+.markdown-body table th {
+  font-weight: 600;
+  padding: 6px 13px;
+  border: 1px solid #dfe2e5;
+}
+
+.markdown-body table td {
+  padding: 6px 13px;
+  border: 1px solid #dfe2e5;
+}
+
+.markdown-body table tr {
+  background-color: #fff;
+  border-top: 1px solid #c6cbd1;
+}
+
+.markdown-body table tr:nth-child(2n) {
+  background-color: #f6f8fa;
+}
+
+/* For material-ui components */
+.MuiBox-root::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.MuiBox-root::-webkit-scrollbar-thumb {
+  background-color: #bbbbbb;
+  border-radius: 4px;
+}
+
+.MuiBox-root::-webkit-scrollbar-track {
+  background-color: #f1f1f1;
+}
+
+/* 确保换行符号被正确渲染 */
+.markdown-body pre {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+  background-color: #f6f8fa;
+  border-radius: 3px;
+  padding: 16px;
+  overflow: auto;
+}
+
+/* 确保代码内容换行 */
+.markdown-body code {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+  background-color: rgba(27, 31, 35, 0.05);
+  border-radius: 3px;
+  padding: 0.2em 0.4em;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+/* 优化空格管理，确保连续空行不过多 */
+.markdown-body p:empty,
+.markdown-body div:empty,
+.markdown-body span:empty {
+  display: none;
+}
+
+/* 确保各种元素的边距一致 */
+.markdown-body > *:first-child {
+  margin-top: 0 !important;
+}
+
+.markdown-body > *:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* 确保连续空行不会导致额外间距 */
+.markdown-body p:empty + p:empty {
+  display: none;
+}
+
+/* 代码块内部紧凑布局 */
+.markdown-body pre code {
+  padding: 0;
+  margin: 0;
+  background-color: transparent;
+}
+
+/* 自动为空段落添加固定高度，确保单行空白不过高 */
+.markdown-body p:empty {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* 删除所有空行和空段落 */
+.markdown-body p:empty {
+  display: none;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
+  height: 0;
+}
+
+.markdown-body div:empty,
+.markdown-body span:empty {
+  display: none;
+}
+
+/* 确保空行没有高度 */
+.markdown-body p:blank {
+  display: none;
+}
+
+/* 移除多余换行 */
+.markdown-body p br {
+  display: none;
+}
+
+/* 仅在pre标签中允许保留换行 */
+.markdown-body pre br {
+  display: inline;
+}
+
+/* 深色模式下的markdown样式 */
+body[data-theme="dark"] .markdown-body {
+  color: #e6e6e6;
+  background-color: transparent;
+}
+
+body[data-theme="dark"] .markdown-body pre {
+  background-color: #2d333b;
+  border: 1px solid #444c56;
+}
+
+body[data-theme="dark"] .markdown-body code {
+  background-color: rgba(99, 110, 123, 0.4);
+  color: #e6e6e6;
+}
+
+body[data-theme="dark"] .markdown-body table {
+  border-color: #444c56;
+}
+
+body[data-theme="dark"] .markdown-body table tr {
+  background-color: #1c2128;
+  border-top: 1px solid #444c56;
+}
+
+body[data-theme="dark"] .markdown-body table tr:nth-child(2n) {
+  background-color: #2d333b;
+}
+
+body[data-theme="dark"] .markdown-body table th,
+body[data-theme="dark"] .markdown-body table td {
+  border-color: #444c56;
+}
+
+body[data-theme="dark"] .markdown-body h1,
+body[data-theme="dark"] .markdown-body h2,
+body[data-theme="dark"] .markdown-body h3,
+body[data-theme="dark"] .markdown-body h4,
+body[data-theme="dark"] .markdown-body h5,
+body[data-theme="dark"] .markdown-body h6 {
+  color: #e6e6e6;
+  border-bottom-color: #444c56;
+}
+
+body[data-theme="dark"] .markdown-body hr {
+  background-color: #444c56;
+}
+
+body[data-theme="dark"] .markdown-body blockquote {
+  color: #8b949e;
+  border-left-color: #444c56;
+}

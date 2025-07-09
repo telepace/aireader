@@ -1,0 +1,226 @@
+import axios from 'axios';
+import { ChatMessage } from '../types/types';
+// We're not using these imports but just commenting them out
+// import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, GenerateContentStreamResult } from "@google/generative-ai";
+
+// API 配置
+const OPENAI_API_KEY = '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';
+const OTHER_API_KEY = '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'; // 用于非OpenAI模型
+const BASE_API_URL = 'https://openrouter.ai/api/v1';
+
+// OpenAI模型列表
+const OPENAI_MODELS = ['openai/o3', 'openai/o4-mini'];
+
+// 根据模型选择对应的API密钥
+const getApiKey = (modelName: string): string => {
+  if (OPENAI_MODELS.includes(modelName)) {
+    return OPENAI_API_KEY;
+  }
+  return OTHER_API_KEY;
+};
+
+// 添加网站信息用于 OpenRouter 统计
+const SITE_INFO = {
+  referer: window.location.origin,
+  title: 'Prompt Tester'
+};
+
+// Remove or comment out unused genAI initialization
+// const genAI = new GoogleGenerativeAI(API_KEY);
+
+export const generateContent = async (
+  promptObject: string,
+  promptText: string,
+  modelName: string
+): Promise<string> => {
+  try {
+    const apiUrl = `${BASE_API_URL}/chat/completions`;
+    const response = await axios.post(
+      apiUrl,
+      {
+        model: modelName,
+        messages: [
+          {
+            role: "user",
+            content: `${promptText}\n\n${promptObject}`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 8192
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${getApiKey(modelName)}`,
+          'HTTP-Referer': SITE_INFO.referer,
+          'X-Title': SITE_INFO.title,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (response.data && response.data.choices && response.data.choices[0]?.message?.content) {
+      return response.data.choices[0].message.content;
+    } else {
+      console.error('Unexpected API response structure:', response.data);
+      throw new Error('Unexpected API response structure');
+    }
+  } catch (error) {
+    console.error('Error generating content:', error);
+    throw error;
+  }
+};
+
+export const generateContentStream = async (
+  promptObject: string,
+  promptText: string,
+  modelName: string,
+  onChunkReceived: (chunk: string) => void,
+  onError: (error: Error) => void,
+  onComplete: () => void
+): Promise<void> => {
+  try {
+    console.log('Initiating API request for streaming...');
+    
+    const apiUrl = `${BASE_API_URL}/chat/completions`;
+    console.log('Streaming API URL:', apiUrl);
+    
+    const combinedText = `${promptText}\n\n${promptObject}`;
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getApiKey(modelName)}`,
+        'HTTP-Referer': SITE_INFO.referer,
+        'X-Title': SITE_INFO.title,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: modelName,
+        messages: [
+          {
+            role: "user",
+            content: combinedText
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 8192,
+        stream: true
+      }),
+    });
+
+    console.log('API response status:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error response body:', errorText);
+      throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+    }
+
+    if (!response.body) {
+        throw new Error('Response body is null');
+    }
+    
+    console.log('Starting to read the stream...');
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = '';
+    let chunkCount = 0;
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        console.log('Read complete, received chunks:', chunkCount);
+        break;
+      }
+      
+      const chunk = decoder.decode(value, { stream: true });
+      buffer += chunk;
+      
+      let lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      
+      for (const line of lines) {
+        if (line.trim() === '') continue;
+        if (line.startsWith('data: ')) {
+          const data = line.substring(6);
+          if (data === '[DONE]') {
+            console.log('Stream complete signal received');
+            continue;
+          }
+          
+          try {
+            const json = JSON.parse(data);
+            
+            if (json.choices && json.choices[0]?.delta?.content) {
+              const content = json.choices[0].delta.content;
+              chunkCount++;
+              onChunkReceived(content);
+            }
+          } catch (e) {
+            console.error('Error parsing SSE data chunk:', e);
+          }
+        }
+      }
+    }
+    
+    console.log('Stream processing complete, sending onComplete signal');
+    onComplete();
+
+  } catch (error) {
+    console.error('Error in streaming process:', error);
+    onError(error instanceof Error ? error : new Error(String(error)));
+  }
+};
+
+export const generateChat = async (
+  messages: ChatMessage[],
+  modelName: string
+): Promise<string> => {
+  try {
+    const apiMessages = messages
+      .filter(msg => msg.role !== 'system')
+      .map((msg) => ({
+        role: msg.role,
+        content: msg.content
+      }));
+    
+    const systemPrompt = messages.find(msg => msg.role === 'system');
+    
+    const requestPayload: any = { 
+      model: modelName,
+      messages: apiMessages
+    };
+    
+    if (systemPrompt) {
+      // OpenRouter 使用 OpenAI 标准，将 system 消息作为第一条加入消息列表
+      requestPayload.messages.unshift({
+        role: "system",
+        content: systemPrompt.content
+      });
+    }
+
+    const apiUrl = `${BASE_API_URL}/chat/completions`;
+    const response = await axios.post(
+      apiUrl, 
+      requestPayload, 
+      {
+        headers: {
+          'Authorization': `Bearer ${getApiKey(modelName)}`,
+          'HTTP-Referer': SITE_INFO.referer,
+          'X-Title': SITE_INFO.title,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (response.data && response.data.choices && response.data.choices[0]?.message?.content) {
+      return response.data.choices[0].message.content;
+    } else {
+      console.error('Unexpected API response structure:', response.data);
+      throw new Error('Unexpected API response structure');
+    }
+  } catch (error) {
+    console.error('Error in chat generation:', error);
+    throw error;
+  }
+}; 

@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "react-resizable-panels": "^2.1.7",
+    "rehype-raw": "^7.0.0",
+    "remark-breaks": "^4.0.0",
+    "remark-gfm": "^4.0.1"
+  }
+}
