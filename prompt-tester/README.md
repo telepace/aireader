@@ -25,17 +25,30 @@
 
 ## 开始使用
 
-### 安装依赖
+### 1. 配置API密钥
+复制 `.env.example` 文件为 `.env` 并填入你的 OpenRouter API 密钥：
+```bash
+cp .env.example .env
+```
+
+编辑 `.env` 文件，将 `REACT_APP_OPENROUTER_API_KEY=` 替换为你的实际API密钥：
+```
+REACT_APP_OPENROUTER_API_KEY=your_actual_api_key_here
+```
+
+获取API密钥：https://openrouter.ai/keys
+
+### 2. 安装依赖
 ```bash
 npm install
 ```
 
-### 开发模式运行
+### 3. 开发模式运行
 ```bash
 npm start
 ```
 
-### 构建生产版本
+### 4. 构建生产版本
 ```bash
 npm run build
 ```

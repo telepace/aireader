@@ -1,0 +1,63 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button [ref=e6] [cursor=pointer]:
+        - img [ref=e7] [cursor=pointer]
+      - heading "Prompt Tester" [level=1] [ref=e9]
+    - generic [ref=e10]:
+      - button "切换到深色模式" [ref=e11] [cursor=pointer]:
+        - img [ref=e12] [cursor=pointer]
+      - button "清空探索聊天" [ref=e14] [cursor=pointer]:
+        - img [ref=e15] [cursor=pointer]
+      - tablist [ref=e19]:
+        - tab "提示测试" [selected] [ref=e20] [cursor=pointer]
+        - tab "已保存测试" [ref=e21] [cursor=pointer]
+        - tab "探索聊天" [ref=e22] [cursor=pointer]
+      - generic [ref=e24]:
+        - generic [ref=e25]: 选择模型
+        - generic [ref=e26]:
+          - combobox "选择模型 openai/o4-mini" [ref=e27] [cursor=pointer]: openai/o4-mini
+          - textbox: openai/o4-mini
+          - img
+          - group:
+            - generic: 选择模型
+      - button [ref=e28] [cursor=pointer]:
+        - img [ref=e29] [cursor=pointer]
+  - tabpanel [ref=e31]:
+    - generic [ref=e34]:
+      - heading "处理对象框" [level=6] [ref=e35]
+      - generic [ref=e37]:
+        - textbox "请在此输入要处理的文本内容..." [ref=e38]
+        - group
+      - heading "Prompt框" [level=6] [ref=e39]
+      - generic [ref=e41]:
+        - textbox "请在此输入给AI的指令..." [ref=e42]
+        - group
+    - generic [ref=e44]:
+      - generic:
+        - heading "处理结果" [level=6] [ref=e45]
+        - generic [ref=e46]:
+          - button "生成" [disabled]
+          - button "保存" [disabled]
+      - generic [ref=e47]:
+        - generic:
+          - generic:
+            - generic:
+              - paragraph: 暂无内容
+    - generic [ref=e50]:
+      - generic [ref=e51]:
+        - heading "AI 聊天" [level=6] [ref=e52]
+        - generic [ref=e53]:
+          - button "评估Prompt" [disabled]
+          - button "生成新Prompt" [disabled]
+          - button "清空聊天记录" [disabled]:
+            - img
+      - generic [ref=e56]:
+        - generic [ref=e58]:
+          - textbox "输入消息..." [ref=e59]
+          - group
+        - button "发送" [disabled]
+```

@@ -218,8 +218,25 @@ export const generateChat = async (
       console.error('Unexpected API response structure:', response.data);
       throw new Error('Unexpected API response structure');
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in chat generation:', error);
+    
+    // Handle specific HTTP error codes
+    if (error.response) {
+      const status = error.response.status;
+      const message = error.response.data?.error || error.message;
+      
+      if (status === 429) {
+        throw new Error(`Rate limit exceeded: ${message}`);
+      } else if (status === 401) {
+        throw new Error(`Authentication failed: ${message}`);
+      } else if (status === 404) {
+        throw new Error(`Model not found: ${message}`);
+      } else {
+        throw new Error(`API Error: ${message}`);
+      }
+    }
+    
     throw error;
   }
 }; 

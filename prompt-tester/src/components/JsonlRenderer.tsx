@@ -54,7 +54,7 @@ export function JsonlRenderer({
   }
 
   // Split into lines & parse
-  const blocks = content
+  const blocks = (content || "")
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
