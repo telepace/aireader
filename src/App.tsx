@@ -22,9 +22,7 @@ import './App.css';
 /**
  * Main application component that manages the user interface and state.
  *
- * This component utilizes various hooks to manage state, including the current tab, prompt object, and loading status.
- * It renders a responsive layout with sidebars and different panels for input, output, and saved tests.
- * The component also handles tab changes, content generation, and model selection, while providing a theme based on user preferences.
+ * This component utilizes various hooks to manage state, including the current tab, prompt object, and loading status. It renders a responsive layout with sidebars and different panels for input, output, and saved tests. The component also handles tab changes, content generation, and model selection, while providing a theme based on user preferences.
  *
  * @returns A React element representing the application interface.
  */
@@ -73,7 +71,7 @@ const App: React.FC = () => {
   });
 
   /**
-   * Handles the tab change event by updating the current tab value.
+   * Updates the current tab value on tab change.
    */
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue);
