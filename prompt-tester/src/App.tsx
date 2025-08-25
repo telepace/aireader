@@ -19,6 +19,15 @@ import SavedTests from './components/SavedTests';
 import NextStepChat from './components/NextStepChat';
 import './App.css';
 
+/**
+ * Main application component that manages the user interface and state.
+ *
+ * This component utilizes various hooks to manage state, including the current tab, prompt object, and loading status.
+ * It renders a responsive layout with sidebars and different panels for input, output, and saved tests.
+ * The component also handles tab changes, content generation, and model selection, while providing a theme based on user preferences.
+ *
+ * @returns A React element representing the application interface.
+ */
 const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState(0);
   const [nextStepClearSignal, setNextStepClearSignal] = useState<number>(0);
@@ -63,10 +72,20 @@ const App: React.FC = () => {
     },
   });
 
+  /**
+   * Handles the tab change event by updating the current tab value.
+   */
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue);
   };
 
+  /**
+   * Handles the generation of content based on the provided prompt and model.
+   *
+   * The function checks for the presence of promptObject and promptText before proceeding. It sets a loading state and initializes the prompt result. It then calls the generateContent function with the promptObject, promptText, and selectedModel. Depending on the result, it updates the prompt result or handles errors, including specific messages for missing API keys. Finally, it resets the loading state.
+   *
+   * @returns {Promise<void>} A promise that resolves when the content generation process is complete.
+   */
   const handleGenerate = async () => {
     if (!promptObject || !promptText) return;
 
@@ -92,6 +111,9 @@ const App: React.FC = () => {
     }
   };
 
+  /**
+   * Handles the selection of a test by loading the prompt and setting the model and tab.
+   */
   const handleSelectTest = (test: any) => {
     loadPromptTest(test);
     setSelectedModel(test.modelName);
