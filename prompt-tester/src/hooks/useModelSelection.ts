@@ -12,6 +12,9 @@ export const AVAILABLE_MODELS = [
   'deepseek/deepseek-r1-0528'
 ];
 
+/**
+ * Custom hook for managing model selection and persistence in local storage.
+ */
 export const useModelSelection = () => {
   const [selectedModel, setSelectedModel] = useState<string>(
     () => localStorage.getItem(LOCAL_STORAGE_KEY) || AVAILABLE_MODELS[0]

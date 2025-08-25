@@ -33,6 +33,27 @@ interface AppHeaderProps {
   availableModels: string[];
 }
 
+/**
+ * Renders the application header component.
+ *
+ * The AppHeader component displays navigation elements including tab selection, model selection, and sidebar toggle buttons.
+ * It utilizes various props to manage the current state of the application, such as the currently selected tab, model, and sidebar visibility.
+ * The component also provides functionality to toggle dark mode and clear the chat, enhancing user interaction.
+ *
+ * @param {Object} props - The properties for the AppHeader component.
+ * @param {string} props.currentTab - The currently selected tab.
+ * @param {function} props.onTabChange - Callback function to handle tab changes.
+ * @param {string} props.selectedModel - The currently selected model.
+ * @param {function} props.onModelChange - Callback function to handle model changes.
+ * @param {boolean} props.leftSidebarOpen - Indicates if the left sidebar is open.
+ * @param {boolean} props.rightSidebarOpen - Indicates if the right sidebar is open.
+ * @param {boolean} props.darkMode - Indicates if dark mode is enabled.
+ * @param {function} props.onToggleLeftSidebar - Callback function to toggle the left sidebar.
+ * @param {function} props.onToggleRightSidebar - Callback function to toggle the right sidebar.
+ * @param {function} props.onToggleDarkMode - Callback function to toggle dark mode.
+ * @param {function} props.onClearChat - Callback function to clear the chat.
+ * @param {Array<string>} props.availableModels - List of available models for selection.
+ */
 const AppHeader: React.FC<AppHeaderProps> = ({
   currentTab,
   onTabChange,
