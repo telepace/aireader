@@ -11,6 +11,8 @@ import ChatPanel from './components/ChatPanel';
 import SavedTests from './components/SavedTests';
 import { PromptTest } from './types/types';
 import './App.css';
+import NextStepChat from './components/NextStepChat';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -29,11 +31,10 @@ function TabPanel(props: TabPanelProps) {
       id={`tabpanel-${index}`}
       aria-labelledby={`tab-${index}`}
       sx={{
-        flexGrow: 1, 
-        display: value === index ? 'flex' : 'none',
-        flexDirection: 'column',
-        overflow: 'auto',
+        flexGrow: 1,
         ...(sx || {}),
+        display: value === index ? 'flex' : 'none',
+        ...(value !== index ? { height: 0, minHeight: 0, p: 0, m: 0, overflow: 'hidden' } : {}),
       }}
       {...other}
     >
@@ -45,14 +46,11 @@ function TabPanel(props: TabPanelProps) {
 const AVAILABLE_MODELS = [
   'openai/o4-mini',
   'openai/o3',
-  'google/gemini-2.5-pro-exp-03-25:free',
-  'google/gemini-2.5-pro-preview-03-25',
-  'google/gemini-2.5-flash-preview',
+  'google/gemini-2.5-pro',
+  'google/gemini-2.5-flash',
   'google/gemini-2.0-flash-001',
   'deepseek/deepseek-chat-v3-0324',
-  'deepseek/deepseek-r1',
-  'deepseek/deepseek-r1-distill-llama-70b:free',
-  'deepseek/deepseek-r1-distill-qwen-32b:free'
+  'deepseek/deepseek-r1-0528'
 ];
 
 const LOCAL_STORAGE_KEYS = {
@@ -81,6 +79,7 @@ function App() {
   const [darkMode, setDarkMode] = useState<boolean>(() => 
     localStorage.getItem(LOCAL_STORAGE_KEYS.DARK_MODE) === 'true'
   );
+  const [nextStepClearSignal, setNextStepClearSignal] = useState<number>(0);
 
   const theme = createTheme({
     palette: {
@@ -179,7 +178,11 @@ function App() {
           }
         } catch (error: any) {
           console.error('生成过程中发生错误:', error);
-          setPromptResult(`生成时出错: ${error instanceof Error ? error.message : String(error)}`);
+          if (error.message && error.message.includes('未找到API密钥')) {
+            setPromptResult(`❌ ${error.message}\n\n请在项目根目录创建.env文件并添加：\nREACT_APP_OPENROUTER_API_KEY=your_api_key_here`);
+          } else {
+            setPromptResult(`生成时出错: ${error instanceof Error ? error.message : String(error)}`);
+          }
         } finally {
           setIsLoading(false);
         }
@@ -216,7 +219,9 @@ function App() {
           p: '0 !important',
           m: '0 !important',
           bgcolor: 'background.default',
-          color: 'text.primary'
+          color: 'text.primary',
+          overflow: 'auto', // enable scrolling inside main container
+          minHeight: 0
         }}
       >
         <Box 
@@ -241,9 +246,13 @@ function App() {
             <IconButton onClick={toggleDarkMode} size="small" sx={{ mr: 2 }} title={darkMode ? "切换到亮色模式" : "切换到深色模式"}>
               {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
             </IconButton>
+            <IconButton onClick={() => setNextStepClearSignal(Date.now())} size="small" sx={{ mr: 2 }} title="清空探索聊天">
+              <DeleteIcon />
+            </IconButton>
             <Tabs value={currentTab} onChange={handleTabChange} sx={{ mr: 2 }}>
               <Tab label="提示测试" />
               <Tab label="已保存测试" />
+              <Tab label="探索聊天" />
             </Tabs>
             <FormControl sx={{ minWidth: 250, mr: 1 }} size="small">
               <InputLabel id="model-select-label">选择模型</InputLabel>
@@ -324,6 +333,12 @@ function App() {
         
         <TabPanel value={currentTab} index={1} sx={{ p: 2 }}>
           <SavedTests onSelectTest={handleSelectTest} darkMode={darkMode} />
+        </TabPanel>
+
+        <TabPanel value={currentTab} index={2} sx={{ p: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+            <NextStepChat selectedModel={selectedModel} clearSignal={nextStepClearSignal} />
+          </Box>
         </TabPanel>
       </Container>
     </ThemeProvider>

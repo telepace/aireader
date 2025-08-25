@@ -4,19 +4,18 @@ import { ChatMessage } from '../types/types';
 // import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, GenerateContentStreamResult } from "@google/generative-ai";
 
 // API 配置
-const OPENAI_API_KEY = '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';
-const OTHER_API_KEY = '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'; // 用于非OpenAI模型
 const BASE_API_URL = 'https://openrouter.ai/api/v1';
 
 // OpenAI模型列表
 const OPENAI_MODELS = ['openai/o3', 'openai/o4-mini'];
 
-// 根据模型选择对应的API密钥
+// 从环境变量获取API密钥
 const getApiKey = (modelName: string): string => {
-  if (OPENAI_MODELS.includes(modelName)) {
-    return OPENAI_API_KEY;
+  const apiKey = process.env.REACT_APP_OPENROUTER_API_KEY;
+  if (!apiKey) {
+    throw new Error('未找到API密钥，请检查.env文件中的REACT_APP_OPENROUTER_API_KEY配置');
   }
-  return OTHER_API_KEY;
+  return apiKey;
 };
 
 // 添加网站信息用于 OpenRouter 统计
@@ -222,5 +221,81 @@ export const generateChat = async (
   } catch (error) {
     console.error('Error in chat generation:', error);
     throw error;
+  }
+}; 
+
+export const generateChatStream = async (
+  messages: ChatMessage[],
+  modelName: string,
+  onDelta: (delta: { content?: string; reasoning?: string }) => void,
+  onError: (error: Error) => void,
+  onComplete: () => void
+): Promise<void> => {
+  try {
+    const systemPrompt = messages.find(m => m.role === 'system');
+    const apiMessages = messages
+      .filter(m => m.role !== 'system')
+      .map(m => ({ role: m.role, content: m.content }));
+    const requestPayload: any = {
+      model: modelName,
+      messages: apiMessages,
+      stream: true,
+    };
+    if (systemPrompt) {
+      requestPayload.messages.unshift({ role: 'system', content: systemPrompt.content });
+    }
+
+    const apiUrl = `${BASE_API_URL}/chat/completions`;
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getApiKey(modelName)}`,
+        'HTTP-Referer': SITE_INFO.referer,
+        'X-Title': SITE_INFO.title,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestPayload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+    }
+
+    if (!response.body) throw new Error('Response body is null');
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      buffer += chunk;
+      let lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        if (!line.startsWith('data: ')) continue;
+        const data = line.substring(6);
+        if (data === '[DONE]') continue;
+        try {
+          const json = JSON.parse(data);
+          const delta = json?.choices?.[0]?.delta || {};
+          const content = delta.content;
+          // support various vendor reasoning keys
+          const reasoning = delta.reasoning || delta.reasoning_content || delta.thinking;
+          if (content) onDelta({ content });
+          if (reasoning) onDelta({ reasoning });
+        } catch (e) {
+          console.error('Error parsing SSE data chunk:', e);
+        }
+      }
+    }
+
+    onComplete();
+  } catch (error) {
+    onError(error instanceof Error ? error : new Error(String(error)));
   }
 }; 
