@@ -1,7 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ChatPanel from './ChatPanel';
-import { ChatMessage } from '../types/types';
 
 // Mock the API service
 jest.mock('../services/api', () => ({

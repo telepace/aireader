@@ -222,7 +222,7 @@ describe('Storage Utilities', () => {
     });
 
     test('handles conversation storage errors', () => {
-      const conversation = {
+      const _conversation = {
         id: 'conv-1',
         title: 'Test',
         messages: [],
