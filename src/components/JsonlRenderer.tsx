@@ -14,15 +14,17 @@ interface JsonlRendererProps {
 }
 
 /**
- * Minimalistic JSON-Line renderer with Notion-style hover effects.
+ * Renders JSON-Lines with optional Notion-style hover effects.
  *
- * The LLM returns one JSON object per line, each object contains at least:
- * - `type` | `t`: block type
- * - `content` | `c`: block content
- * - `mapping`: optional mapping id
+ * The function processes the provided content, splitting it into lines and parsing each line as a JSON object.
+ * It handles hover effects for each block, allowing users to copy block content to the clipboard with a toast notification for feedback.
+ * The rendering adapts based on the block type, supporting various formats such as headings, quotes, lists, insights, and actions.
  *
- * Additional custom fields are preserved and passed to specialised renderers
- * (e.g. priority on `insight`).
+ * @param content - The JSON-Lines content to be rendered.
+ * @param className - Optional additional class names for styling.
+ * @param enableHoverEffects - Flag to enable or disable hover effects (default is true).
+ * @param darkMode - Flag to enable dark mode styling (default is false).
+ * @returns A JSX element representing the rendered JSON-Lines.
  */
 export function JsonlRenderer({ 
   content, 
