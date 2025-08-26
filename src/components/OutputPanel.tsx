@@ -144,35 +144,67 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
 
   return (
     <Paper 
-      elevation={3} 
+      elevation={2} 
       sx={{ 
-        p: 2, 
+        p: 3, 
         display: 'flex', 
         flexDirection: 'column', 
         flexGrow: 1,
-        bgcolor: darkMode ? 'background.paper' : '#fff',
-        color: darkMode ? 'text.primary' : 'inherit'
+        bgcolor: 'background.paper',
+        color: 'text.primary',
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: 'divider',
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        '&:hover': {
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        }
       }}
     >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, flexShrink: 0 }}>
-        <Typography variant="h6">处理结果</Typography>
-        <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexShrink: 0 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', display: 'flex', alignItems: 'center', gap: 1 }}>
+          ✨ AI 处理结果
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1.5 }}>
           <Button 
             variant="contained" 
             color="primary" 
             onClick={onGenerate}
             disabled={isLoading || !promptObject || !promptText}
-            sx={{ mr: 1 }}
+            sx={{ 
+              minWidth: 100,
+              height: 40,
+              fontWeight: 600,
+              textTransform: 'none',
+              borderRadius: 2,
+              boxShadow: 'none',
+              '&:hover': {
+                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
+                transform: 'translateY(-1px)',
+              }
+            }}
           >
-            {isLoading ? '生成中...' : '生成'}
+            {isLoading ? '生成中...' : '🚀 生成'}
           </Button>
           <Button 
             variant="outlined" 
             color="secondary" 
             onClick={handleSave}
             disabled={isLoading || !promptResult}
+            sx={{ 
+              minWidth: 80,
+              height: 40,
+              fontWeight: 600,
+              textTransform: 'none',
+              borderRadius: 2,
+              borderWidth: 2,
+              '&:hover': {
+                borderWidth: 2,
+                transform: 'translateY(-1px)',
+              }
+            }}
           >
-            保存
+            💾 保存
           </Button>
         </Box>
       </Box>
@@ -182,11 +214,14 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
         sx={{ 
           flexGrow: 1,
           overflow: 'auto', 
-          bgcolor: darkMode ? 'background.default' : 'transparent', 
-          p: 2, 
-          borderRadius: 1,
+          bgcolor: darkMode ? 'rgba(15, 23, 42, 0.5)' : 'rgba(248, 250, 252, 0.8)', 
+          p: 3, 
+          borderRadius: 2,
           position: 'relative',
-          whiteSpace: 'pre-wrap'
+          whiteSpace: 'pre-wrap',
+          border: '1px solid',
+          borderColor: 'divider',
+          minHeight: 200
         }}
       >
         <Box sx={{ color: darkMode ? 'text.primary' : 'inherit' }}>
@@ -229,20 +264,24 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
         {isLoading && (
           <Box sx={{
             position: 'sticky',
-            bottom: 8,
-            right: 8,
+            bottom: 12,
+            right: 12,
             display: 'flex',
             justifyContent: 'flex-end',
-            padding: 1,
-            backgroundColor: darkMode ? 'rgba(50, 50, 50, 0.7)' : 'rgba(255, 255, 255, 0.7)',
-            borderRadius: 1,
-            boxShadow: 1,
+            alignItems: 'center',
+            padding: '8px 12px',
+            backgroundColor: darkMode ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+            borderRadius: 3,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
             width: 'fit-content',
             marginLeft: 'auto',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid',
+            borderColor: 'divider',
           }}>
-            <CircularProgress size={20} sx={{ mr: 1 }} />
-            <Typography variant="caption" sx={{ lineHeight: '20px' }}>
-              生成中...
+            <CircularProgress size={18} sx={{ mr: 1, color: 'primary.main' }} />
+            <Typography variant="body2" sx={{ fontWeight: 500, color: 'text.primary' }}>
+              AI 正在思考中...
             </Typography>
           </Box>
         )}

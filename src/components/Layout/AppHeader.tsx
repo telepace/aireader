@@ -76,16 +76,32 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         alignItems: 'center',
         borderBottom: 1,
         borderColor: 'divider',
-        px: 2,
-        py: 1,
-        flexShrink: 0
+        px: 3,
+        py: 2,
+        flexShrink: 0,
+        backgroundColor: 'background.paper',
+        backdropFilter: 'blur(10px)',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center' }}>
         <IconButton onClick={onToggleLeftSidebar} size="small" sx={{ mr: 1 }}>
           {leftSidebarOpen ? <ChevronLeftIcon /> : <MenuIcon />}
         </IconButton>
-        <Typography variant="h5" component="h1">Prompt Tester</Typography>
+        <Typography 
+          variant="h4" 
+          component="h1"
+          sx={{
+            fontWeight: 700,
+            background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            letterSpacing: '-0.02em'
+          }}
+        >
+          AI Reader
+        </Typography>
       </Box>
       
       <Box sx={{ display: 'flex', alignItems: 'center' }}>
