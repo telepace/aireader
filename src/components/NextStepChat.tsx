@@ -5,9 +5,10 @@ import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { v4 as uuidv4 } from 'uuid';
-import { ChatMessage, ChatConversation, OptionItem } from '../types/types';
+import { ChatMessage, ChatConversation, OptionItem, UserSession } from '../types/types';
 import { listConversations, upsertConversation, deleteConversation } from '../utils/storage';
-import { generateChatStream } from '../services/api';
+import { generateChatStream, logUserEvent, createUserSession } from '../services/api-with-tracing';
+import { splitContentAndOptions, NextStepOption } from '../utils/contentSplitter';
 
 // Markdown renderers (aligned with existing style)
 
@@ -16,11 +17,7 @@ interface NextStepChatProps {
   clearSignal?: number;
 }
 
-interface NextStepOption {
-  type: 'deepen' | 'next';
-  content: string;
-  describe: string;
-}
+// NextStepOption interface moved to utils/contentSplitter.ts
 
 // OptionItem now comes from types.ts
 
@@ -60,40 +57,7 @@ const SYSTEM_PROMPT = `我的目标是「精读」当前讨论的内容（文章
 **约束条件**：不要向用户解释此格式。
 输出结构：只需输出聚焦与展开对应的文本。之后一定要**留出空白行符号**，再输出所有JSONL。`;
 
-function splitContentAndOptions(raw: string): { main: string; options: NextStepOption[] } {
-  if (!raw) return { main: '', options: [] };
-  const lines = raw.split('\n');
-  // trim trailing empty lines
-  let end = lines.length - 1;
-  while (end >= 0 && lines[end].trim() === '') end--;
-  const collected: NextStepOption[] = [];
-  for (let i = end; i >= 0; i--) {
-    const line = lines[i].trim();
-    if (!line) break; // stop at first blank line when scanning upwards
-    try {
-      const obj = JSON.parse(line);
-      if (
-        obj && typeof obj === 'object' &&
-        ((obj as any).type === 'deepen' || (obj as any).type === 'next') &&
-        typeof (obj as any).content === 'string' &&
-        typeof (obj as any).describe === 'string'
-      ) {
-        collected.push({ type: (obj as any).type, content: (obj as any).content, describe: (obj as any).describe });
-        end = i - 1; // shrink main content end pointer
-        continue;
-      }
-      // if JSON but not option, stop
-      break;
-    } catch {
-      // not JSON → stop
-      break;
-    }
-  }
-  collected.reverse();
-  const main = lines.slice(0, end + 1).join('\n').trimEnd();
-  const options = collected.slice(0, 6);
-  return { main, options };
-}
+// splitContentAndOptions function moved to utils/contentSplitter.ts
 
 const MAX_CONTEXT_CHARS = 80000;
 
@@ -137,12 +101,26 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
     return existing ? existing.id : uuidv4();
   });
   const [convMenuOpen, setConvMenuOpen] = useState(false);
+  const [userSession, setUserSession] = useState<UserSession | null>(null);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof clearSignal === 'number') { setMessages([]); setInputMessage(''); setOptions([]); }
   }, [clearSignal]);
+
+  // Initialize user session for chat tracing
+  useEffect(() => {
+    const session = createUserSession();
+    if (session) {
+      setUserSession(session);
+      logUserEvent('chat-session-started', {
+        sessionId: session.sessionId,
+        conversationId,
+        model: selectedModel
+      }, session.userId);
+    }
+  }, [conversationId, selectedModel]);
 
   // Auto-persist conversation whenever messages/options change
   useEffect(() => {
@@ -233,6 +211,18 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
     const withSystem = ensureSystemPrompt(trimmed);
     setMessages(withoutSystem); setInputMessage(''); setIsLoading(true);
     setReasoningText(''); setReasoningOpen(false);
+
+    // Log chat message started event
+    if (userSession) {
+      logUserEvent('chat-message-started', {
+        sessionId: userSession.sessionId,
+        conversationId,
+        model: selectedModel,
+        messageLength: userText.length,
+        contextMessages: withSystem.length
+      }, userSession.userId);
+    }
+
     try {
       // create placeholder assistant message for streaming
       const assistantId = uuidv4();
@@ -252,16 +242,76 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
           }
         },
         (err: Error) => {
+          // Log error event
+          if (userSession) {
+            logUserEvent('chat-message-failed', {
+              sessionId: userSession.sessionId,
+              conversationId,
+              model: selectedModel,
+              error: err.message
+            }, userSession.userId);
+          }
           alert(`流式生成出错: ${err.message}`);
         },
         () => {
-          // finalize parse options
-          const { options: incoming } = splitContentAndOptions(assembled);
-          if (incoming.length) mergeOptions(incoming, assistantId);
+          // finalize parse options with improved error handling
+          try {
+            const { main, options: incoming } = splitContentAndOptions(assembled);
+            
+            // 更新消息内容，移除 JSON 部分，只显示主内容
+            if (main !== assembled) {
+              setMessages((prev: ChatMessage[]) => 
+                prev.map((m: ChatMessage) => 
+                  m.id === assistantId ? { ...m, content: main } : m
+                )
+              );
+            }
+            
+            if (incoming.length) {
+              mergeOptions(incoming, assistantId);
+            }
+            
+            // Log successful completion
+            if (userSession) {
+              logUserEvent('chat-message-completed', {
+                sessionId: userSession.sessionId,
+                conversationId,
+                model: selectedModel,
+                success: true,
+                responseLength: assembled.length,
+                optionsGenerated: incoming.length,
+                mainContentLength: main.length
+              }, userSession.userId);
+            }
+          } catch (error) {
+            console.error('Failed to parse options from response:', error);
+            // 降级处理：保持原始响应，但记录错误
+            if (userSession) {
+              logUserEvent('chat-parsing-failed', {
+                sessionId: userSession.sessionId,
+                conversationId,
+                model: selectedModel,
+                error: error instanceof Error ? error.message : String(error),
+                responseLength: assembled.length
+              }, userSession.userId);
+            }
+          }
+          
           setIsLoading(false);
-        }
+        },
+        conversationId,
+        userSession?.userId
       );
     } catch (e) {
+      // Log general error
+      if (userSession) {
+        logUserEvent('chat-message-failed', {
+          sessionId: userSession.sessionId,
+          conversationId,
+          model: selectedModel,
+          error: e instanceof Error ? e.message : String(e)
+        }, userSession.userId);
+      }
       alert(`发送消息失败: ${e instanceof Error ? e.message : String(e)}`);
       setIsLoading(false);
     }
