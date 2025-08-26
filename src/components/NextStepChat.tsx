@@ -110,6 +110,17 @@ function trimContextForApi(all: ChatMessage[]): ChatMessage[] {
   return kept.reverse();
 }
 
+/**
+ * The NextStepChat component manages a chat interface for user interactions.
+ *
+ * It maintains the state of messages, input, loading status, options, and conversation details.
+ * The component handles sending messages, merging options, and auto-persisting conversations.
+ * It also ensures the presence of a system prompt and normalizes stored options for display.
+ *
+ * @param selectedModel - The model selected for generating chat responses.
+ * @param clearSignal - A signal to clear the current chat state.
+ * @returns A React element representing the chat interface.
+ */
 const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
