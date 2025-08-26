@@ -78,7 +78,7 @@ export const generateContent = async (
           }
         ],
         temperature: 0.7,
-        max_tokens: 8192
+        max_tokens: 15000
       },
       {
         headers: {
@@ -135,7 +135,7 @@ export const generateContentStream = async (
           }
         ],
         temperature: 0.7,
-        max_tokens: 8192,
+        max_tokens: 15000,
         stream: true
       }),
     });

@@ -24,10 +24,10 @@ interface NextStepOption {
 
 // OptionItem now comes from types.ts
 
-const SYSTEM_PROMPT = `我的目标是「精读」当前讨论的内容（文章或书籍），并不断切换对象。（当我发送一大段长文字时就是复制的长文章）
+const SYSTEM_PROMPT = `我的目标是「深度阅读」当前讨论的内容（文章或书籍），并不断切换对象。（当我发送一大段长文字时就是复制的长文章）
 
 每次交互，请严格执行以下3件事：
-**1. 聚焦与展开** 先讲透内容的一个核心关键；全面展开对应内容,让我了解全貌，全面又深度的讲讲。
+**1. **先聚焦重点**：找出当前对应内容中最重要的一个或一对内核/关键词，让我抓到理解的关键点，要求清晰易懂地讲明白。**再全面展开**：全面展开对应内容,尽量每个要点讲的详细全面insightful,引人入胜。
 
 **2. 原文深挖 (type: deepen)** 推荐3个最有价值的原文精读选项。
 3个选项可以参考以下行动类型：
@@ -295,7 +295,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
   return (
     <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
       {/* Fixed header inside the page */}
-      <Box sx={{ position: 'sticky', top: 0, zIndex: 1, p: 1, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+      <Box sx={{ position: 'sticky', top: 0, zIndex: 1, p: 1, bgcolor: '#fff', borderBottom: 1, borderColor: 'divider', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>探索聊天</Typography>
         <Box>
           <Button size="small" variant="outlined" onClick={() => setConvMenuOpen((v: boolean) => !v)} sx={{ mr: 1 }}>会话</Button>
@@ -344,16 +344,18 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
                       )}
                     </Box>
                   )}
-                  <Paper elevation={1} sx={{ p: 2.25, maxWidth: '100%', bgcolor: isUser?'#e7f0ff':'#fff', borderRadius: 2 }}>
-                    {isUser ? (
-                      <Typography sx={{ whiteSpace: 'pre-wrap' }}>{m.content}</Typography>
-                    ) : (
-                      <div className="markdown-body" style={{ whiteSpace: 'normal' }}>
-                        <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm, remarkBreaks]}>
-                          {main || m.content}
-                        </ReactMarkdown>
-                      </div>
-                    )}
+                  <Paper elevation={1} sx={{ p: 2.25, maxWidth: '100%', bgcolor: isUser ? '#e7f0ff' : '#fff', borderRadius: 2, border: isUser ? 'none' : '1px solid #eee' }}>
+                    <Box sx={{ px: isUser ? 0 : 8 }}>
+                      {isUser ? (
+                        <Typography sx={{ whiteSpace: (m.content || '').length <= 12 ? 'nowrap' : 'pre-wrap', wordBreak: (m.content || '').length <= 12 ? 'keep-all' : 'break-word' }}>{m.content}</Typography>
+                      ) : (
+                        <div className="markdown-body" style={{ whiteSpace: 'normal', margin: 0 }}>
+                          <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm, remarkBreaks]}>
+                            {main || m.content}
+                          </ReactMarkdown>
+                        </div>
+                      )}
+                    </Box>
                   </Paper>
                 </Box>
               );
@@ -366,13 +368,21 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
           </Box>
 
           <Box sx={{ display: 'flex', p: 1, borderTop: 1, borderColor: 'divider', flexShrink: 0 }}>
-            <TextField fullWidth variant="outlined" placeholder="输入你的问题，获取答案与下一步探索方向..." value={inputMessage} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); handleSend(); } }} size="small" multiline maxRows={4} sx={{ mr: 1 }} disabled={isLoading} />
-            <Button variant="contained" onClick={handleSend} disabled={isLoading || !inputMessage.trim()} sx={{ px: 2.5, fontWeight: 600 }}>发送</Button>
+            <TextField variant="outlined" placeholder="输入你的问题，获取答案与下一步探索方向..." value={inputMessage} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); handleSend(); } }} size="small" multiline maxRows={4} sx={{ mr: 1, flex: 1 }} disabled={isLoading} />
+            <Button
+              variant="contained"
+              size="small"
+              onClick={handleSend}
+              disabled={isLoading || !inputMessage.trim()}
+              sx={{ px: 1.5, py: 0.5, minWidth: 'auto', fontSize: 13, fontWeight: 600, letterSpacing: 0, whiteSpace: 'nowrap', flexShrink: 0 }}
+            >
+              发送
+            </Button>
           </Box>
         </Box>
 
         {/* Right column: options (scrollable) */}
-        <Box sx={{ width: 360, minWidth: 320, maxWidth: 420, display: 'flex', flexDirection: 'column', borderLeft: 1, borderColor: 'divider', overflow: 'hidden' }}>
+        <Box sx={{ width: { xs: 360, sm: 400, md: 440, lg: 480 }, minWidth: 340, maxWidth: 500, display: 'flex', flexDirection: 'column', borderLeft: 1, borderColor: 'divider', overflow: 'hidden', bgcolor: '#fff' }}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
             <Tabs
               value={selectedTab}
@@ -383,7 +393,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
               <Tab value="next" label="推荐相关好书" sx={{ fontWeight: 600, textTransform: 'none' }} />
             </Tabs>
           </Box>
-          <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 1.5 }}>
+          <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 4, py: 2 }}>
             {(() => {
               const filtered = options.filter((o: OptionItem) => o.type === selectedTab);
               if (filtered.length === 0) {
@@ -392,7 +402,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
               return filtered.map((opt: OptionItem) => (
                 <Box key={opt.id} sx={{ mb: 1.5 }}>
                   <Button variant="contained" color="primary" onClick={() => handleOptionClick(opt)} sx={{ textTransform:'none', fontWeight:600, borderRadius:2, px:1.75, py:0.75, boxShadow:'0 2px 8px rgba(43, 89, 255, 0.25)' }}>{opt.content}</Button>
-                  <Typography variant="body2" sx={{ color:'#666', mt:0.5, lineHeight:1.6 }}>{opt.describe}</Typography>
+                  <Typography variant="body2" sx={{ color:'#666', mt:0.5, lineHeight:1.6, px:3 }}>{opt.describe}</Typography>
                 </Box>
               ));
             })()}
