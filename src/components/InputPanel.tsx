@@ -9,6 +9,9 @@ interface InputPanelProps {
   darkMode?: boolean;
 }
 
+/**
+ * Renders an input panel for processing objects and AI instructions.
+ */
 const InputPanel: React.FC<InputPanelProps> = ({
   promptObject,
   promptText,
