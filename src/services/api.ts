@@ -11,22 +11,45 @@ const BASE_API_URL = 'https://openrouter.ai/api/v1';
 /**
  * Retrieves the API key from various sources.
  *
- * This function attempts to obtain the API key from the environment variables,
- * specifically looking for REACT_APP_OPENROUTER_API_KEY. If the key is not found
- * or is invalid (i.e., 'undefined' or 'null'), an error is thrown indicating
- * that the API key configuration needs to be checked.
+ * This function attempts to obtain the API key by first checking runtime configurations, specifically looking for
+ * REACT_APP_OPENROUTER_API_KEY in the window's ENV object. If not found, it falls back to the build-time environment
+ * variable. The function validates the retrieved key and throws an error if it is invalid or not set, providing
+ * debug information for troubleshooting.
  *
  * @param modelName - The name of the model for which the API key is being retrieved.
+ * @returns The retrieved API key as a string.
+ * @throws Error If the API key is not found or is invalid.
  */
 const getApiKey = (modelName: string): string => {
-  // 尝试从多个位置获取API密钥
-  const apiKey = process.env.REACT_APP_OPENROUTER_API_KEY || 
-                (window as any).ENV?.REACT_APP_OPENROUTER_API_KEY ||
-                ''; // 可以从window对象获取运行时配置
+  // 优先级：运行时配置 > 构建时环境变量
+  let apiKey = '';
   
-  if (!apiKey || apiKey === 'undefined' || apiKey === 'null') {
-    throw new Error('未找到API密钥，请检查环境变量 REACT_APP_OPENROUTER_API_KEY 是否已正确配置');
+  // 1. 尝试从运行时配置获取 (Railway 部署时会替换占位符)
+  const runtimeKey = (window as any).ENV?.REACT_APP_OPENROUTER_API_KEY;
+  if (runtimeKey && runtimeKey !== '__REACT_APP_OPENROUTER_API_KEY__') {
+    apiKey = runtimeKey;
   }
+  
+  // 2. 如果运行时配置不可用，尝试构建时环境变量
+  if (!apiKey) {
+    apiKey = process.env.REACT_APP_OPENROUTER_API_KEY || '';
+  }
+  
+  // 3. 验证API密钥
+  if (!apiKey || 
+      apiKey === 'undefined' || 
+      apiKey === 'null' || 
+      apiKey === '__REACT_APP_OPENROUTER_API_KEY__') {
+    
+    console.error('API Key Debug Info:', {
+      runtimeKey: (window as any).ENV?.REACT_APP_OPENROUTER_API_KEY,
+      buildTimeKey: process.env.REACT_APP_OPENROUTER_API_KEY,
+      finalKey: apiKey
+    });
+    
+    throw new Error('未找到API密钥。请检查:\n1. Railway环境变量REACT_APP_OPENROUTER_API_KEY是否已设置\n2. 是否需要重新部署以应用新的环境变量\n3. 本地开发时检查.env文件中的REACT_APP_OPENROUTER_API_KEY配置');
+  }
+  
   return apiKey;
 };
 
@@ -39,6 +62,17 @@ const SITE_INFO = {
 // Remove or comment out unused genAI initialization
 // const genAI = new GoogleGenerativeAI(API_KEY);
 
+/**
+ * Generate content based on a prompt using a specified model.
+ *
+ * This function constructs a request to the chat completions API with the provided promptObject and promptText. It sends the request using axios and processes the response to extract the generated content. If the response structure is unexpected, an error is thrown. The function also handles any errors that occur during the API call.
+ *
+ * @param promptObject - A string representing the object to be included in the prompt.
+ * @param promptText - A string containing the text of the prompt.
+ * @param modelName - A string specifying the model to be used for content generation.
+ * @returns A promise that resolves to the generated content as a string.
+ * @throws Error If the API response structure is unexpected or if an error occurs during the API call.
+ */
 export const generateContent = async (
   promptObject: string,
   promptText: string,
@@ -57,7 +91,7 @@ export const generateContent = async (
           }
         ],
         temperature: 0.7,
-        max_tokens: 8192
+        max_tokens: 15000
       },
       {
         headers: {
@@ -81,6 +115,20 @@ export const generateContent = async (
   }
 };
 
+/**
+ * Generates a content stream by making an API request and processing the response in real-time.
+ *
+ * This function initiates a streaming API request using the provided promptObject and promptText. It handles the response by reading the stream, decoding the data, and invoking the onChunkReceived callback for each chunk of content received. In case of errors during the request or processing, the onError callback is triggered, and upon successful completion, the onComplete callback is called.
+ *
+ * @param promptObject - The object containing the prompt details for the API request.
+ * @param promptText - The text prompt to be sent to the API.
+ * @param modelName - The name of the model to be used for the API request.
+ * @param onChunkReceived - Callback function invoked for each chunk of content received from the stream.
+ * @param onError - Callback function invoked when an error occurs during the streaming process.
+ * @param onComplete - Callback function invoked when the streaming process is complete.
+ * @returns A promise that resolves when the streaming process is complete.
+ * @throws Error If the API request fails or if there is an issue with the response body.
+ */
 export const generateContentStream = async (
   promptObject: string,
   promptText: string,
@@ -114,7 +162,7 @@ export const generateContentStream = async (
           }
         ],
         temperature: 0.7,
-        max_tokens: 8192,
+        max_tokens: 15000,
         stream: true
       }),
     });

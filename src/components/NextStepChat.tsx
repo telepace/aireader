@@ -24,29 +24,36 @@ interface NextStepOption {
 
 // OptionItem now comes from types.ts
 
-const SYSTEM_PROMPT = `我的目标是「精读」当前讨论的内容（文章或书籍），并不断切换对象。（当我发送一大段长文字时就是复制的长文章）
+const SYSTEM_PROMPT = `我的目标是「深度阅读」当前讨论的内容（文章或书籍），并不断切换对象。（当我发送一大段长文字时就是复制的长文章）
 
 每次交互，请严格执行以下3件事：
-**1. 聚焦与展开** 先讲透内容的一个核心关键；再全面概览，让我了解全貌，语言风格清晰易懂。
+**1. **先聚焦重点**：找出当前对应内容中最重要的一个或一对内核/关键词，让我抓到理解的关键点，要求清晰易懂地讲明白。**再全面展开**：全面展开对应内容,尽量每个要点讲的详细全面insightful,引人入胜。
 
 **2. 原文深挖 (type: deepen)** 推荐3个最有价值的原文精读选项。
 3个选项可以参考以下行动类型：
-- 按顺序深度展开原文的某个具体部分（按章节划分、按情节划分、按逻辑划分，划分为第一第二..第n部分。按顺序推荐第一、二..部分。偏向客观的呈现内容，而不是过于主观的讨论。
+- 按顺序推荐原文的某个具体部分，深度展开（按情节划分、按逻辑划分，划分为第一第二..第n部分。按顺序推荐第一、二..部分。（偏向客观的呈现内容，而不是过于主观的讨论）
 - 围绕原文的一个重点，讲透彻（同样偏向客观呈现原文相关的讨论，不要过于主观的讨论）。挑选标准按照对我最有价值、最能引起我兴趣作为最重要的评估维度。
 其他
-- 类型选择机制：这些类型不必每个都要出现，可以一个类型有多个选项，某些类型没有选项。最关键的是你根据当前情况非常聪明的评估，最合适我的三个选项是什么，来推荐！
-- 选项的描述要足够吸引，能勾起我的兴趣
+- 类型选择机制：这些类型不必每个都要出现，可以一个类型有多个选项，某些类型没有选项。最关键的是你根据当前情况非常聪明的评估，最合适我的三个选项是什么来推荐。
 - 选项一定要围绕「原文」，原文指的是最近在讨论的书、文章、主题。比如我们当前在讨论的是某一本书，则精读选项一定也是围绕该书原文的，而不是脱离原文的主观讨论。
 - 当讨论新书时，即精读对象变化了，不要老对比提及先前的精读对象。比如最初在精读一篇文章，后来在精读一本新书，则不要老对比之前文章的内容和新书的内容。只专注于当前的精读对象。注意，对象是整个原文，而不是我们当前讨论的原文的子话题（不要围绕子话题出所有精读选项，应该围绕原文出选项）。
 
 **3. 主题探索 (type: next)** 推荐3本最值得阅读的相关书籍，挑选对我有价值、最不可错过的探索对象，要围绕当前主题，以这些维度做优先级的排序。选项的描述要足够吸引我，能勾起我的兴趣
 
-**格式要求** 第2和第3步的推荐项，必须严格遵循 JSON Lines (JSONL) 格式，每行一个JSON对象，不要在代码块前后添加任何说明。
+选项描述
+每个选项的描述要**讲透该选项的精髓之处**，hooked读者。言简意骇不讲废话。
+
+**格式要求** 
+第2和第3步的推荐项，必须严格遵循 JSON Lines (JSONL) 格式，每行一个JSON对象，不要在代码块前后添加任何说明。
 - 第2步推荐，type 字段的值必须是 deepen
 - 第3步推荐，type 字段的值必须是 next
 
+风格
+输出以 jsonl 的方式输出 ，并且避免因为 JSONL 格是的输出要求导致内容过于严肃，保留清楚易懂
 
-**JSONL 模板:**
+**JSONL 输出结构:**
+
+聚焦与展开的文本内容
 
 ---
 {"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}
@@ -114,9 +121,7 @@ function trimContextForApi(all: ChatMessage[]): ChatMessage[] {
 /**
  * The NextStepChat component manages a chat interface for user interactions with a selected model.
  *
- * It maintains the state of messages, input, loading status, options, and conversation details.
- * The component handles sending messages, merging options, and auto-persisting conversations.
- * It also provides a layout for displaying messages and options, allowing users to interact with the chat and explore related content.
+ * It maintains the state of messages, input, loading status, options, and conversation details. The component handles sending messages, merging options, and auto-persisting conversations. It also provides a layout for displaying messages and options, allowing users to interact with the chat and explore related content.
  *
  * @param {NextStepChatProps} props - The properties for the NextStepChat component.
  * @param {string} props.selectedModel - The model selected for the chat.
@@ -288,7 +293,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
   return (
     <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
       {/* Fixed header inside the page */}
-      <Box sx={{ position: 'sticky', top: 0, zIndex: 1, p: 1, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+      <Box sx={{ position: 'sticky', top: 0, zIndex: 1, p: 1, bgcolor: '#fff', borderBottom: 1, borderColor: 'divider', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>探索聊天</Typography>
         <Box>
           <Button size="small" variant="outlined" onClick={() => setConvMenuOpen((v: boolean) => !v)} sx={{ mr: 1 }}>会话</Button>
@@ -337,16 +342,18 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
                       )}
                     </Box>
                   )}
-                  <Paper elevation={1} sx={{ p: 2.25, maxWidth: '100%', bgcolor: isUser?'#e7f0ff':'#fff', borderRadius: 2 }}>
-                    {isUser ? (
-                      <Typography sx={{ whiteSpace: 'pre-wrap' }}>{m.content}</Typography>
-                    ) : (
-                      <div className="markdown-body" style={{ whiteSpace: 'normal' }}>
-                        <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm, remarkBreaks]}>
-                          {main || m.content}
-                        </ReactMarkdown>
-                      </div>
-                    )}
+                  <Paper elevation={1} sx={{ p: 2.25, maxWidth: '100%', bgcolor: isUser ? '#e7f0ff' : '#fff', borderRadius: 2, border: isUser ? 'none' : '1px solid #eee' }}>
+                    <Box sx={{ px: isUser ? 0 : 8 }}>
+                      {isUser ? (
+                        <Typography sx={{ whiteSpace: (m.content || '').length <= 12 ? 'nowrap' : 'pre-wrap', wordBreak: (m.content || '').length <= 12 ? 'keep-all' : 'break-word' }}>{m.content}</Typography>
+                      ) : (
+                        <div className="markdown-body" style={{ whiteSpace: 'normal', margin: 0 }}>
+                          <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm, remarkBreaks]}>
+                            {main || m.content}
+                          </ReactMarkdown>
+                        </div>
+                      )}
+                    </Box>
                   </Paper>
                 </Box>
               );
@@ -359,13 +366,21 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
           </Box>
 
           <Box sx={{ display: 'flex', p: 1, borderTop: 1, borderColor: 'divider', flexShrink: 0 }}>
-            <TextField fullWidth variant="outlined" placeholder="输入你的问题，获取答案与下一步探索方向..." value={inputMessage} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); handleSend(); } }} size="small" multiline maxRows={4} sx={{ mr: 1 }} disabled={isLoading} />
-            <Button variant="contained" onClick={handleSend} disabled={isLoading || !inputMessage.trim()} sx={{ px: 2.5, fontWeight: 600 }}>发送</Button>
+            <TextField variant="outlined" placeholder="输入你的问题，获取答案与下一步探索方向..." value={inputMessage} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); handleSend(); } }} size="small" multiline maxRows={4} sx={{ mr: 1, flex: 1 }} disabled={isLoading} />
+            <Button
+              variant="contained"
+              size="small"
+              onClick={handleSend}
+              disabled={isLoading || !inputMessage.trim()}
+              sx={{ px: 1.5, py: 0.5, minWidth: 'auto', fontSize: 13, fontWeight: 600, letterSpacing: 0, whiteSpace: 'nowrap', flexShrink: 0 }}
+            >
+              发送
+            </Button>
           </Box>
         </Box>
 
         {/* Right column: options (scrollable) */}
-        <Box sx={{ width: 360, minWidth: 320, maxWidth: 420, display: 'flex', flexDirection: 'column', borderLeft: 1, borderColor: 'divider', overflow: 'hidden' }}>
+        <Box sx={{ width: { xs: 360, sm: 400, md: 440, lg: 480 }, minWidth: 340, maxWidth: 500, display: 'flex', flexDirection: 'column', borderLeft: 1, borderColor: 'divider', overflow: 'hidden', bgcolor: '#fff' }}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
             <Tabs
               value={selectedTab}
@@ -376,7 +391,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
               <Tab value="next" label="推荐相关好书" sx={{ fontWeight: 600, textTransform: 'none' }} />
             </Tabs>
           </Box>
-          <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 1.5 }}>
+          <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 4, py: 2 }}>
             {(() => {
               const filtered = options.filter((o: OptionItem) => o.type === selectedTab);
               if (filtered.length === 0) {
@@ -385,7 +400,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
               return filtered.map((opt: OptionItem) => (
                 <Box key={opt.id} sx={{ mb: 1.5 }}>
                   <Button variant="contained" color="primary" onClick={() => handleOptionClick(opt)} sx={{ textTransform:'none', fontWeight:600, borderRadius:2, px:1.75, py:0.75, boxShadow:'0 2px 8px rgba(43, 89, 255, 0.25)' }}>{opt.content}</Button>
-                  <Typography variant="body2" sx={{ color:'#666', mt:0.5, lineHeight:1.6 }}>{opt.describe}</Typography>
+                  <Typography variant="body2" sx={{ color:'#666', mt:0.5, lineHeight:1.6, px:3 }}>{opt.describe}</Typography>
                 </Box>
               ));
             })()}

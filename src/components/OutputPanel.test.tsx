@@ -42,9 +42,9 @@ describe('OutputPanel Component', () => {
   test('renders correctly with all props', () => {
     render(<OutputPanel {...defaultProps} />);
     
-    expect(screen.getByText('处理结果')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /生成/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /保存/i })).toBeInTheDocument();
+    expect(screen.getByText('✨ AI 处理结果')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /🚀 生成/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /💾 保存/i })).toBeInTheDocument();
   });
 
   test('disables generate button when loading', () => {
@@ -57,28 +57,28 @@ describe('OutputPanel Component', () => {
   test('disables generate button when promptObject or promptText is empty', () => {
     render(<OutputPanel {...defaultProps} promptObject="" />);
     
-    const generateButton = screen.getByRole('button', { name: /生成/i });
+    const generateButton = screen.getByRole('button', { name: /🚀 生成/i });
     expect(generateButton).toBeDisabled();
   });
 
   test('disables save button when loading', () => {
     render(<OutputPanel {...defaultProps} isLoading={true} />);
     
-    const saveButton = screen.getByRole('button', { name: /保存/i });
+    const saveButton = screen.getByRole('button', { name: /💾 保存/i });
     expect(saveButton).toBeDisabled();
   });
 
   test('disables save button when no promptResult', () => {
     render(<OutputPanel {...defaultProps} promptResult="" />);
     
-    const saveButton = screen.getByRole('button', { name: /保存/i });
+    const saveButton = screen.getByRole('button', { name: /💾 保存/i });
     expect(saveButton).toBeDisabled();
   });
 
   test('calls onGenerate when generate button is clicked', () => {
     render(<OutputPanel {...defaultProps} />);
     
-    const generateButton = screen.getByRole('button', { name: /生成/i });
+    const generateButton = screen.getByRole('button', { name: /🚀 生成/i });
     fireEvent.click(generateButton);
     
     expect(defaultProps.onGenerate).toHaveBeenCalledTimes(1);
@@ -87,7 +87,7 @@ describe('OutputPanel Component', () => {
   test('calls savePromptTest and shows success message when save is clicked', () => {
     render(<OutputPanel {...defaultProps} />);
     
-    const saveButton = screen.getByRole('button', { name: /保存/i });
+    const saveButton = screen.getByRole('button', { name: /💾 保存/i });
     fireEvent.click(saveButton);
     
     expect(savePromptTest).toHaveBeenCalledWith({
@@ -104,7 +104,7 @@ describe('OutputPanel Component', () => {
   test('calls onSave callback when provided', () => {
     render(<OutputPanel {...defaultProps} />);
     
-    const saveButton = screen.getByRole('button', { name: /保存/i });
+    const saveButton = screen.getByRole('button', { name: /💾 保存/i });
     fireEvent.click(saveButton);
     
     expect(defaultProps.onSave).toHaveBeenCalledWith({

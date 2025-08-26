@@ -27,22 +27,25 @@ ENV REACT_APP_OPENROUTER_API_KEY=$REACT_APP_OPENROUTER_API_KEY
 ENV REACT_APP_APP_NAME=$REACT_APP_APP_NAME
 ENV REACT_APP_APP_VERSION=$REACT_APP_APP_VERSION
 
-RUN npm run build:optimized
+# 构建应用（包含运行时配置注入）
+RUN npm run build:railway
 
-# 安装 serve 用于提供静态文件
-RUN npm install -g serve
-
-# 暴露端口
-EXPOSE 3000
+# 安装 http-server 用于提供静态文件（更轻量）
+RUN npm install -g http-server
 
 # 安装必要的工具
 RUN apk add --no-cache curl
 
-# 创建简单的测试页面确保服务启动
-RUN echo '<!DOCTYPE html><html><head><title>Aireader - Railway</title></head><body><h1>Aireader Deployed Successfully!</h1><p>Port: ${PORT:-3000}</p></body></html>' > build/test.html
+# 暴露端口
+EXPOSE 3000
 
-# 安装一个简单的HTTP服务器
-RUN npm install -g http-server
+# 验证构建结果
+RUN ls -la build/ && \
+    echo "✅ Build directory contents verified" && \
+    test -f build/config.js && echo "✅ Runtime config file found" || echo "⚠️  Runtime config file missing"
 
-# 启动应用 - 使用http-server
-CMD ["http-server", "build", "-p", "3000", "--host", "0.0.0.0"]
+# 创建健康检查页面
+RUN echo '<!DOCTYPE html><html><head><title>Aireader - Railway Health Check</title><meta charset="utf-8"><style>body{font-family:system-ui,sans-serif;padding:2rem;background:#f8fafc}h1{color:#6366f1}</style></head><body><h1>🚀 Aireader - Deployed Successfully!</h1><p><strong>Status:</strong> Running</p><p><strong>Port:</strong> 3000</p><p><strong>Time:</strong> <script>document.write(new Date().toLocaleString())</script></p><a href="/">Go to App</a></body></html>' > build/health.html
+
+# 启动应用
+CMD ["http-server", "build", "-p", "3000", "--host", "0.0.0.0", "-c-1", "--cors"]
