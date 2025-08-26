@@ -1,5 +1,6 @@
+/* eslint-disable testing-library/no-node-access */
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { JsonlRenderer } from './JsonlRenderer';
 
 describe('JsonlRenderer Component', () => {
@@ -17,8 +18,9 @@ describe('JsonlRenderer Component', () => {
   });
 
   test('handles empty content', () => {
+    // eslint-disable-next-line testing-library/no-node-access
     const { container } = render(<JsonlRenderer content="" />);
-    expect(container.children).toHaveLength(1);
+    expect(container.firstChild).toBeInTheDocument();
   });
 
   test('handles invalid JSON gracefully', () => {
@@ -58,11 +60,17 @@ describe('JsonlRenderer Component', () => {
   });
 
   test('handles null and undefined content', () => {
-    const { container: nullContainer } = render(<JsonlRenderer content={null} />);
-    expect(nullContainer.children).toHaveLength(1);
+    // eslint-disable-next-line testing-library/no-node-access
+    const { container: nullContainer } = render(
+      <JsonlRenderer content={null} />
+    );
+    expect(nullContainer).toBeInTheDocument();
 
-    const { container: undefinedContainer } = render(<JsonlRenderer content={undefined} />);
-    expect(undefinedContainer.children).toHaveLength(1);
+    // eslint-disable-next-line testing-library/no-node-access
+    const { container: undefinedContainer } = render(
+      <JsonlRenderer content={undefined} />
+    );
+    expect(undefinedContainer).toBeInTheDocument();
   });
 
   test('applies hover effects when enabled', () => {

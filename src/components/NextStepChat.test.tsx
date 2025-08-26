@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import NextStepChat from './NextStepChat';
 
 // Mock uuid to deterministic ids
@@ -38,7 +38,7 @@ describe('NextStepChat conversation persistence', () => {
     fireEvent.change(input, { target: { value: '你好' } });
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 
-    await waitFor(() => expect(screen.getByText('助手回复')).toBeInTheDocument());
+    await screen.findByText('助手回复');
 
     const raw = localStorage.getItem('nextstep_conversations');
     expect(raw).toBeTruthy();
@@ -59,7 +59,7 @@ describe('NextStepChat conversation persistence', () => {
     const input = screen.getByPlaceholderText('输入你的问题，获取答案与下一步探索方向...');
     fireEvent.change(input, { target: { value: '第一轮问题' } });
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
-    await waitFor(() => expect(screen.getByText('助手回复')).toBeInTheDocument());
+    await screen.findByText('助手回复');
 
     // open menu and create new conversation
     const menuBtn = screen.getByRole('button', { name: '会话' });
@@ -71,7 +71,7 @@ describe('NextStepChat conversation persistence', () => {
     const input2 = screen.getByPlaceholderText('输入你的问题，获取答案与下一步探索方向...');
     fireEvent.change(input2, { target: { value: '第二轮问题' } });
     fireEvent.keyDown(input2, { key: 'Enter', code: 'Enter' });
-    await waitFor(() => expect(screen.getAllByText('助手回复').length).toBeGreaterThanOrEqual(1));
+    await screen.findAllByText('助手回复');
 
     // reopen menu and assert two sessions are present by their titles/snippets
     fireEvent.click(menuBtn);
