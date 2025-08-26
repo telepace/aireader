@@ -185,7 +185,10 @@ const App: React.FC = () => {
               isLoading={isLoading}
               onGenerate={handleGenerate}
               selectedModel={selectedModel}
-              onSave={(test) => setSelectedPromptTest(test)}
+              onSave={(test) => {
+                // Handle the saved test - could be used for notifications or updates
+                console.log('Test saved:', test);
+              }}
               darkMode={darkMode}
             />
           </Box>
