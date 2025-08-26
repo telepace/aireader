@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Container,
   CssBaseline,
@@ -40,7 +40,6 @@ const App: React.FC = () => {
     isLoading,
     setIsLoading,
     selectedPromptTest,
-    setSelectedPromptTest,
     loadPromptTest
   } = usePromptTest();
 
@@ -188,7 +187,6 @@ const App: React.FC = () => {
               selectedModel={selectedModel}
               onSave={(test) => {
                 // Handle the saved test - could be used for notifications or updates
-                console.log('Test saved:', test);
               }}
               darkMode={darkMode}
             />
