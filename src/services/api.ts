@@ -6,8 +6,6 @@ import { ChatMessage } from '../types/types';
 // API 配置
 const BASE_API_URL = 'https://openrouter.ai/api/v1';
 
-// OpenAI模型列表
-const OPENAI_MODELS = ['openai/o3', 'openai/o4-mini'];
 
 // 从环境变量获取API密钥
 const getApiKey = (modelName: string): string => {

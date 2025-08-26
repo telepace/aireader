@@ -38,19 +38,6 @@ const CustomStrong = (props: any) => {
   }} {...props} />;
 };
 
-// 添加自定义的代码块组件
-const CustomCode = (props: any) => {
-  return <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', padding: '0.2em 0.4em', borderRadius: '3px', backgroundColor: 'rgba(27, 31, 35, 0.05)' }} {...props} />;
-};
-
-const CustomPre = (props: any) => {
-  return <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', padding: '16px', borderRadius: '6px', backgroundColor: '#f6f8fa', marginBottom: '8px' }} {...props} />;
-};
-
-// 自定义换行处理
-const CustomBreak = () => {
-  return null; // 完全忽略BR标签
-};
 
 // 检测是否为JSONL格式的函数
 const isJsonlFormat = (content: string): boolean => {

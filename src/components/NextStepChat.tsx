@@ -10,23 +10,6 @@ import { listConversations, upsertConversation, deleteConversation } from '../ut
 import { generateChatStream } from '../services/api';
 
 // Markdown renderers (aligned with existing style)
-const CustomParagraph = (props: any) => <p style={{ marginBottom: '4px', whiteSpace: 'normal' }} {...props} />;
-const CustomHeading = ({ level, children, ...props }: any) => {
-  const Tag = `h${level}` as keyof JSX.IntrinsicElements;
-  return <Tag style={{ marginTop: '1rem', marginBottom: '8px' }} {...props}>{children}</Tag>;
-};
-const CustomList = (props: any) => <ul style={{ marginBottom: '8px', paddingLeft: '2em' }} {...props} />;
-const CustomListItem = (props: any) => <li style={{ marginBottom: 0 }} {...props} />;
-const CustomStrong = (props: any) => (
-  <strong style={{ fontWeight: 'bold', color: '#2b59ff', backgroundColor: 'rgba(43, 89, 255, 0.08)', padding: '0.1em 0.2em', borderRadius: 3 }} {...props} />
-);
-const CustomCode = (props: any) => (
-  <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', padding: '0.2em 0.4em', borderRadius: 3, backgroundColor: 'rgba(27, 31, 35, 0.05)' }} {...props} />
-);
-const CustomPre = (props: any) => (
-  <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', padding: 16, borderRadius: 6, backgroundColor: '#f6f8fa', marginBottom: 8 }} {...props} />
-);
-const CustomBreak = () => null;
 
 interface NextStepChatProps {
   selectedModel: string;
@@ -135,7 +118,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
   const [selectedTab, setSelectedTab] = useState<'deepen' | 'next'>('deepen');
   const [reasoningOpen, setReasoningOpen] = useState(false);
   const [reasoningText, setReasoningText] = useState('');
-  const [streamingAssistantId, setStreamingAssistantId] = useState<string | null>(null);
+  const [, setStreamingAssistantId] = useState<string | null>(null); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [conversationId, setConversationId] = useState<string>(() => {
     const existing = listConversations()[0];
     return existing ? existing.id : uuidv4();

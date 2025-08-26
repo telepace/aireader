@@ -12,7 +12,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
-import remarkBreaks from 'remark-breaks';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatMessage, PromptTest } from '../types/types';
 import { generateChat } from '../services/api';

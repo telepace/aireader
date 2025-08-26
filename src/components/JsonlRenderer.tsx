@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Box, IconButton, useTheme, Typography } from '@mui/material';
-import { Copy, MoreHorizontal } from 'lucide-react';
+import { Box, IconButton, Typography } from '@mui/material';
+import { Copy } from 'lucide-react';
 
 interface JsonlRendererProps {
   /** raw JSONL string, each line is a JSON object */
@@ -32,7 +32,6 @@ export function JsonlRenderer({
 }: JsonlRendererProps) {
   const [hoveredBlock, setHoveredBlock] = useState<number | null>(null);
   const [toastMessage, setToastMessage] = useState<string>('');
-  const theme = useTheme();
 
   // 简单的toast通知
   const showToast = (message: string) => {
