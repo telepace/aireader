@@ -34,5 +34,8 @@ RUN apk add --no-cache curl
 # 创建简单的测试页面确保服务启动
 RUN echo '<!DOCTYPE html><html><head><title>Aireader - Railway</title></head><body><h1>Aireader Deployed Successfully!</h1><p>Port: ${PORT:-3000}</p></body></html>' > build/test.html
 
-# 启动应用 - 使用正确的serve命令格式
-CMD ["sh", "-c", "serve -s build -l ${PORT:-3000}"]
+# 安装一个简单的HTTP服务器
+RUN npm install -g http-server
+
+# 启动应用 - 使用http-server
+CMD ["http-server", "build", "-p", "3000", "--host", "0.0.0.0"]
