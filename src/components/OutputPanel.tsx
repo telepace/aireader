@@ -88,6 +88,25 @@ interface OutputPanelProps {
   darkMode?: boolean;
 }
 
+/**
+ * Renders the output panel for displaying AI processing results.
+ *
+ * This component manages the display of the prompt result, handles auto-scrolling when the result updates,
+ * and provides functionality to save the prompt test. It utilizes various hooks to manage state and effects,
+ * and conditionally renders content based on the prompt result format. The component also includes loading indicators
+ * and buttons for generating and saving results.
+ *
+ * @param props - The properties for the OutputPanel component.
+ * @param props.promptObject - The object representing the prompt.
+ * @param props.promptText - The text of the prompt.
+ * @param props.promptResult - The result generated from the prompt.
+ * @param props.isLoading - A boolean indicating if the result is currently loading.
+ * @param props.onGenerate - A callback function to generate a new result.
+ * @param props.selectedModel - The model selected for generating results.
+ * @param props.onSave - A callback function to save the prompt test.
+ * @param [props.darkMode=false] - A boolean indicating if dark mode is enabled.
+ * @returns A React element representing the output panel.
+ */
 const OutputPanel: React.FC<OutputPanelProps> = (props) => {
   const {
     promptObject,
