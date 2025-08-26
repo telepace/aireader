@@ -121,9 +121,7 @@ function trimContextForApi(all: ChatMessage[]): ChatMessage[] {
 /**
  * The NextStepChat component manages a chat interface for user interactions with a selected model.
  *
- * It maintains the state of messages, input, loading status, options, and conversation details.
- * The component handles sending messages, merging options, and auto-persisting conversations.
- * It also provides a layout for displaying messages and options, allowing users to interact with the chat and explore related content.
+ * It maintains the state of messages, input, loading status, options, and conversation details. The component handles sending messages, merging options, and auto-persisting conversations. It also provides a layout for displaying messages and options, allowing users to interact with the chat and explore related content.
  *
  * @param {NextStepChatProps} props - The properties for the NextStepChat component.
  * @param {string} props.selectedModel - The model selected for the chat.
