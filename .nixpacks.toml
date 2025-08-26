@@ -1,0 +1,12 @@
+[phases.setup]
+cmds = [
+  "npm ci --legacy-peer-deps --no-cache"
+]
+
+[phases.build]
+cmds = [
+  "npm run build:optimized"
+]
+
+[start]
+cmd = "npx serve -s build -l 3000"
