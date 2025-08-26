@@ -222,15 +222,6 @@ describe('Storage Utilities', () => {
     });
 
     test('handles conversation storage errors', () => {
-      const _conversation = {
-        id: 'conv-1',
-        title: 'Test',
-        messages: [],
-        model: 'openai/o4-mini',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
       mockLocalStorage.getItem.mockReturnValue(null);
       mockLocalStorage.setItem.mockImplementation(() => {
         throw new Error('Storage error');

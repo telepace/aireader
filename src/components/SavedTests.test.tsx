@@ -1,8 +1,8 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import SavedTests from './SavedTests';
 import { PromptTest } from '../types/types';
-import { getSavedPromptTests, deletePromptTest } from '../utils/storage';
+import { getSavedPromptTests } from '../utils/storage';
 
 // Mock storage functions
 jest.mock('../utils/storage', () => ({
