@@ -150,6 +150,7 @@ jobs:
         GENERATE_SOURCEMAP: false
         INLINE_RUNTIME_CHUNK: false
         IMAGE_INLINE_SIZE_LIMIT: 0
+        CI: false
       run: npm run build:optimized
 
     - name: Deploy to Railway
