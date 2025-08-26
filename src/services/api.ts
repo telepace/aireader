@@ -9,9 +9,13 @@ const BASE_API_URL = 'https://openrouter.ai/api/v1';
 
 // 从环境变量获取API密钥
 const getApiKey = (modelName: string): string => {
-  const apiKey = process.env.REACT_APP_OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new Error('未找到API密钥，请检查.env文件中的REACT_APP_OPENROUTER_API_KEY配置');
+  // 尝试从多个位置获取API密钥
+  const apiKey = process.env.REACT_APP_OPENROUTER_API_KEY || 
+                (window as any).ENV?.REACT_APP_OPENROUTER_API_KEY ||
+                ''; // 可以从window对象获取运行时配置
+  
+  if (!apiKey || apiKey === 'undefined' || apiKey === 'null') {
+    throw new Error('未找到API密钥，请检查环境变量 REACT_APP_OPENROUTER_API_KEY 是否已正确配置');
   }
   return apiKey;
 };
