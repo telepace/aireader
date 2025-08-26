@@ -111,6 +111,18 @@ function trimContextForApi(all: ChatMessage[]): ChatMessage[] {
   return kept.reverse();
 }
 
+/**
+ * The NextStepChat component manages a chat interface for user interactions with a selected model.
+ *
+ * It maintains the state of messages, input, loading status, options, and conversation details.
+ * The component handles sending messages, merging options, and auto-persisting conversations.
+ * It also provides a layout for displaying messages and options, allowing users to interact with the chat and explore related content.
+ *
+ * @param {NextStepChatProps} props - The properties for the NextStepChat component.
+ * @param {string} props.selectedModel - The model selected for the chat.
+ * @param {number} props.clearSignal - A signal to clear the chat state.
+ * @returns {JSX.Element} The rendered NextStepChat component.
+ */
 const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -172,6 +184,17 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
     });
   };
 
+  /**
+   * Merges incoming options with the existing options.
+   *
+   * This function updates the state of options based on the incoming array of NextStepOption.
+   * It maintains the historical order by not updating the firstSeenAt property, while updating
+   * the lastSeenAt and lastMessageId for existing options. New options are added to the map,
+   * and the final list is sorted in descending order based on firstSeenAt.
+   *
+   * @param {NextStepOption[]} incoming - The array of new options to merge.
+   * @param {string} lastMessageId - The ID of the last message associated with the options.
+   */
   const mergeOptions = (incoming: NextStepOption[], lastMessageId: string) => {
     if (!incoming?.length) return;
     setOptions((prev: OptionItem[]) => {
@@ -194,6 +217,15 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
     });
   };
 
+  /**
+   * Sends a message internally and manages the chat state.
+   *
+   * This function creates a user message and updates the chat context by trimming and ensuring the system prompt.
+   * It sets the loading state and initializes a placeholder for the assistant's response.
+   * The function then generates a chat stream, updating the assistant's message in real-time and handling any errors that may occur during the process.
+   *
+   * @param userText - The text content of the user's message.
+   */
   const sendMessageInternal = async (userText: string) => {
     const userMessage: ChatMessage = { id: uuidv4(), role: 'user', content: userText, timestamp: Date.now() };
     const withoutSystem = [...messages, userMessage];
@@ -236,6 +268,15 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
   };
 
   const handleSend = async () => { if (!inputMessage.trim() || isLoading) return; await sendMessageInternal(inputMessage.trim()); };
+  /**
+   * Handles the click event for an option.
+   *
+   * This function first checks if the application is currently loading; if so, it exits early.
+   * It then removes the clicked option from the list of available options to prevent it from occupying space.
+   * Finally, it sends a message using the content of the clicked option through the `sendMessageInternal` function.
+   *
+   * @param opt - The option item that was clicked.
+   */
   const handleOptionClick = async (opt: OptionItem) => {
     if (isLoading) return;
     // remove clicked option to avoid occupying space
