@@ -40,17 +40,17 @@ REACT_APP_OPENROUTER_API_KEY=your_actual_api_key_here
 
 ### 2. 安装依赖
 ```bash
-npm install
+pnpm install
 ```
 
 ### 3. 开发模式运行
 ```bash
-npm start
+pnpm start
 ```
 
 ### 4. 构建生产版本
 ```bash
-npm run build
+pnpm run build
 ```
 
 ## 使用说明
