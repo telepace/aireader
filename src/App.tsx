@@ -40,6 +40,7 @@ const App: React.FC = () => {
     isLoading,
     setIsLoading,
     selectedPromptTest,
+    setSelectedPromptTest,
     loadPromptTest
   } = usePromptTest();
 
