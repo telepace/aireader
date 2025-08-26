@@ -1,0 +1,33 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "npm ci --production=false && npm run build",
+    "startCommand": "npx serve -s build -l 3000",
+    "healthcheckPath": "/",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10,
+    "watchPaths": [
+      "src/**",
+      "public/**",
+      "package.json",
+      "package-lock.json"
+    ]
+  },
+  "deploy": {
+    "startCommand": "npx serve -s build -l 3000",
+    "healthcheckPath": "/",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  },
+  "environments": {
+    "production": {
+      "variables": {
+        "NODE_ENV": "production",
+        "GENERATE_SOURCEMAP": "false",
+        "INLINE_RUNTIME_CHUNK": "false",
+        "IMAGE_INLINE_SIZE_LIMIT": "0"
+      }
+    }
+  }
+}
