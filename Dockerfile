@@ -31,5 +31,8 @@ EXPOSE 3000
 # 安装必要的工具
 RUN apk add --no-cache curl
 
-# 启动应用 - 使用环境变量或默认端口
-CMD ["sh", "-c", "serve -s build -l 0.0.0.0:${PORT:-3000}"]
+# 创建简单的测试页面确保服务启动
+RUN echo '<!DOCTYPE html><html><head><title>Aireader - Railway</title></head><body><h1>Aireader Deployed Successfully!</h1><p>Port: ${PORT:-3000}</p></body></html>' > build/test.html
+
+# 启动应用 - 使用正确的serve命令格式
+CMD ["sh", "-c", "serve -s build -l ${PORT:-3000}"]
