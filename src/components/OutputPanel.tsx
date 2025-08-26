@@ -39,42 +39,77 @@ const CustomStrong = (props: any) => {
 };
 
 
-// 检测是否为JSONL格式的函数
-const isJsonlFormat = (content: string): boolean => {
-  if (!content || content.trim().length === 0) {
-    return false;
+// 改进的JSONL内容检测函数
+const detectJsonlContent = (content: string): { isJsonl: boolean; jsonlContent?: string; mixedContent?: { text: string; jsonl: string } } => {
+  if (!content?.trim()) {
+    return { isJsonl: false };
   }
   
-  const lines = content.split('\n').filter(line => line.trim().length > 0);
+  const lines = content.split('\n');
+  const jsonlLines: string[] = [];
+  const textLines: string[] = [];
+  let consecutiveJsonlCount = 0;
+  let maxConsecutiveJsonl = 0;
   
-  // 如果只有一行，可能不是JSONL
-  if (lines.length < 2) {
-    return false;
-  }
-  
-  // 检查前几行是否都是有效的JSON对象
-  let validJsonCount = 0;
-  const linesToCheck = Math.min(lines.length, 5); // 检查前5行
-  
-  for (let i = 0; i < linesToCheck; i++) {
+  // 分析每一行
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      // 保留空行到文本内容中
+      if (jsonlLines.length === 0) {
+        textLines.push(line);
+      }
+      return;
+    }
+    
     try {
-      const parsed = JSON.parse(lines[i].trim());
-      // 检查是否包含type/t和content/c字段
+      const parsed = JSON.parse(trimmed);
       if (typeof parsed === 'object' && parsed !== null) {
-        const hasType = 'type' in parsed || 't' in parsed;
-        const hasContent = 'content' in parsed || 'c' in parsed;
-        if (hasType && hasContent) {
-          validJsonCount++;
+        const hasStructure = ('type' in parsed || 't' in parsed) && 
+                            ('content' in parsed || 'c' in parsed);
+        if (hasStructure) {
+          jsonlLines.push(trimmed);
+          consecutiveJsonlCount++;
+          maxConsecutiveJsonl = Math.max(maxConsecutiveJsonl, consecutiveJsonlCount);
+          return;
         }
       }
     } catch {
-      // 如果解析失败，跳过这行
-      continue;
+      // JSON解析失败，作为普通文本处理
     }
+    
+    // 不是有效JSONL行，重置连续计数
+    textLines.push(line);
+    consecutiveJsonlCount = 0;
+  });
+  
+  // 判断逻辑：有连续的JSONL行（>=2行）或总JSONL行数足够多
+  const hasSignificantJsonl = maxConsecutiveJsonl >= 2 || jsonlLines.length >= 3;
+  
+  if (!hasSignificantJsonl) {
+    return { isJsonl: false };
   }
   
-  // 如果超过一半的行都是有效的结构化JSON，认为是JSONL格式
-  return validJsonCount >= Math.ceil(linesToCheck / 2);
+  // 如果全部都是JSONL（除了可能的空行）
+  const nonEmptyTextLines = textLines.filter(line => line.trim());
+  if (nonEmptyTextLines.length === 0) {
+    return { isJsonl: true, jsonlContent: jsonlLines.join('\n') };
+  }
+  
+  // 混合内容
+  return {
+    isJsonl: true,
+    mixedContent: {
+      text: textLines.join('\n').trim(),
+      jsonl: jsonlLines.join('\n')
+    }
+  };
+};
+
+// 向后兼容的函数 (保留以防其他地方使用)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const isJsonlFormat = (content: string): boolean => {
+  return detectJsonlContent(content).isJsonl;
 };
 
 interface OutputPanelProps {
@@ -225,39 +260,82 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
         }}
       >
         <Box sx={{ color: darkMode ? 'text.primary' : 'inherit' }}>
-          {isJsonlFormat(promptResult) ? (
-            // 使用JSONL渲染器
-            <JsonlRenderer 
-              content={promptResult}
-              enableHoverEffects={true}
-              darkMode={darkMode}
-            />
-          ) : (
-            // 使用原来的Markdown渲染器
-            <Box sx={{ fontFamily: 'monospace' }}>
-              <div className="markdown-body" style={{ color: darkMode ? 'text.primary' : 'inherit' }}>
-                <ReactMarkdown 
-                  key={`md-${promptResult.length}`}
-                  rehypePlugins={[rehypeRaw]}
-                  remarkPlugins={[remarkGfm, remarkBreaks]}
-                  components={{
-                    p: CustomParagraph,
-                    h1: (props) => <CustomHeading level={1} {...props} />,
-                    h2: (props) => <CustomHeading level={2} {...props} />,
-                    h3: (props) => <CustomHeading level={3} {...props} />,
-                    h4: (props) => <CustomHeading level={4} {...props} />,
-                    h5: (props) => <CustomHeading level={5} {...props} />,
-                    h6: (props) => <CustomHeading level={6} {...props} />,
-                    ul: CustomList,
-                    li: CustomListItem,
-                    strong: CustomStrong
-                  }}
-                >
-                  {promptResult || '暂无内容'}
-                </ReactMarkdown>
-              </div>
-            </Box>
-          )}
+          {(() => {
+            const { isJsonl, jsonlContent, mixedContent } = detectJsonlContent(promptResult);
+            
+            if (!isJsonl) {
+              // 使用原来的Markdown渲染器
+              return (
+                <Box sx={{ fontFamily: 'monospace' }}>
+                  <div className="markdown-body" style={{ color: darkMode ? 'text.primary' : 'inherit' }}>
+                    <ReactMarkdown 
+                      key={`md-${promptResult.length}`}
+                      rehypePlugins={[rehypeRaw]}
+                      remarkPlugins={[remarkGfm, remarkBreaks]}
+                      components={{
+                        p: CustomParagraph,
+                        h1: (props) => <CustomHeading level={1} {...props} />,
+                        h2: (props) => <CustomHeading level={2} {...props} />,
+                        h3: (props) => <CustomHeading level={3} {...props} />,
+                        h4: (props) => <CustomHeading level={4} {...props} />,
+                        h5: (props) => <CustomHeading level={5} {...props} />,
+                        h6: (props) => <CustomHeading level={6} {...props} />,
+                        ul: CustomList,
+                        li: CustomListItem,
+                        strong: CustomStrong
+                      }}
+                    >
+                      {promptResult || '暂无内容'}
+                    </ReactMarkdown>
+                  </div>
+                </Box>
+              );
+            } else if (mixedContent) {
+              // 混合内容渲染：文本 + JSONL
+              return (
+                <>
+                  {mixedContent.text && (
+                    <Box sx={{ mb: 3, fontFamily: 'monospace' }}>
+                      <div className="markdown-body" style={{ color: darkMode ? 'text.primary' : 'inherit' }}>
+                        <ReactMarkdown 
+                          rehypePlugins={[rehypeRaw]}
+                          remarkPlugins={[remarkGfm, remarkBreaks]}
+                          components={{
+                            p: CustomParagraph,
+                            h1: (props) => <CustomHeading level={1} {...props} />,
+                            h2: (props) => <CustomHeading level={2} {...props} />,
+                            h3: (props) => <CustomHeading level={3} {...props} />,
+                            h4: (props) => <CustomHeading level={4} {...props} />,
+                            h5: (props) => <CustomHeading level={5} {...props} />,
+                            h6: (props) => <CustomHeading level={6} {...props} />,
+                            ul: CustomList,
+                            li: CustomListItem,
+                            strong: CustomStrong
+                          }}
+                        >
+                          {mixedContent.text}
+                        </ReactMarkdown>
+                      </div>
+                    </Box>
+                  )}
+                  <JsonlRenderer 
+                    content={mixedContent.jsonl}
+                    enableHoverEffects={true}
+                    darkMode={darkMode}
+                  />
+                </>
+              );
+            } else {
+              // 纯JSONL内容
+              return (
+                <JsonlRenderer 
+                  content={jsonlContent}
+                  enableHoverEffects={true}
+                  darkMode={darkMode}
+                />
+              );
+            }
+          })()}
         </Box>
         
         {/* Show loading indicator as a small overlay at bottom right when streaming */}

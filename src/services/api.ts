@@ -19,14 +19,35 @@ const BASE_API_URL = 'https://openrouter.ai/api/v1';
  * @param modelName - The name of the model for which the API key is being retrieved.
  */
 const getApiKey = (modelName: string): string => {
-  // 尝试从多个位置获取API密钥
-  const apiKey = process.env.REACT_APP_OPENROUTER_API_KEY || 
-                (window as any).ENV?.REACT_APP_OPENROUTER_API_KEY ||
-                ''; // 可以从window对象获取运行时配置
+  // 优先级：运行时配置 > 构建时环境变量
+  let apiKey = '';
   
-  if (!apiKey || apiKey === 'undefined' || apiKey === 'null') {
-    throw new Error('未找到API密钥，请检查环境变量 REACT_APP_OPENROUTER_API_KEY 是否已正确配置');
+  // 1. 尝试从运行时配置获取 (Railway 部署时会替换占位符)
+  const runtimeKey = (window as any).ENV?.REACT_APP_OPENROUTER_API_KEY;
+  if (runtimeKey && runtimeKey !== '__REACT_APP_OPENROUTER_API_KEY__') {
+    apiKey = runtimeKey;
   }
+  
+  // 2. 如果运行时配置不可用，尝试构建时环境变量
+  if (!apiKey) {
+    apiKey = process.env.REACT_APP_OPENROUTER_API_KEY || '';
+  }
+  
+  // 3. 验证API密钥
+  if (!apiKey || 
+      apiKey === 'undefined' || 
+      apiKey === 'null' || 
+      apiKey === '__REACT_APP_OPENROUTER_API_KEY__') {
+    
+    console.error('API Key Debug Info:', {
+      runtimeKey: (window as any).ENV?.REACT_APP_OPENROUTER_API_KEY,
+      buildTimeKey: process.env.REACT_APP_OPENROUTER_API_KEY,
+      finalKey: apiKey
+    });
+    
+    throw new Error('未找到API密钥。请检查:\n1. Railway环境变量REACT_APP_OPENROUTER_API_KEY是否已设置\n2. 是否需要重新部署以应用新的环境变量\n3. 本地开发时检查.env文件中的REACT_APP_OPENROUTER_API_KEY配置');
+  }
+  
   return apiKey;
 };
 
