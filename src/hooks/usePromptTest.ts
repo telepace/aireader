@@ -10,6 +10,9 @@ const LOCAL_STORAGE_KEYS = {
   DARK_MODE: 'promptTester_darkMode'
 };
 
+/**
+ * Custom hook for managing prompt state and persistence in local storage.
+ */
 export const usePromptTest = () => {
   const [promptObject, setPromptObject] = useState<string>(() => localStorage.getItem(LOCAL_STORAGE_KEYS.PROMPT_OBJECT) || '');
   const [promptText, setPromptText] = useState<string>(() => localStorage.getItem(LOCAL_STORAGE_KEYS.PROMPT_TEXT) || '');
