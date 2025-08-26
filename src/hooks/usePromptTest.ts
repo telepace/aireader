@@ -53,7 +53,6 @@ export const usePromptTest = () => {
     isLoading,
     setIsLoading,
     selectedPromptTest,
-    setSelectedPromptTest,
     resetPrompt,
     loadPromptTest
   };
