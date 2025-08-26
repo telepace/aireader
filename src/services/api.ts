@@ -8,6 +8,16 @@ const BASE_API_URL = 'https://openrouter.ai/api/v1';
 
 
 // 从环境变量获取API密钥
+/**
+ * Retrieves the API key from various sources.
+ *
+ * This function attempts to obtain the API key from the environment variables,
+ * specifically looking for REACT_APP_OPENROUTER_API_KEY. If the key is not found
+ * or is invalid (i.e., 'undefined' or 'null'), an error is thrown indicating
+ * that the API key configuration needs to be checked.
+ *
+ * @param modelName - The name of the model for which the API key is being retrieved.
+ */
 const getApiKey = (modelName: string): string => {
   // 尝试从多个位置获取API密钥
   const apiKey = process.env.REACT_APP_OPENROUTER_API_KEY || 
