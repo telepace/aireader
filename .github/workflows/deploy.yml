@@ -154,10 +154,12 @@ jobs:
       run: npm run build:optimized
 
     - name: Deploy to Railway
-      run: railway up
+      run: railway up --environment=production
       env:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+        NPM_CONFIG_CACHE: /tmp/.npm
+        NPM_CONFIG_TMP: /tmp
 
   deploy-staging:
     name: Deploy to Staging

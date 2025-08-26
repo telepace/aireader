@@ -1,6 +1,6 @@
 [phases.setup]
 cmds = [
-  "npm ci --legacy-peer-deps --no-cache"
+  "npm ci --legacy-peer-deps --no-cache --no-fund --no-audit"
 ]
 
 [phases.build]
@@ -10,3 +10,13 @@ cmds = [
 
 [start]
 cmd = "npx serve -s build -l 3000"
+
+[phases.setup.cacheDirectories]
+# 完全禁用缓存目录以避免EBUSY错误
+npm = ""
+node_modules = ""
+
+[phases.build.cacheDirectories]
+# 禁用所有构建缓存
+build = ""
+node_modules = ""

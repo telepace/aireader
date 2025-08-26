@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm ci --legacy-peer-deps --no-cache && npm run build:optimized"
+buildCommand = "npm ci --legacy-peer-deps --no-cache --no-fund --no-audit && npm run build:optimized"
 startCommand = "npx serve -s build -l 3000"
 
 [deploy]
@@ -16,3 +16,5 @@ GENERATE_SOURCEMAP = "false"
 INLINE_RUNTIME_CHUNK = "false"
 IMAGE_INLINE_SIZE_LIMIT = "0"
 CI = "false"
+NPM_CONFIG_CACHE = "/tmp/.npm"
+NPM_CONFIG_TMP = "/tmp"
