@@ -29,3 +29,6 @@ coverage/
 dist/
 *.tgz
 *.tar.gz
+.nixpacks.toml
+railway.toml
+railway.json

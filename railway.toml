@@ -1,10 +1,9 @@
 [build]
-builder = "nixpacks"
-buildCommand = "npm ci --legacy-peer-deps --no-cache --no-fund --no-audit && npm run build:optimized"
-startCommand = "npx serve -s build -l 3000"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "npx serve -s build -l 3000"
+startCommand = "serve -s build -l 3000"
 healthcheckPath = "/"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
@@ -16,5 +15,3 @@ GENERATE_SOURCEMAP = "false"
 INLINE_RUNTIME_CHUNK = "false"
 IMAGE_INLINE_SIZE_LIMIT = "0"
 CI = "false"
-NPM_CONFIG_CACHE = "/tmp/.npm"
-NPM_CONFIG_TMP = "/tmp"
