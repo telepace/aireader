@@ -60,6 +60,17 @@ const SITE_INFO = {
 // Remove or comment out unused genAI initialization
 // const genAI = new GoogleGenerativeAI(API_KEY);
 
+/**
+ * Generate content based on a prompt using a specified model.
+ *
+ * This function constructs a request to the chat completions API with the provided promptObject and promptText. It sends the request using axios and processes the response to extract the generated content. If the response structure is unexpected, an error is thrown. The function also handles any errors that occur during the API call.
+ *
+ * @param promptObject - A string representing the object to be included in the prompt.
+ * @param promptText - A string containing the text of the prompt.
+ * @param modelName - A string specifying the model to be used for content generation.
+ * @returns A promise that resolves to the generated content as a string.
+ * @throws Error If the API response structure is unexpected or if an error occurs during the API call.
+ */
 export const generateContent = async (
   promptObject: string,
   promptText: string,
@@ -102,6 +113,20 @@ export const generateContent = async (
   }
 };
 
+/**
+ * Generates a content stream by making an API request and processing the response in real-time.
+ *
+ * This function initiates a streaming API request using the provided promptObject and promptText. It handles the response by reading the stream, decoding the data, and invoking the onChunkReceived callback for each chunk of content received. In case of errors during the request or processing, the onError callback is triggered, and upon successful completion, the onComplete callback is called.
+ *
+ * @param promptObject - The object containing the prompt details for the API request.
+ * @param promptText - The text prompt to be sent to the API.
+ * @param modelName - The name of the model to be used for the API request.
+ * @param onChunkReceived - Callback function invoked for each chunk of content received from the stream.
+ * @param onError - Callback function invoked when an error occurs during the streaming process.
+ * @param onComplete - Callback function invoked when the streaming process is complete.
+ * @returns A promise that resolves when the streaming process is complete.
+ * @throws Error If the API request fails or if there is an issue with the response body.
+ */
 export const generateContentStream = async (
   promptObject: string,
   promptText: string,
