@@ -28,15 +28,8 @@ RUN npm install -g serve
 # 暴露端口
 EXPOSE 3000
 
-# 安装 curl 用于健康检查
+# 安装必要的工具
 RUN apk add --no-cache curl
 
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/ || exit 1
-
-# 创建健康检查端点
-RUN echo '{"status":"ok","service":"aireader","timestamp":"'$(date -Iseconds)'"}' > build/health.json
-
-# 启动应用 - 绑定到所有网络接口 (0.0.0.0)
-CMD ["serve", "-s", "build", "-l", "tcp://0.0.0.0:3000"]
+# 启动应用 - 使用环境变量或默认端口
+CMD ["sh", "-c", "serve -s build -l 0.0.0.0:${PORT:-3000}"]

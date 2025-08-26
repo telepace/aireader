@@ -3,8 +3,8 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "serve -s build -l tcp://0.0.0.0:3000"
-healthcheckPath = "/health.json"
+startCommand = "serve -s build -l 0.0.0.0:${PORT:-3000}"
+# 使用默认的健康检查（TCP端口检查）
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 

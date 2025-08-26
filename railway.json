@@ -3,8 +3,7 @@
   "build": {
     "builder": "DOCKERFILE",
     "dockerfilePath": "Dockerfile",
-    "startCommand": "serve -s build -l tcp://0.0.0.0:3000",
-    "healthcheckPath": "/health.json",
+    "startCommand": "serve -s build -l 0.0.0.0:${PORT:-3000}",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10,
     "watchPaths": [
@@ -16,8 +15,7 @@
     ]
   },
   "deploy": {
-    "startCommand": "serve -s build -l tcp://0.0.0.0:3000",
-    "healthcheckPath": "/health.json",
+    "startCommand": "serve -s build -l 0.0.0.0:${PORT:-3000}",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   },
