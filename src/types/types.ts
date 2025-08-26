@@ -34,4 +34,17 @@ export interface ChatConversation {
   updatedAt?: number;
   modelName?: string;
   options?: OptionItem[];
+}
+
+// Langfuse tracing interfaces
+export interface UserSession {
+  userId: string;
+  sessionId: string;
+  startTime: string;
+}
+
+export interface TracingContext {
+  userId?: string;
+  sessionId?: string;
+  conversationId?: string;
 } 
