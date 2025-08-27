@@ -115,7 +115,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
   // 历史推荐展开状态管理
   const [showHistoricalOptions, setShowHistoricalOptions] = useState<{[key: string]: boolean}>({
     deepen: false,
-    next: false
+    next: true
   });
   
   // 完成状态管理
@@ -134,7 +134,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
       setInputMessage(''); 
       setOptions([]);
       setContentCompleteStates(new Map());
-      setShowHistoricalOptions({ deepen: false, next: false });
+      setShowHistoricalOptions({ deepen: false, next: true });
     }
   }, [clearSignal, setMessages, setOptions]);
 
@@ -159,6 +159,14 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
   }, [conversationId, selectedModel]);
 
   // 持久化逻辑已移入 useConversation
+
+  // 当“推荐相关好书”出现历史推荐时，自动默认展开
+  useEffect(() => {
+    const { hasHistorical } = getDisplayOptions('next');
+    if (hasHistorical && !showHistoricalOptions.next) {
+      setShowHistoricalOptions((prev) => ({ ...prev, next: true }));
+    }
+  }, [options]);
 
   const ensureSystemPrompt = (current: ChatMessage[]): ChatMessage[] => {
     const hasSystem = current.some(m => m.role === 'system');
@@ -612,13 +620,21 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                             onClick={() => handleOptionClick(opt)} 
                             sx={{ 
                               textTransform:'none', 
-                              fontWeight:600, 
+                              fontWeight:500, 
                               borderRadius:2, 
-                              px:1.75, 
-                              py:0.75, 
-                              boxShadow:'0 2px 8px rgba(43, 89, 255, 0.25)',
-                              width: 300,
-                              justifyContent: 'flex-start'
+                              px:1.5, 
+                              py:0.5, 
+                              fontSize: '0.875rem',
+                              width: '100%',
+                              justifyContent: 'flex-start',
+                              backgroundColor: '#000000',
+                              color: '#FFFFFF',
+                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+                              border: 'none',
+                              '&:hover': { 
+                                backgroundColor: '#111111',
+                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.35)'
+                              }
                             }}
                           >
                             {opt.content}
@@ -658,15 +674,14 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                       {/* 历史推荐选项 */}
                       {showHistoricalOptions[selectedTab] && (
                         <Box sx={{ 
-                          bgcolor: 'rgba(0, 0, 0, 0.02)', 
+                          bgcolor: 'transparent', 
                           borderRadius: 1, 
-                          p: 1,
-                          border: '1px solid rgba(0, 0, 0, 0.08)'
+                          p: 1
                         }}>
                           {historical.map((opt: OptionItem) => (
                             <Box key={opt.id} sx={{ mb: 1.5, '&:last-child': { mb: 0 } }}>
                               <Button 
-                                variant="outlined" 
+                                variant="contained" 
                                 color="primary" 
                                 onClick={() => handleOptionClick(opt)} 
                                 sx={{ 
@@ -676,11 +691,15 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                                   px:1.5, 
                                   py:0.5, 
                                   fontSize: '0.875rem',
-                                  width: 320,
+                                  width: '100%',
                                   justifyContent: 'flex-start',
-                                  opacity: 0.8,
+                                  backgroundColor: '#000000',
+                                  color: '#FFFFFF',
+                                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+                                  border: 'none',
                                   '&:hover': {
-                                    opacity: 1
+                                    backgroundColor: '#111111',
+                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.35)'
                                   }
                                 }}
                               >
@@ -689,6 +708,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                               <Typography 
                                 variant="caption" 
                                 sx={{ 
+                                  display: 'block',
                                   color:'#888', 
                                   mt:0.25, 
                                   lineHeight:1.4,
