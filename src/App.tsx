@@ -17,10 +17,6 @@ import './App.css';
 
 /**
  * Main application component that manages the user interface and state.
- *
- * This component utilizes various hooks to manage state, including the current tab, prompt object, and loading status. It initializes the user session, handles tab changes, content generation, and model selection, while providing a theme based on user preferences. The application is structured to ensure a seamless user experience with dynamic updates based on user interactions and user event logging for analytics.
- *
- * @returns A React element representing the application interface.
  */
 const App: React.FC = () => {
   const [nextStepClearSignal, setNextStepClearSignal] = useState<number>(0);
@@ -48,7 +44,7 @@ const App: React.FC = () => {
   // Flush traces before page unload (without logging app-unload event)
   useEffect(() => {
     /**
-     * Handles the before unload event to log user session data.
+     * Handles the before unload event to flush user session traces.
      */
     const handleBeforeUnload = () => {
       if (userSession) {
