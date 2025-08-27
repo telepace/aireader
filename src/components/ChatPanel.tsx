@@ -64,6 +64,15 @@ interface ChatPanelProps {
   selectedModel: string;
 }
 
+/**
+ * ChatPanel component for managing and displaying a chat interface.
+ *
+ * This component handles user input, sends messages to a chat model, and displays responses. It maintains the state of messages, loading status, and input message. The component also provides functionality to evaluate prompts, generate new prompts based on chat history, and clear the chat. It utilizes the generateChat function to interact with the chat model and updates the UI accordingly.
+ *
+ * @param promptTest - An object containing the prompt text, prompt object, and prompt result for evaluation.
+ * @param selectedModel - The model selected for generating chat responses.
+ * @returns A React element representing the chat panel.
+ */
 const ChatPanel: React.FC<ChatPanelProps> = ({ promptTest, selectedModel }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
