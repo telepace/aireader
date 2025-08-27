@@ -6,17 +6,12 @@ import {
   Tabs,
   Tab,
   FormControl,
-  InputLabel,
   Select,
   MenuItem,
   SelectChangeEvent
 } from '@mui/material';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import MenuIcon from '@mui/icons-material/Menu';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
-import DeleteIcon from '@mui/icons-material/Delete';
 
 interface AppHeaderProps {
   currentTab: number;
@@ -74,64 +69,120 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        borderBottom: 1,
-        borderColor: 'divider',
-        px: 3,
-        py: 2,
+        borderBottom: darkMode ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.08)',
+        px: { xs: 4, md: 8, lg: 12 },
+        py: { xs: 3, md: 4 },
         flexShrink: 0,
-        backgroundColor: 'background.paper',
-        backdropFilter: 'blur(10px)',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+        backgroundColor: 'background.default',
+        minHeight: '80px',
+        backdropFilter: 'blur(20px)'
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-        <IconButton onClick={onToggleLeftSidebar} size="small" sx={{ mr: 1 }}>
-          {leftSidebarOpen ? <ChevronLeftIcon /> : <MenuIcon />}
-        </IconButton>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 4, md: 6 } }}>
         <Typography 
-          variant="h4" 
+          variant="h1" 
           component="h1"
           sx={{
             fontWeight: 700,
-            background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            letterSpacing: '-0.02em'
+            color: 'text.primary',
+            fontSize: { xs: '1.375rem', md: '1.75rem' },
+            letterSpacing: '-0.03em'
           }}
         >
           AI Reader
         </Typography>
+        <Tabs 
+          value={currentTab} 
+          onChange={onTabChange} 
+          sx={{ 
+            '& .MuiTabs-indicator': {
+              backgroundColor: 'text.primary',
+              height: '3px',
+              borderRadius: '3px'
+            },
+            '& .MuiTab-root': {
+              textTransform: 'none',
+              fontWeight: 500,
+              fontSize: { xs: '0.95rem', md: '1rem' },
+              color: 'text.secondary',
+              px: { xs: 2, md: 3 },
+              py: 2,
+              minHeight: 48,
+              '&.Mui-selected': {
+                color: 'text.primary',
+                fontWeight: 600
+              },
+              '&:hover': {
+                color: 'text.primary',
+                opacity: 0.8
+              },
+              transition: 'all 0.2s ease'
+            }
+          }}
+        >
+          <Tab label="智能分析" />
+          <Tab label="历史记录" />
+          <Tab label="深度对话" />
+        </Tabs>
       </Box>
       
-      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-        <IconButton onClick={onToggleDarkMode} size="small" sx={{ mr: 2 }} title={darkMode ? "切换到亮色模式" : "切换到深色模式"}>
-          {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
-        </IconButton>
-        <IconButton onClick={onClearChat} size="small" sx={{ mr: 2 }} title="清空探索聊天">
-          <DeleteIcon />
-        </IconButton>
-        <Tabs value={currentTab} onChange={onTabChange} sx={{ mr: 2 }}>
-          <Tab label="提示测试" />
-          <Tab label="已保存测试" />
-          <Tab label="探索聊天" />
-        </Tabs>
-        <FormControl sx={{ minWidth: 250, mr: 1 }} size="small">
-          <InputLabel id="model-select-label">选择模型</InputLabel>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+        <FormControl sx={{ minWidth: { xs: 180, md: 220 } }} size="medium">
           <Select
-            labelId="model-select-label"
-            id="model-select"
             value={selectedModel}
-            label="选择模型"
             onChange={onModelChange}
+            displayEmpty
+            variant="outlined"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '12px',
+                fontSize: { xs: '0.875rem', md: '0.95rem' },
+                '& fieldset': {
+                  border: darkMode 
+                    ? '1px solid rgba(255, 255, 255, 0.12)' 
+                    : '1px solid rgba(0, 0, 0, 0.12)'
+                },
+                '&:hover fieldset': {
+                  border: darkMode 
+                    ? '1px solid rgba(255, 255, 255, 0.2)' 
+                    : '1px solid rgba(0, 0, 0, 0.2)'
+                },
+                '&.Mui-focused fieldset': {
+                  border: darkMode 
+                    ? '1px solid rgba(255, 255, 255, 0.3)' 
+                    : '1px solid rgba(0, 0, 0, 0.3)',
+                  borderWidth: '2px'
+                }
+              }
+            }}
           >
             {availableModels.map(model => (
               <MenuItem key={model} value={model}>{model}</MenuItem>
             ))}
           </Select>
         </FormControl>
-        <IconButton onClick={onToggleRightSidebar} size="small">
-          {rightSidebarOpen ? <ChevronRightIcon /> : <MenuIcon />}
+        <IconButton 
+          onClick={onToggleDarkMode} 
+          size="medium"
+          sx={{ 
+            color: 'text.secondary',
+            bgcolor: darkMode 
+              ? 'rgba(255, 255, 255, 0.05)' 
+              : 'rgba(0, 0, 0, 0.05)',
+            borderRadius: '12px',
+            width: 44,
+            height: 44,
+            '&:hover': { 
+              color: 'text.primary',
+              bgcolor: darkMode 
+                ? 'rgba(255, 255, 255, 0.1)' 
+                : 'rgba(0, 0, 0, 0.1)',
+              transform: 'translateY(-1px)'
+            },
+            transition: 'all 0.2s ease'
+          }}
+        >
+          {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
         </IconButton>
       </Box>
     </Box>

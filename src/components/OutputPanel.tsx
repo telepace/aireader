@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Button, Typography, Paper, CircularProgress } from '@mui/material';
+import { Box, Button, CircularProgress, Typography } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -178,70 +178,56 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
   };
 
   return (
-    <Paper 
-      elevation={2} 
+    <Box 
       sx={{ 
-        p: 3, 
         display: 'flex', 
         flexDirection: 'column', 
         flexGrow: 1,
-        bgcolor: 'background.paper',
-        color: 'text.primary',
-        borderRadius: 2,
-        border: '1px solid',
-        borderColor: 'divider',
-        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-        '&:hover': {
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        }
+        bgcolor: 'transparent'
       }}
     >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexShrink: 0 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', display: 'flex', alignItems: 'center', gap: 1 }}>
-          ✨ AI 处理结果
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 4,
+        flexShrink: 0
+      }}>
+        <Typography 
+          variant="h3" 
+          sx={{ 
+            fontWeight: 600, 
+            color: 'text.primary', 
+            fontSize: { xs: '1.125rem', md: '1.25rem' },
+            letterSpacing: '-0.015em'
+          }}
+        >
+          📊 分析结果
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
-          <Button 
-            variant="contained" 
-            color="primary" 
-            onClick={onGenerate}
-            disabled={isLoading || !promptObject || !promptText}
-            sx={{ 
-              minWidth: 100,
-              height: 40,
-              fontWeight: 600,
-              textTransform: 'none',
-              borderRadius: 2,
-              boxShadow: 'none',
-              '&:hover': {
-                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
-                transform: 'translateY(-1px)',
-              }
-            }}
-          >
-            {isLoading ? '生成中...' : '🚀 生成'}
-          </Button>
+        {promptResult && (
           <Button 
             variant="outlined" 
-            color="secondary" 
             onClick={handleSave}
-            disabled={isLoading || !promptResult}
+            disabled={isLoading}
+            size="small"
             sx={{ 
-              minWidth: 80,
-              height: 40,
-              fontWeight: 600,
+              fontWeight: 400,
               textTransform: 'none',
-              borderRadius: 2,
-              borderWidth: 2,
+              borderRadius: '8px',
+              fontSize: '0.875rem',
+              borderColor: darkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+              color: 'text.secondary',
               '&:hover': {
-                borderWidth: 2,
-                transform: 'translateY(-1px)',
-              }
+                borderColor: darkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
+                color: 'text.primary',
+                bgcolor: 'transparent'
+              },
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
             }}
           >
-            💾 保存
+            保存
           </Button>
-        </Box>
+        )}
       </Box>
       
       <Box 
@@ -249,14 +235,28 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
         sx={{ 
           flexGrow: 1,
           overflow: 'auto', 
-          bgcolor: darkMode ? 'rgba(15, 23, 42, 0.5)' : 'rgba(248, 250, 252, 0.8)', 
-          p: 3, 
-          borderRadius: 2,
+          bgcolor: darkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
           position: 'relative',
           whiteSpace: 'pre-wrap',
-          border: '1px solid',
-          borderColor: 'divider',
-          minHeight: 200
+          height: '100%',
+          px: { xs: 3, md: 4 },
+          py: { xs: 3, md: 4 },
+          borderRadius: '12px',
+          border: darkMode 
+            ? '1px solid rgba(255, 255, 255, 0.08)' 
+            : '1px solid rgba(0, 0, 0, 0.08)',
+          transition: 'all 0.2s ease',
+          '&:empty::before': {
+            content: '"等待分析内容..."',
+            color: 'text.secondary',
+            opacity: 0.6,
+            fontSize: '0.95rem',
+            fontStyle: 'italic',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%'
+          }
         }}
       >
         <Box sx={{ color: darkMode ? 'text.primary' : 'inherit' }}>
@@ -338,33 +338,44 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
           })()}
         </Box>
         
-        {/* Show loading indicator as a small overlay at bottom right when streaming */}
-        {isLoading && (
+        {/* Show loading indicator as a centered minimal indicator */}
+        {isLoading && !promptResult && (
           <Box sx={{
-            position: 'sticky',
-            bottom: 12,
-            right: 12,
             display: 'flex',
-            justifyContent: 'flex-end',
+            justifyContent: 'center',
             alignItems: 'center',
-            padding: '8px 12px',
-            backgroundColor: darkMode ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-            borderRadius: 3,
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            width: 'fit-content',
-            marginLeft: 'auto',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid',
-            borderColor: 'divider',
+            py: 8
           }}>
-            <CircularProgress size={18} sx={{ mr: 1, color: 'primary.main' }} />
-            <Typography variant="body2" sx={{ fontWeight: 500, color: 'text.primary' }}>
-              AI 正在思考中...
-            </Typography>
+            <CircularProgress 
+              size={20} 
+              sx={{ 
+                color: darkMode ? '#ffffff' : '#000000',
+                opacity: 0.6
+              }} 
+            />
+          </Box>
+        )}
+        
+        {/* Show streaming indicator */}
+        {isLoading && promptResult && (
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pt: 2
+          }}>
+            <Box sx={{ 
+              width: 4, 
+              height: 4, 
+              borderRadius: '50%', 
+              bgcolor: darkMode ? '#ffffff' : '#000000',
+              opacity: 0.4,
+              animation: 'pulse 1.5s ease-in-out infinite' 
+            }} />
           </Box>
         )}
       </Box>
-    </Paper>
+    </Box>
   );
 };
 

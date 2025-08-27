@@ -1,0 +1,82 @@
+{
+  "nextStepChat": {
+    "zh": {
+      "goal": "我的目标是「精读」当前讨论的内容（文章或书籍），并不断切换对象。（当我发送一大段长文字时就是复制的长文章）",
+      "steps": {
+        "focus": {
+          "title": "聚焦与展开",
+          "description": "先讲透内容的一个核心关键；再全面概览，让我了解全貌，语言风格清晰易懂。"
+        },
+        "deepen": {
+          "title": "原文深挖",
+          "description": "推荐3个最有价值的原文精读选项。",
+          "criteria": [
+            "按顺序深度展开原文的某个具体部分（按章节划分、按情节划分、按逻辑划分，划分为第一第二..第n部分。按顺序推荐第一、二..部分。偏向客观的呈现内容，而不是过于主观的讨论。",
+            "围绕原文的一个重点，讲透彻（同样偏向客观呈现原文相关的讨论，不要过于主观的讨论）。挑选标准按照对我最有价值、最能引起我兴趣作为最重要的评估维度。"
+          ]
+        },
+        "next": {
+          "title": "主题探索",
+          "description": "推荐3本最值得阅读的相关书籍，挑选对我有价值、最不可错过的探索对象，要围绕当前主题，以这些维度做优先级的排序。选项的描述要足够吸引我，能勾起我的兴趣"
+        }
+      },
+      "format": {
+        "type": "jsonl",
+        "requirements": [
+          "必须严格遵循 JSON Lines (JSONL) 格式",
+          "每行一个JSON对象",
+          "不要在代码块前后添加任何说明",
+          "第2步推荐，type 字段的值必须是 deepen",
+          "第3步推荐，type 字段的值必须是 next"
+        ],
+        "template": [
+          {"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"},
+          {"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"},
+          {"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"},
+          {"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"},
+          {"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"},
+          {"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}
+        ]
+      }
+    },
+    "en": {
+      "goal": "My goal is to 'deep read' the current content (articles or books) being discussed, and continuously switch between subjects.",
+      "steps": {
+        "focus": {
+          "title": "Focus & Expand",
+          "description": "First thoroughly explain a core key point of the content; then provide a comprehensive overview, using clear and understandable language."
+        },
+        "deepen": {
+          "title": "Deep Dive",
+          "description": "Recommend 3 most valuable deep reading options.",
+          "criteria": [
+            "Sequentially expand specific parts of the original text",
+            "Focus on a key point and explain it thoroughly"
+          ]
+        },
+        "next": {
+          "title": "Topic Exploration", 
+          "description": "Recommend 3 most valuable related books to read"
+        }
+      },
+      "format": {
+        "type": "jsonl",
+        "requirements": [
+          "Must strictly follow JSON Lines (JSONL) format",
+          "One JSON object per line",
+          "Do not add any explanations before or after code blocks",
+          "For step 2 recommendations, type field value must be 'deepen'",
+          "For step 3 recommendations, type field value must be 'next'"
+        ],
+        "template": [
+          {"type": "deepen", "content": "Deep dive option title", "describe": "Detailed and engaging description of this option."},
+          {"type": "deepen", "content": "Deep dive option title", "describe": "Detailed and engaging description of this option."},
+          {"type": "deepen", "content": "Deep dive option title", "describe": "Detailed and engaging description of this option."},
+          {"type": "next", "content": "Recommended book title", "describe": "Detailed and engaging description of this book."},
+          {"type": "next", "content": "Recommended book title", "describe": "Detailed and engaging description of this book."},
+          {"type": "next", "content": "Recommended book title", "describe": "Detailed and engaging description of this book."}
+        ]
+      }
+    }
+  }
+}

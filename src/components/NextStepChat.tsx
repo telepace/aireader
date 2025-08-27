@@ -9,6 +9,7 @@ import { ChatMessage, ChatConversation, OptionItem, UserSession } from '../types
 import { listConversations, upsertConversation, deleteConversation } from '../utils/storage';
 import { generateChatStream, logUserEvent, createUserSession } from '../services/api-with-tracing';
 import { splitContentAndOptions, NextStepOption } from '../utils/contentSplitter';
+import { generateSystemPrompt } from '../services/promptTemplateV2';
 
 // Markdown renderers (aligned with existing style)
 
@@ -21,7 +22,14 @@ interface NextStepChatProps {
 
 // OptionItem now comes from types.ts
 
-const SYSTEM_PROMPT = `我的目标是「精读」当前讨论的内容（文章或书籍），并不断切换对象。（当我发送一大段长文字时就是复制的长文章）
+// 使用新的模板系统生成 SYSTEM_PROMPT
+const getSystemPrompt = () => {
+  try {
+    return generateSystemPrompt('nextStepChat', 'zh');
+  } catch (error) {
+    console.error('Failed to generate system prompt:', error);
+    // 降级到原始硬编码版本
+    return `我的目标是「精读」当前讨论的内容（文章或书籍），并不断切换对象。（当我发送一大段长文字时就是复制的长文章）
 
 每次交互，请严格执行以下3件事：
 **1. 聚焦与展开** 先讲透内容的一个核心关键；再全面概览，让我了解全貌，语言风格清晰易懂。
@@ -56,6 +64,8 @@ const SYSTEM_PROMPT = `我的目标是「精读」当前讨论的内容（文章
 
 **约束条件**：不要向用户解释此格式。
 输出结构：只需输出聚焦与展开对应的文本。之后一定要**留出空白行符号**，再输出所有JSONL。`;
+  }
+};
 
 // splitContentAndOptions function moved to utils/contentSplitter.ts
 
@@ -139,7 +149,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
   const ensureSystemPrompt = (current: ChatMessage[]): ChatMessage[] => {
     const hasSystem = current.some(m => m.role === 'system');
     if (hasSystem) return current;
-    return [{ id: uuidv4(), role: 'system', content: SYSTEM_PROMPT, timestamp: Date.now() }, ...current];
+    return [{ id: uuidv4(), role: 'system', content: getSystemPrompt(), timestamp: Date.now() }, ...current];
   };
 
   const normalizeStoredOptions = (stored: any[] | undefined | null): OptionItem[] => {
