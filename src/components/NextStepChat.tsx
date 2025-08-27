@@ -78,13 +78,12 @@ function trimContextForApi(all: ChatMessage[]): ChatMessage[] {
 /**
  * The NextStepChat component manages a chat interface for user interactions with a selected model.
  *
- * It maintains the state of messages, input, loading status, options, and conversation details.
- * The component handles sending messages, merging options, and auto-persisting conversations.
- * It also provides a layout for displaying messages and options, allowing users to interact with the chat and explore related content.
+ * It maintains the state of messages, input, loading status, options, and conversation details. The component handles sending messages, merging options, and auto-persisting conversations. It also provides a layout for displaying messages and options, allowing users to interact with the chat and explore related content.
  *
  * @param {NextStepChatProps} props - The properties for the NextStepChat component.
  * @param {string} props.selectedModel - The model selected for the chat.
  * @param {number} props.clearSignal - A signal to clear the chat state.
+ * @param {number} props.externalToggleConversationMenuSignal - A signal to toggle the conversation menu.
  * @returns {JSX.Element} The rendered NextStepChat component.
  */
 const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal, externalToggleConversationMenuSignal }) => {
@@ -256,7 +255,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
    *
    * This function creates a user message and updates the chat context by trimming and ensuring the system prompt.
    * It sets the loading state and initializes a placeholder for the assistant's response.
-   * The function then generates a chat stream, updating the assistant's message in real-time and handling any errors that may occur during the process.
+   * The function then generates a chat stream, updating the assistant's message in real-time, handling errors, and processing completion signals and options.
    *
    * @param userText - The text content of the user's message.
    */
