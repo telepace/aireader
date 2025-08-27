@@ -11,7 +11,7 @@ interface InputPanelProps {
 }
 
 /**
- * Renders an input panel for processing objects and AI instructions.
+ * Renders an input panel for user input and AI instructions.
  */
 const InputPanel: React.FC<InputPanelProps> = ({
   promptObject,
