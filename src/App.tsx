@@ -24,7 +24,7 @@ import './App.css';
 /**
  * Main application component that manages the user interface and state.
  *
- * This component utilizes various hooks to manage state, including the current tab, prompt object, and loading status. It renders a responsive layout with sidebars and different panels for input, output, and saved tests. The component also handles tab changes, content generation, and model selection, while providing a theme based on user preferences. The application is structured to ensure a seamless user experience with dynamic updates based on user interactions.
+ * This component utilizes various hooks to manage state, including the current tab, prompt object, and loading status. It initializes the user session, handles tab changes, content generation, and model selection, while providing a theme based on user preferences. The application is structured to ensure a seamless user experience with dynamic updates based on user interactions and user event logging for analytics.
  *
  * @returns A React element representing the application interface.
  */
@@ -71,6 +71,9 @@ const App: React.FC = () => {
 
   // Flush traces before page unload
   useEffect(() => {
+    /**
+     * Handles the before unload event to log user session data.
+     */
     const handleBeforeUnload = () => {
       if (userSession) {
         logUserEvent('app-unload', {
@@ -269,9 +272,8 @@ const App: React.FC = () => {
 
   /**
    * Handles the generation of content based on the provided prompt and model.
-   * Now includes Langfuse tracing and user session tracking.
    *
-   * The function checks for the presence of promptObject and promptText before proceeding. It sets a loading state and initializes the prompt result. It then calls the generateContent function with the promptObject, promptText, and selectedModel, along with user session information for tracing. Depending on the result, it updates the prompt result or handles errors, including specific messages for missing API keys. Finally, it resets the loading state.
+   * The function checks for the presence of promptObject and promptText before proceeding. It sets a loading state and initializes the prompt result. It logs user events for analytics, calls the generateContent function with the necessary parameters, and updates the prompt result based on the response. In case of errors, it handles specific messages for missing API keys and logs the error details. Finally, it resets the loading state.
    *
    * @returns {Promise<void>} A promise that resolves when the content generation process is complete.
    */
