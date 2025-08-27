@@ -30,6 +30,7 @@
           "第3步推荐，type 字段的值必须是 next"
         ],
         "template": [
+          {"type": "content_complete", "message": "正文解析完成，生成推荐选项中..."},
           {"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"},
           {"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"},
           {"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"},
@@ -69,6 +70,7 @@
           "For step 3 recommendations, type field value must be 'next'"
         ],
         "template": [
+          {"type": "content_complete", "message": "Content analysis completed, generating recommendations..."},
           {"type": "deepen", "content": "Deep dive option title", "describe": "Detailed and engaging description of this option."},
           {"type": "deepen", "content": "Deep dive option title", "describe": "Detailed and engaging description of this option."},
           {"type": "deepen", "content": "Deep dive option title", "describe": "Detailed and engaging description of this option."},

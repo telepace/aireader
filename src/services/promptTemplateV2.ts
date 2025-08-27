@@ -99,6 +99,7 @@ class PromptTemplateEngineV2 implements IPromptTemplateEngine {
 {{ template_item | json }}
 {% endfor %}
 {% else %}
+{"type": "content_complete", "message": "正文解析完成，生成推荐选项中..."}
 {"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}
 {"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}
 {"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}
@@ -145,6 +146,7 @@ Others
 {{ template_item | json }}
 {% endfor %}
 {% else %}
+{"type": "content_complete", "message": "Content analysis completed, generating recommendations..."}
 {"type": "deepen", "content": "Deep dive option title", "describe": "Detailed and engaging description of this option."}
 {"type": "deepen", "content": "Deep dive option title", "describe": "Detailed and engaging description of this option."}
 {"type": "deepen", "content": "Deep dive option title", "describe": "Detailed and engaging description of this option."}

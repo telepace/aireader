@@ -11,6 +11,8 @@ describe('PromptTemplateEngineV2', () => {
       
       expect(result).toContain('我的目标是「精读」');
       expect(result).toContain('每次交互，请严格执行以下3件事');
+      expect(result).toContain('content_complete');
+      expect(result).toContain('正文解析完成，生成推荐选项中...');
     });
 
     it('应该生成英文系统 prompt', () => {
@@ -18,6 +20,8 @@ describe('PromptTemplateEngineV2', () => {
       
       expect(result).toContain('My goal is to');
       expect(result).toContain('For each interaction');
+      expect(result).toContain('content_complete');
+      expect(result).toContain('Content analysis completed, generating recommendations...');
     });
   });
 
