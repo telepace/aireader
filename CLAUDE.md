@@ -130,3 +130,43 @@ REACT_APP_OPENROUTER_API_KEY=your_api_key_here
 - **usePromptTest.ts**: Core prompt testing state management
 - **storage.ts**: Local storage utilities for persistence
 - **types.ts**: Shared TypeScript interfaces
+
+# Quality Assurance Protocol
+
+## CRITICAL REQUIREMENT - Pre-Delivery Validation
+**EVERY task completion must ensure**:
+
+### 1. Compilation & Build Verification
+```bash
+# Must pass without errors
+npm run build
+```
+
+### 2. Test Suite Validation  
+```bash
+# All tests must pass
+npm test
+```
+
+### 3. Functional Testing
+- Manually verify new features work in browser
+- Ensure no existing functionality breaks
+- Test edge cases and error scenarios
+
+### 4. Code Quality Checks
+- TypeScript compilation without errors
+- No console errors in browser
+- Clean ESLint output (warnings acceptable)
+
+## Git Operations Protocol
+**Only after successful validation**:
+- Use `git add`, `git commit` for version control
+- Use `gh` commands for GitHub operations
+- Include meaningful commit messages
+- Ensure clean working directory
+
+## Development Guidelines
+- Do what has been asked; nothing more, nothing less
+- NEVER create files unless absolutely necessary
+- ALWAYS prefer editing existing files over creating new ones
+- NEVER proactively create documentation files unless explicitly requested

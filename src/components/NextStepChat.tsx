@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Box, Button, CircularProgress, Paper, TextField, Typography, Tabs, Tab } from '@mui/material';
+import { Box, Button, CircularProgress, Paper, TextField, Typography, Tabs, Tab, keyframes } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -50,24 +50,52 @@ const getSystemPrompt = () => {
 - 第2步推荐，type 字段的值必须是 deepen
 - 第3步推荐，type 字段的值必须是 next
 
+**重要：完成标志** 在完成正文内容（聚焦与展开）输出后，必须先输出完成标志，再输出推荐选项：
+\`\`\`
+{\"type\": \"content_complete\", \"message\": \"正文解析完成，生成推荐选项中...\"}
+\`\`\`
 
 **JSONL 模板:**
 
 ---
-{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}
-{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}
-{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}
-{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}
-{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}
-{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}
+{\"type\": \"content_complete\", \"message\": \"正文解析完成，生成推荐选项中...\"}
+{\"type\": \"deepen\", \"content\": \"深挖原文的选项标题\", \"describe\": \"对该选项的详细、吸引人的描述。\"}
+{\"type\": \"deepen\", \"content\": \"深挖原文的选项标题\", \"describe\": \"对该选项的详细、吸引人的描述。\"}
+{\"type\": \"deepen\", \"content\": \"深挖原文的选项标题\", \"describe\": \"对该选项的详细、吸引人的描述。\"}
+{\"type\": \"next\", \"content\": \"推荐书籍的标题\", \"describe\": \"对这本书的详细、吸引人的描述。\"}
+{\"type\": \"next\", \"content\": \"推荐书籍的标题\", \"describe\": \"对这本书的详细、吸引人的描述。\"}
+{\"type\": \"next\", \"content\": \"推荐书籍的标题\", \"describe\": \"对这本书的详细、吸引人的描述。\"}
 
 
 **约束条件**：不要向用户解释此格式。
-输出结构：只需输出聚焦与展开对应的文本。之后一定要**留出空白行符号**，再输出所有JSONL。`;
+输出结构：只需输出聚焦与展开对应的文本。之后一定要**留出空白行符号**，先输出完成标志，再输出所有JSONL推荐选项。`;
   }
 };
 
 // splitContentAndOptions function moved to utils/contentSplitter.ts
+
+// 定义优雅的动画效果
+const pulseAnimation = keyframes`
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+`;
+
+const fadeInAnimation = keyframes`
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
 
 const MAX_CONTEXT_CHARS = 80000;
 
@@ -112,11 +140,25 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
   });
   const [convMenuOpen, setConvMenuOpen] = useState(false);
   const [userSession, setUserSession] = useState<UserSession | null>(null);
+  
+  // 完成状态管理
+  const [contentCompleteStates, setContentCompleteStates] = useState<Map<string, {
+    isComplete: boolean;
+    completionMessage: string;
+    timestamp: number;
+  }>>(new Map());
+  const [pendingOptions, setPendingOptions] = useState<Map<string, OptionItem[]>>(new Map());
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (typeof clearSignal === 'number') { setMessages([]); setInputMessage(''); setOptions([]); }
+    if (typeof clearSignal === 'number') { 
+      setMessages([]); 
+      setInputMessage(''); 
+      setOptions([]);
+      setContentCompleteStates(new Map());
+      setPendingOptions(new Map());
+    }
   }, [clearSignal]);
 
   // Initialize user session for chat tracing
@@ -264,9 +306,9 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
           alert(`流式生成出错: ${err.message}`);
         },
         () => {
-          // finalize parse options with improved error handling
+          // Enhanced option parsing with completion signals
           try {
-            const { main, options: incoming } = splitContentAndOptions(assembled);
+            const { main, options: incoming, isContentComplete, completionMessage } = splitContentAndOptions(assembled);
             
             // 更新消息内容，移除 JSON 部分，只显示主内容
             if (main !== assembled) {
@@ -277,8 +319,29 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
               );
             }
             
-            if (incoming.length) {
-              mergeOptions(incoming, assistantId);
+            // 处理完成标志
+            if (isContentComplete) {
+              setContentCompleteStates(prev => {
+                const newMap = new Map(prev);
+                newMap.set(assistantId, {
+                  isComplete: true,
+                  completionMessage: completionMessage || '正文解析完成，生成推荐选项中...',
+                  timestamp: Date.now()
+                });
+                return newMap;
+              });
+            }
+            
+            // 处理推荐选项
+            if (incoming.length > 0) {
+              // 如果正文已完成，延迟显示推荐以实现优雅过渡
+              if (isContentComplete) {
+                setTimeout(() => {
+                  mergeOptions(incoming, assistantId);
+                }, 800); // 800ms 过渡时间
+              } else {
+                mergeOptions(incoming, assistantId);
+              }
             }
             
             // Log successful completion
@@ -290,7 +353,8 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
                 success: true,
                 responseLength: assembled.length,
                 optionsGenerated: incoming.length,
-                mainContentLength: main.length
+                mainContentLength: main.length,
+                hasContentComplete: isContentComplete
               }, userSession.userId);
             }
           } catch (error) {
@@ -379,10 +443,13 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
             {messages.filter((m: ChatMessage) => m.role!=='system').map((m: ChatMessage) => {
               const isUser = m.role==='user';
               const { main } = splitContentAndOptions(m.content);
+              const completionState = contentCompleteStates.get(m.id);
+              const isCurrentStreaming = messages[messages.length-1]?.id === m.id;
+              
               return (
                 <Box key={m.id} sx={{ mb: 2, display: 'flex', flexDirection: 'column', alignItems: isUser ? 'flex-end' : 'flex-start' }}>
                   {/* Reasoning teaser positioned above currently streaming assistant bubble */}
-                  {m.role==='assistant' && messages[messages.length-1]?.id === m.id && reasoningText && (
+                  {m.role==='assistant' && isCurrentStreaming && reasoningText && (
                     <Box sx={{ alignSelf: 'flex-start', mb: 1, maxWidth: 560 }}>
                       <Box sx={{ display:'flex', alignItems:'center', mb: 0.5 }}>
                         <Typography variant="caption" sx={{ color:'#666', fontWeight: 600 }}>推理</Typography>
@@ -397,7 +464,52 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
                       )}
                     </Box>
                   )}
-                  <Paper elevation={1} sx={{ p: 2.25, maxWidth: '100%', bgcolor: isUser?'#e7f0ff':'#fff', borderRadius: 2 }}>
+                  
+                  {/* 优雅的完成状态显示 */}
+                  {m.role==='assistant' && completionState?.isComplete && (
+                    <Box sx={{ 
+                      alignSelf: 'flex-start', 
+                      mb: 1.5, 
+                      maxWidth: 560,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: 2,
+                      py: 1,
+                      bgcolor: 'rgba(0, 122, 255, 0.08)',
+                      borderRadius: 2,
+                      border: '1px solid rgba(0, 122, 255, 0.2)',
+                      animation: `${fadeInAnimation} 0.5s ease-out`
+                    }}>
+                      <Box sx={{ 
+                        width: 8, 
+                        height: 8, 
+                        borderRadius: '50%', 
+                        bgcolor: '#007AFF',
+                        animation: `${pulseAnimation} 1.5s ease-in-out infinite`
+                      }} />
+                      <Typography variant="caption" sx={{ 
+                        color: '#007AFF', 
+                        fontWeight: 500,
+                        fontSize: '0.8rem'
+                      }}>
+                        {completionState.completionMessage}
+                      </Typography>
+                    </Box>
+                  )}
+                  
+                  <Paper elevation={1} sx={{ 
+                    p: 2.25, 
+                    maxWidth: '100%', 
+                    bgcolor: isUser ? '#e7f0ff' : '#fff', 
+                    borderRadius: 2,
+                    position: 'relative',
+                    // 完成状态下的微妙视觉变化
+                    ...(completionState?.isComplete && !isUser && {
+                      borderLeft: '3px solid #007AFF',
+                      bgcolor: 'rgba(247, 248, 250, 0.95)'
+                    })
+                  }}>
                     {isUser ? (
                       <Typography sx={{ whiteSpace: 'pre-wrap' }}>{m.content}</Typography>
                     ) : (
