@@ -8,8 +8,7 @@ import * as originalApi from './api';
  */
 
 /**
- * Generate content (simplified without trace creation)
- * Note: Only chat conversations create traces, not individual prompt tests
+ * Generates content using the original API without creating trace.
  */
 export const generateContent = async (
   promptObject: string,
@@ -23,8 +22,7 @@ export const generateContent = async (
 };
 
 /**
- * Generate content stream (simplified without trace creation)
- * Note: Only chat conversations create traces, not individual prompt tests
+ * Generates a content stream without creating a trace.
  */
 export const generateContentStream = async (
   promptObject: string,
