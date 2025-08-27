@@ -119,9 +119,9 @@ const detectJsonlContent = (content: string): { isJsonl: boolean; jsonlContent?:
 /**
  * Checks if the given content is in JSONL format.
  */
-const isJsonlFormat = (content: string): boolean => {
-  return detectJsonlContent(content).isJsonl;
-};
+// const isJsonlFormat = (content: string): boolean => {
+//   return detectJsonlContent(content).isJsonl;
+// };
 
 interface OutputPanelProps {
   promptObject: string;
@@ -156,7 +156,6 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
     promptText,
     promptResult,
     isLoading,
-    onGenerate,
     selectedModel,
     onSave,
     darkMode = false
@@ -242,10 +241,10 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
               textTransform: 'none',
               borderRadius: '8px',
               fontSize: '0.875rem',
-              borderColor: darkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+              borderColor: 'rgba(0, 0, 0, 0.2)',
               color: 'text.secondary',
               '&:hover': {
-                borderColor: darkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
+                borderColor: 'rgba(0, 0, 0, 0.4)',
                 color: 'text.primary',
                 bgcolor: 'transparent'
               },
@@ -262,16 +261,14 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
         sx={{ 
           flexGrow: 1,
           overflow: 'auto', 
-          bgcolor: darkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
+          bgcolor: 'rgba(0, 0, 0, 0.02)',
           position: 'relative',
           whiteSpace: 'pre-wrap',
           height: '100%',
           px: { xs: 3, md: 4 },
           py: { xs: 3, md: 4 },
           borderRadius: '12px',
-          border: darkMode 
-            ? '1px solid rgba(255, 255, 255, 0.08)' 
-            : '1px solid rgba(0, 0, 0, 0.08)',
+          border: '1px solid rgba(0, 0, 0, 0.08)',
           transition: 'all 0.2s ease',
           '&:empty::before': {
             content: '"等待分析内容..."',
@@ -286,7 +283,7 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
           }
         }}
       >
-        <Box sx={{ color: darkMode ? 'text.primary' : 'inherit' }}>
+        <Box sx={{ color: 'inherit' }}>
           {(() => {
             const { isJsonl, jsonlContent, mixedContent } = detectJsonlContent(promptResult);
             
@@ -294,7 +291,7 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
               // 使用原来的Markdown渲染器
               return (
                 <Box sx={{ fontFamily: 'monospace' }}>
-                  <div className="markdown-body" style={{ color: darkMode ? 'text.primary' : 'inherit' }}>
+                  <div className="markdown-body" style={{ color: 'inherit' }}>
                     <ReactMarkdown 
                       key={`md-${promptResult.length}`}
                       rehypePlugins={[rehypeRaw]}
@@ -323,7 +320,7 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
                 <>
                   {mixedContent.text && (
                     <Box sx={{ mb: 3, fontFamily: 'monospace' }}>
-                      <div className="markdown-body" style={{ color: darkMode ? 'text.primary' : 'inherit' }}>
+                                              <div className="markdown-body" style={{ color: 'inherit' }}>
                         <ReactMarkdown 
                           rehypePlugins={[rehypeRaw]}
                           remarkPlugins={[remarkGfm, remarkBreaks]}
@@ -348,7 +345,6 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
                   <JsonlRenderer 
                     content={mixedContent.jsonl}
                     enableHoverEffects={true}
-                    darkMode={darkMode}
                   />
                 </>
               );
@@ -356,9 +352,8 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
               // 纯JSONL内容
               return (
                 <JsonlRenderer 
-                  content={jsonlContent}
+                  content={jsonlContent || ''}
                   enableHoverEffects={true}
-                  darkMode={darkMode}
                 />
               );
             }
@@ -376,7 +371,7 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
             <CircularProgress 
               size={20} 
               sx={{ 
-                color: darkMode ? '#ffffff' : '#000000',
+                color: '#000000',
                 opacity: 0.6
               }} 
             />
@@ -395,7 +390,7 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
               width: 4, 
               height: 4, 
               borderRadius: '50%', 
-              bgcolor: darkMode ? '#ffffff' : '#000000',
+              bgcolor: '#000000',
               opacity: 0.4,
               animation: 'pulse 1.5s ease-in-out infinite' 
             }} />

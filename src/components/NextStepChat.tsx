@@ -29,7 +29,7 @@ const getSystemPrompt = () => {
   } catch (error) {
     console.error('Failed to generate system prompt:', error);
     // 降级到原始硬编码版本 - 简化模板避免 syntax issues
-    return '我的目标是「精读」当前讨论的内容（文章或书籍），并不断切换对象。（当我发送一大段长文字时就是复制的长文章）\n\n每次交互，请严格执行以下3件事：\n**1. 聚焦与展开** 先讲透内容的一个核心关键；再全面概览，让我了解全貌，语言风格清晰易懂。\n\n**2. 原文深挖 (type: deepen)** 推荐3个最有价值的原文精读选项。\n**3. 主题探索 (type: next)** 推荐3本最值得阅读的相关书籍\n\n**格式要求** 第2和第3步的推荐项，必须严格遵循 JSON Lines (JSONL) 格式，每行一个JSON对象。\n- 第2步推荐，type 字段的值必须是 deepen\n- 第3步推荐，type 字段的值必须是 next\n\n**重要：完成标志** 先输出：{"type": "content_complete", "message": "正文解析完成，生成推荐选项中..."}\n\n**JSONL 模板:**\n{"type": "content_complete", "message": "正文解析完成，生成推荐选项中..."}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细描述"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细描述"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细描述"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对该书籍的详细描述"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对该书籍的详细描述"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对该书籍的详细描述"}\n\n**约束条件**：不要向用户解释此格式。\n输出结构：只需输出聚焦与展开对应的文本。之后一定要留出空白行符号，再输出所有JSONL。';
+    return '我的目标是「精读」当前讨论的内容（文章或书籍），并不断切换对象。（当我发送一大段长文字时就是复制的长文章）\n\n每次交互，请严格执行以下3件事：\n**1. 聚焦与展开** 先讲透内容的一个核心关键；全面展开全文内容,让我了解全貌，全面又深度的讲讲全文。\n\n**2. 原文深挖 (type: deepen)** 推荐3个最有价值的原文精读选项。按顺序推荐原文的某个具体部分，深度展开（按情节划分、按逻辑划分，划分为第一第二..第n部分。按顺序推荐第一、二..部分。（偏向客观的呈现内容，而不是过于主观的讨论）\n - 选项一定要围绕「原文」，原文指的是最近在讨论的书、文章、主题。比如我们当前在讨论的是某一本书，则精读选项一定也是围绕该书原文的，而不是脱离原文的主观讨论。\n - 注意，对象是整个原文，而不是我们当前讨论的原文的子话题（不要围绕子话题出所有精读选项，应该围绕原文出选项）。\n- 当讨论新书时，即精读对象变化了，不要老对比提及先前的精读对象。比如最初在精读一篇文章，后来在精读一本新书，则不要老对比之前文章的内容和新书的内容。只专注于当前的精读对象。\n\n\n**3. 主题探索 (type: next)** 推荐3本最值得阅读的相关书籍，挑选对我有价值、最不可错过的探索对象，要围绕当前主题，以这些维度做优先级的排序。选项的描述要足够吸引我，能勾起我的兴趣\n\n选项描述\n- 每个选项的描述要**讲透该选项的精髓之处**，hooked读者。\n\n**格式要求** \n第2和第3步的推荐项，必须严格遵循 JSON Lines (JSONL) 格式，每行一个JSON对象，不要在代码块前后添加任何说明。\n- 第2步推荐，type 字段的值必须是 deepen\n- 第3步推荐，type 字段的值必须是 next\n\n风格\n输出以 jsonl 的方式输出 ，并且避免因为 JSONL 格式的输出要求导致内容过于严肃，要求清楚易懂\n\n\n**JSONL 输出结构:**\n\n聚焦与展开的文本内容\n\n---\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n\n\n**约束条件**：不要向用户解释此格式。\n输出结构：只需输出聚焦与展开对应的文本。之后一定要**留出空白行符号**，再输出所有JSONL。';
   }
 };
 
@@ -114,7 +114,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
     completionMessage: string;
     timestamp: number;
   }>>(new Map());
-  const [pendingOptions, setPendingOptions] = useState<Map<string, OptionItem[]>>(new Map());
+  // const [pendingOptions, setPendingOptions] = useState<Map<string, OptionItem[]>>(new Map());
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -124,7 +124,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
       setInputMessage(''); 
       setOptions([]);
       setContentCompleteStates(new Map());
-      setPendingOptions(new Map());
+      // setPendingOptions(new Map());
       setShowHistoricalOptions({ deepen: false, next: false });
     }
   }, [clearSignal]);

@@ -62,10 +62,9 @@ const CustomBreak = () => {
 interface ChatPanelProps {
   promptTest: PromptTest | null;
   selectedModel: string;
-  darkMode?: boolean;
 }
 
-const ChatPanel: React.FC<ChatPanelProps> = ({ promptTest, selectedModel, darkMode = false }) => {
+const ChatPanel: React.FC<ChatPanelProps> = ({ promptTest, selectedModel }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -220,8 +219,8 @@ ${promptTest.promptResult}
       display: 'flex', 
       flexDirection: 'column', 
       height: '100%',
-      bgcolor: darkMode ? 'background.paper' : '#fff',
-      color: darkMode ? 'text.primary' : 'inherit'
+      bgcolor: '#fff',
+      color: 'inherit'
     }}>
       <Box sx={{ 
         display: 'flex', 
@@ -267,7 +266,7 @@ ${promptTest.promptResult}
         sx={{ 
           flexGrow: 1,
           overflowY: 'auto', 
-          bgcolor: darkMode ? 'background.default' : '#f5f5f5', 
+          bgcolor: '#f5f5f5', 
           p: 2, 
         }}
       >
@@ -288,16 +287,14 @@ ${promptTest.promptResult}
                 sx={{ 
                   p: 3,
                   maxWidth: '100%',
-                  bgcolor: darkMode 
-                    ? (message.role === 'user' ? '#1a365d' : '#2d3748') 
-                    : (message.role === 'user' ? '#e3f2fd' : '#fff'),
+                  bgcolor: message.role === 'user' ? '#e3f2fd' : '#fff',
                   borderRadius: 2,
-                  color: darkMode ? '#fff' : 'inherit'
+                  color: 'inherit'
                 }}
               >
                 <div className="markdown-body" style={{ 
                   whiteSpace: 'normal',
-                  color: darkMode ? '#fff' : 'inherit'
+                  color: 'inherit'
                 }}>
                   <ReactMarkdown 
                     rehypePlugins={[rehypeRaw]} 

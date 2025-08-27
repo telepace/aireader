@@ -15,9 +15,9 @@ jest.mock('uuid', () => ({
 
 // Mock JsonlRenderer component
 jest.mock('./JsonlRenderer', () => ({
-  JsonlRenderer: ({ content, enableHoverEffects, darkMode }: any) => (
+  JsonlRenderer: ({ content, enableHoverEffects }: any) => (
     <div data-testid="jsonl-renderer">
-      {content || 'No content'}
+      {content}
     </div>
   )
 }));

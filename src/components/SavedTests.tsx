@@ -21,10 +21,9 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 interface SavedTestsProps {
   onSelectTest: (test: PromptTest) => void;
-  darkMode?: boolean;
 }
 
-const SavedTests: React.FC<SavedTestsProps> = ({ onSelectTest, darkMode = false }) => {
+const SavedTests: React.FC<SavedTestsProps> = ({ onSelectTest }) => {
   const [savedTests, setSavedTests] = useState<PromptTest[]>([]);
   const [selectedTest, setSelectedTest] = useState<PromptTest | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -90,8 +89,8 @@ const SavedTests: React.FC<SavedTestsProps> = ({ onSelectTest, darkMode = false 
         display: 'flex', 
         flexDirection: 'column', 
         flexGrow: 1,
-        bgcolor: darkMode ? 'background.paper' : '#fff',
-        color: darkMode ? 'text.primary' : 'inherit'
+        bgcolor: '#fff',
+        color: 'inherit'
       }}
     >
       <Typography variant="h6" gutterBottom sx={{ flexShrink: 0 }}>
@@ -115,8 +114,8 @@ const SavedTests: React.FC<SavedTestsProps> = ({ onSelectTest, darkMode = false 
               onClick={() => handleViewDetails(test)}
               sx={{ 
                 cursor: 'pointer',
-                '&:hover': { bgcolor: darkMode ? 'rgba(255, 255, 255, 0.1)' : '#f5f5f5' },
-                borderBottom: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.12)' : '#eee'}`
+                '&:hover': { bgcolor: '#f5f5f5' },
+                borderBottom: '1px solid #eee'
               }}
             >
               <ListItemText 
@@ -135,8 +134,8 @@ const SavedTests: React.FC<SavedTestsProps> = ({ onSelectTest, darkMode = false 
         fullWidth
         PaperProps={{
           sx: {
-            bgcolor: darkMode ? 'background.paper' : '#fff',
-            color: darkMode ? 'text.primary' : 'inherit'
+            bgcolor: '#fff',
+            color: 'inherit'
           }
         }}
       >
@@ -149,7 +148,7 @@ const SavedTests: React.FC<SavedTestsProps> = ({ onSelectTest, darkMode = false 
             <DialogContent dividers>
               <Box sx={{ 
                 p: 2, 
-                bgcolor: darkMode ? 'background.default' : '#f5f5f5', 
+                bgcolor: '#f5f5f5', 
                 borderRadius: 1, 
                 maxHeight: '50vh', 
                 overflowY: 'auto' 
@@ -158,7 +157,7 @@ const SavedTests: React.FC<SavedTestsProps> = ({ onSelectTest, darkMode = false 
                   margin: 0, 
                   whiteSpace: 'pre-wrap', 
                   wordBreak: 'break-all',
-                  color: darkMode ? 'text.primary' : 'inherit'
+                  color: 'inherit'
                 }}>
                   <code>
                     {JSON.stringify(

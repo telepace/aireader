@@ -10,8 +10,6 @@ import {
   MenuItem,
   SelectChangeEvent
 } from '@mui/material';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
-import LightModeIcon from '@mui/icons-material/LightMode';
 
 interface AppHeaderProps {
   currentTab: number;
@@ -20,10 +18,8 @@ interface AppHeaderProps {
   onModelChange: (event: SelectChangeEvent<string>) => void;
   leftSidebarOpen: boolean;
   rightSidebarOpen: boolean;
-  darkMode: boolean;
   onToggleLeftSidebar: () => void;
   onToggleRightSidebar: () => void;
-  onToggleDarkMode: () => void;
   onClearChat: () => void;
   availableModels: string[];
 }
@@ -33,7 +29,7 @@ interface AppHeaderProps {
  *
  * The AppHeader component displays navigation elements including tab selection, model selection, and sidebar toggle buttons.
  * It utilizes various props to manage the current state of the application, such as the currently selected tab, model, and sidebar visibility.
- * The component also provides functionality to toggle dark mode and clear the chat, enhancing user interaction.
+ * The component also provides functionality to clear the chat, enhancing user interaction.
  *
  * @param {Object} props - The properties for the AppHeader component.
  * @param {string} props.currentTab - The currently selected tab.
@@ -42,10 +38,8 @@ interface AppHeaderProps {
  * @param {function} props.onModelChange - Callback function to handle model changes.
  * @param {boolean} props.leftSidebarOpen - Indicates if the left sidebar is open.
  * @param {boolean} props.rightSidebarOpen - Indicates if the right sidebar is open.
- * @param {boolean} props.darkMode - Indicates if dark mode is enabled.
  * @param {function} props.onToggleLeftSidebar - Callback function to toggle the left sidebar.
  * @param {function} props.onToggleRightSidebar - Callback function to toggle the right sidebar.
- * @param {function} props.onToggleDarkMode - Callback function to toggle dark mode.
  * @param {function} props.onClearChat - Callback function to clear the chat.
  * @param {Array<string>} props.availableModels - List of available models for selection.
  */
@@ -56,10 +50,8 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   onModelChange,
   leftSidebarOpen,
   rightSidebarOpen,
-  darkMode,
   onToggleLeftSidebar,
   onToggleRightSidebar,
-  onToggleDarkMode,
   onClearChat,
   availableModels
 }) => {
@@ -69,7 +61,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        borderBottom: darkMode ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.08)',
+        borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
         px: { xs: 4, md: 8, lg: 12 },
         py: { xs: 3, md: 4 },
         flexShrink: 0,
@@ -138,19 +130,13 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                 borderRadius: '12px',
                 fontSize: { xs: '0.875rem', md: '0.95rem' },
                 '& fieldset': {
-                  border: darkMode 
-                    ? '1px solid rgba(255, 255, 255, 0.12)' 
-                    : '1px solid rgba(0, 0, 0, 0.12)'
+                  border: '1px solid rgba(0, 0, 0, 0.12)'
                 },
                 '&:hover fieldset': {
-                  border: darkMode 
-                    ? '1px solid rgba(255, 255, 255, 0.2)' 
-                    : '1px solid rgba(0, 0, 0, 0.2)'
+                  border: '1px solid rgba(0, 0, 0, 0.2)'
                 },
                 '&.Mui-focused fieldset': {
-                  border: darkMode 
-                    ? '1px solid rgba(255, 255, 255, 0.3)' 
-                    : '1px solid rgba(0, 0, 0, 0.3)',
+                  border: '1px solid rgba(0, 0, 0, 0.3)',
                   borderWidth: '2px'
                 }
               }
@@ -161,29 +147,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({
             ))}
           </Select>
         </FormControl>
-        <IconButton 
-          onClick={onToggleDarkMode} 
-          size="medium"
-          sx={{ 
-            color: 'text.secondary',
-            bgcolor: darkMode 
-              ? 'rgba(255, 255, 255, 0.05)' 
-              : 'rgba(0, 0, 0, 0.05)',
-            borderRadius: '12px',
-            width: 44,
-            height: 44,
-            '&:hover': { 
-              color: 'text.primary',
-              bgcolor: darkMode 
-                ? 'rgba(255, 255, 255, 0.1)' 
-                : 'rgba(0, 0, 0, 0.1)',
-              transform: 'translateY(-1px)'
-            },
-            transition: 'all 0.2s ease'
-          }}
-        >
-          {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
-        </IconButton>
       </Box>
     </Box>
   );

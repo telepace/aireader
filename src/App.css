@@ -14,11 +14,6 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* True dark mode - Jobs would approve */
-[data-mui-color-scheme="dark"] body {
-  background: #000000;
-}
-
 /* Minimal scrollbar - almost invisible */
 ::-webkit-scrollbar {
   width: 6px;
@@ -37,14 +32,6 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.2);
-}
-
-[data-mui-color-scheme="dark"] ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-[data-mui-color-scheme="dark"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Clean, minimal markdown styling */
@@ -101,13 +88,7 @@ body {
   margin: 1.5rem 0;
 }
 
-[data-mui-color-scheme="dark"] .markdown-body code {
-  background-color: rgba(255, 255, 255, 0.05);
-}
 
-[data-mui-color-scheme="dark"] .markdown-body pre {
-  background-color: rgba(255, 255, 255, 0.03);
-}
 
 /* Minimal animations inspired by Jobs' attention to detail */
 @keyframes pulse {

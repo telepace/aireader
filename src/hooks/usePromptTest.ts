@@ -6,8 +6,7 @@ const LOCAL_STORAGE_KEYS = {
   PROMPT_TEXT: 'promptTester_promptText',
   SELECTED_MODEL: 'promptTester_selectedModel',
   LEFT_SIDEBAR_OPEN: 'promptTester_leftSidebarOpen',
-  RIGHT_SIDEBAR_OPEN: 'promptTester_rightSidebarOpen',
-  DARK_MODE: 'promptTester_darkMode'
+  RIGHT_SIDEBAR_OPEN: 'promptTester_rightSidebarOpen'
 };
 
 /**

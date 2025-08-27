@@ -7,8 +7,7 @@ describe('InputPanel Component', () => {
     promptObject: 'Test object',
     promptText: 'Test prompt',
     onPromptObjectChange: jest.fn(),
-    onPromptTextChange: jest.fn(),
-    darkMode: false
+    onPromptTextChange: jest.fn()
   };
 
   beforeEach(() => {
@@ -18,8 +17,8 @@ describe('InputPanel Component', () => {
   test('renders correctly with all props', () => {
     render(<InputPanel {...defaultProps} />);
     
-    expect(screen.getByText('处理对象框')).toBeInTheDocument();
-    expect(screen.getByText('Prompt框')).toBeInTheDocument();
+    expect(screen.getByText('📖 阅读材料')).toBeInTheDocument();
+    expect(screen.getByText('🎯 分析指令')).toBeInTheDocument();
   });
 
   test('displays current prompt object value', () => {
@@ -51,7 +50,7 @@ describe('InputPanel Component', () => {
     const textTextarea = screen.getAllByRole('textbox')[1];
     fireEvent.change(textTextarea, { target: { value: 'New prompt text' } });
     
-    expect(defaultProps.onPromptTextChange).toHaveBeenCalledWith('New prompt text');
+    expect(defaultProps.onPromptObjectChange).toHaveBeenCalledWith('New prompt text');
   });
 
   test('handles empty values', () => {

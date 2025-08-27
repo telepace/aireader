@@ -3,14 +3,12 @@ import { Box, IconButton, Typography } from '@mui/material';
 import { Copy } from 'lucide-react';
 
 interface JsonlRendererProps {
-  /** raw JSONL string, each line is a JSON object */
-  content: string | null | undefined;
-  /** additional class names for the outer container */
+  /** The JSON-Lines content to render */
+  content: string;
+  /** Optional additional class names */
   className?: string;
   /** whether to enable hover effects for each block */
   enableHoverEffects?: boolean;
-  /** dark mode support */
-  darkMode?: boolean;
 }
 
 /**
@@ -23,14 +21,12 @@ interface JsonlRendererProps {
  * @param content - The JSON-Lines content to be rendered.
  * @param className - Optional additional class names for styling.
  * @param enableHoverEffects - Flag to enable or disable hover effects (default is true).
- * @param darkMode - Flag to enable dark mode styling (default is false).
  * @returns A JSX element representing the rendered JSON-Lines.
  */
 export function JsonlRenderer({ 
   content, 
   className, 
-  enableHoverEffects = true,
-  darkMode = false
+  enableHoverEffects = true
 }: JsonlRendererProps) {
   const [hoveredBlock, setHoveredBlock] = useState<number | null>(null);
   const [toastMessage, setToastMessage] = useState<string>('');
@@ -142,15 +138,15 @@ export function JsonlRenderer({
             }}
             sx={{
               p: 0.75,
-              bgcolor: darkMode ? 'rgba(30, 30, 30, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+              bgcolor: 'rgba(255, 255, 255, 0.8)',
               backdropFilter: 'blur(4px)',
               border: '1px solid',
-              borderColor: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+              borderColor: 'rgba(0, 0, 0, 0.1)',
               boxShadow: 1,
-              color: darkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+              color: 'rgba(0, 0, 0, 0.7)',
               '&:hover': {
-                color: darkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.9)',
-                bgcolor: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                color: 'rgba(0, 0, 0, 0.9)',
+                bgcolor: 'rgba(0, 0, 0, 0.05)',
               }
             }}
             title={`复制${getBlockTypeLabel(blockType)}`}
@@ -284,8 +280,8 @@ export function JsonlRenderer({
           const priority = (block["priority"] as string) || "normal";
           const borderColor = priority === "high" ? "error.main" : "info.main";
           const bgColor = priority === "high" 
-            ? (darkMode ? 'rgba(211, 47, 47, 0.1)' : 'rgba(255, 235, 238, 1)')
-            : (darkMode ? 'rgba(33, 150, 243, 0.1)' : 'rgba(227, 242, 253, 1)');
+            ? 'rgba(255, 235, 238, 1)'
+            : 'rgba(227, 242, 253, 1)';
           
           return (
             <Box
@@ -313,7 +309,7 @@ export function JsonlRenderer({
                 borderRadius: 1,
                 borderLeft: '4px solid',
                 borderColor: 'secondary.main',
-                bgcolor: darkMode ? 'rgba(156, 39, 176, 0.1)' : 'rgba(248, 245, 255, 1)',
+                bgcolor: 'rgba(248, 245, 255, 1)',
                 p: 1.5,
                 userSelect: 'text'
               }}
@@ -356,7 +352,7 @@ export function JsonlRenderer({
                 borderRadius: 1,
                 borderLeft: '4px solid',
                 borderColor: 'success.main',
-                bgcolor: darkMode ? 'rgba(76, 175, 80, 0.1)' : 'rgba(232, 245, 233, 1)',
+                bgcolor: 'rgba(232, 245, 233, 1)',
                 p: 1.5,
                 userSelect: 'text'
               }}
@@ -412,7 +408,7 @@ export function JsonlRenderer({
             position: 'fixed',
             top: 16,
             right: 16,
-            bgcolor: darkMode ? 'rgba(50, 50, 50, 0.9)' : 'rgba(0, 0, 0, 0.8)',
+            bgcolor: 'rgba(0, 0, 0, 0.8)',
             color: 'white',
             px: 2,
             py: 1,

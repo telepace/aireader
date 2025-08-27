@@ -6,7 +6,6 @@ interface InputPanelProps {
   promptText: string;
   onPromptObjectChange: (value: string) => void;
   onPromptTextChange: (value: string) => void;
-  darkMode?: boolean;
   isLoading?: boolean;
   onGenerate?: () => void;
 }
@@ -19,7 +18,6 @@ const InputPanel: React.FC<InputPanelProps> = ({
   promptText,
   onPromptObjectChange,
   onPromptTextChange,
-  darkMode = false,
   isLoading = false,
   onGenerate
 }) => {
@@ -59,19 +57,19 @@ const InputPanel: React.FC<InputPanelProps> = ({
             '& .MuiOutlinedInput-root': {
               height: '100%',
               borderRadius: '12px',
-              backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
+              backgroundColor: 'rgba(0, 0, 0, 0.02)',
               fontSize: { xs: '0.95rem', md: '1rem' },
               lineHeight: 1.6,
               fontFamily: '"SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
               '& fieldset': {
-                borderColor: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                borderColor: 'rgba(0, 0, 0, 0.1)',
                 borderWidth: '1px'
               },
               '&:hover fieldset': {
-                borderColor: darkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'
+                borderColor: 'rgba(0, 0, 0, 0.2)'
               },
               '&.Mui-focused fieldset': {
-                borderColor: darkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)',
+                borderColor: 'rgba(0, 0, 0, 0.3)',
                 borderWidth: '2px'
               }
             },
@@ -100,32 +98,32 @@ const InputPanel: React.FC<InputPanelProps> = ({
             letterSpacing: '-0.015em'
           }}
         >
-          🤖 分析指令
+          🎯 分析指令
         </Typography>
         <TextField
           multiline
-          minRows={4}
           fullWidth
           variant="outlined"
           value={promptText}
           onChange={(e) => onPromptTextChange(e.target.value)}
-          placeholder="告诉我您希望如何分析这段内容..."
+          placeholder="输入您希望AI如何分析这些内容的指令..."
+          rows={4}
           sx={{ 
             '& .MuiOutlinedInput-root': {
               borderRadius: '12px',
-              backgroundColor: darkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
+              backgroundColor: 'rgba(0, 0, 0, 0.02)',
               fontSize: { xs: '0.95rem', md: '1rem' },
               lineHeight: 1.6,
               fontFamily: '"SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
               '& fieldset': {
-                borderColor: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                borderColor: 'rgba(0, 0, 0, 0.1)',
                 borderWidth: '1px'
               },
               '&:hover fieldset': {
-                borderColor: darkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'
+                borderColor: 'rgba(0, 0, 0, 0.2)'
               },
               '&.Mui-focused fieldset': {
-                borderColor: darkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)',
+                borderColor: 'rgba(0, 0, 0, 0.3)',
                 borderWidth: '2px'
               }
             },
@@ -140,38 +138,38 @@ const InputPanel: React.FC<InputPanelProps> = ({
           }}
         />
       </Box>
-
-      {/* 操作按钮区域 */}
-      <Box sx={{ 
-        display: 'flex', 
-        gap: 2,
-        pt: 2
-      }}>
-        <Button 
-          variant="contained" 
-          fullWidth
+      
+      {/* 生成按钮 */}
+      <Box sx={{ flexShrink: 0 }}>
+        <Button
+          variant="contained"
           onClick={onGenerate}
-          disabled={isLoading || !promptObject || !promptText}
-          sx={{ 
-            height: 48,
-            fontWeight: 500,
-            textTransform: 'none',
-            borderRadius: '12px',
+          disabled={isLoading || !promptObject.trim() || !promptText.trim()}
+          fullWidth
+          size="large"
+          sx={{
+            height: 56,
+            borderRadius: '16px',
             fontSize: { xs: '1rem', md: '1.125rem' },
-            bgcolor: darkMode ? '#ffffff' : '#000000',
-            color: darkMode ? '#000000' : '#ffffff',
+            fontWeight: 600,
+            textTransform: 'none',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)',
             '&:hover': {
-              bgcolor: darkMode ? '#f0f0f0' : '#333333',
-              transform: 'translateY(-1px)',
+              background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+              boxShadow: '0 12px 40px rgba(102, 126, 234, 0.4)',
+              transform: 'translateY(-2px)'
             },
             '&:disabled': {
-              bgcolor: darkMode ? '#444444' : '#e5e5e5',
-              color: darkMode ? '#888888' : '#999999',
+              background: '#e0e0e0',
+              color: '#9e9e9e',
+              boxShadow: 'none',
+              transform: 'none'
             },
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
           }}
         >
-          {isLoading ? '分析中...' : '开始分析'}
+          {isLoading ? '生成中...' : '🚀 开始分析'}
         </Button>
       </Box>
     </Box>

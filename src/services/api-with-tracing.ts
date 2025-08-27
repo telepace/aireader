@@ -26,13 +26,13 @@ export const generateContent = async (
 
   try {
     // Add preprocessing span
-    const preprocessSpan = langfuseService.addSpan(
-      trace,
-      'input-preprocessing',
-      { promptObject, promptText },
-      { combinedInput: `${promptText}\n\n${promptObject}` },
-      { step: 'preprocessing' }
-    );
+    // const preprocessSpan = langfuseService.addSpan(
+    //   trace,
+    //   'input-preprocessing',
+    //   { promptObject, promptText },
+    //   { combinedInput: `${promptText}\n\n${promptObject}` },
+    //   { step: 'preprocessing' }
+    // );
 
     // Call original API
     const startTime = Date.now();
@@ -218,13 +218,13 @@ export const generateChat = async (
 
   try {
     // Add preprocessing span
-    const preprocessSpan = langfuseService.addSpan(
-      trace,
-      'chat-preprocessing',
-      { messages: messages.map(m => ({ role: m.role, content: m.content })) },
-      { messageCount: messages.length },
-      { step: 'preprocessing', conversationId }
-    );
+    // const preprocessSpan = langfuseService.addSpan(
+    //   trace,
+    //   'chat-preprocessing',
+    //   { messages: messages.map(m => ({ role: m.role, content: m.content })) },
+    //   { messageCount: messages.length },
+    //   { step: 'preprocessing', conversationId }
+    // );
 
     // Call original API
     const startTime = Date.now();

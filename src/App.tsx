@@ -14,7 +14,6 @@ import AppHeader from './components/Layout/AppHeader';
 import TabPanel from './components/Layout/TabPanel';
 import InputPanel from './components/InputPanel';
 import OutputPanel from './components/OutputPanel';
-import ChatPanel from './components/ChatPanel';
 import SavedTests from './components/SavedTests';
 import NextStepChat from './components/NextStepChat';
 import { UserSession } from './types/types';
@@ -42,17 +41,14 @@ const App: React.FC = () => {
     setPromptResult,
     isLoading,
     setIsLoading,
-    selectedPromptTest,
     loadPromptTest
   } = usePromptTest();
 
   const {
     leftSidebarOpen,
     rightSidebarOpen,
-    darkMode,
     toggleLeftSidebar,
-    toggleRightSidebar,
-    toggleDarkMode
+    toggleRightSidebar
   } = useUIState();
 
   const { selectedModel, setSelectedModel, availableModels } = useModelSelection();
@@ -87,28 +83,28 @@ const App: React.FC = () => {
 
   const theme = createTheme({
     palette: {
-      mode: darkMode ? 'dark' : 'light',
+      mode: 'light',
       primary: {
-        main: darkMode ? '#ffffff' : '#000000',
-        light: darkMode ? '#f8f9fa' : '#333333',
-        dark: darkMode ? '#e9ecef' : '#000000',
-        contrastText: darkMode ? '#000000' : '#ffffff'
+        main: '#000000',
+        light: '#333333',
+        dark: '#000000',
+        contrastText: '#ffffff'
       },
       secondary: {
-        main: darkMode ? '#6c757d' : '#6c757d',
-        light: darkMode ? '#adb5bd' : '#adb5bd',
-        dark: darkMode ? '#495057' : '#495057',
+        main: '#6c757d',
+        light: '#adb5bd',
+        dark: '#495057',
         contrastText: '#ffffff'
       },
       background: {
-        default: darkMode ? '#000000' : '#ffffff',
-        paper: darkMode ? '#111111' : '#fafafa',
+        default: '#ffffff',
+        paper: '#fafafa',
       },
       text: {
-        primary: darkMode ? '#ffffff' : '#000000',
-        secondary: darkMode ? '#adb5bd' : '#6c757d',
+        primary: '#000000',
+        secondary: '#6c757d',
       },
-      divider: darkMode ? '#333333' : '#e9ecef',
+      divider: '#e9ecef',
       success: {
         main: '#28a745',
         light: '#34ce57',
@@ -244,7 +240,7 @@ const App: React.FC = () => {
               transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               '&:hover': {
                 '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: darkMode ? '#475569' : '#cbd5e1'
+                  borderColor: '#cbd5e1'
                 }
               },
               '&.Mui-focused': {
@@ -354,9 +350,10 @@ const App: React.FC = () => {
     setCurrentTab(0);
   };
 
-  const sidebarWidth = 320;
-  const rightSidebarWidth = 480;
-  const transitionDuration = '0.3s';
+  // 这些变量在当前的布局中暂时未使用，但保留以备将来使用
+  // const sidebarWidth = 320;
+  // const rightSidebarWidth = 480;
+  // const transitionDuration = '0.3s';
 
   return (
     <ThemeProvider theme={theme}>
@@ -383,10 +380,8 @@ const App: React.FC = () => {
           onModelChange={(e) => setSelectedModel(e.target.value)}
           leftSidebarOpen={leftSidebarOpen}
           rightSidebarOpen={rightSidebarOpen}
-          darkMode={darkMode}
           onToggleLeftSidebar={toggleLeftSidebar}
           onToggleRightSidebar={toggleRightSidebar}
-          onToggleDarkMode={toggleDarkMode}
           onClearChat={() => setNextStepClearSignal(Date.now())}
           availableModels={availableModels}
         />
@@ -407,7 +402,6 @@ const App: React.FC = () => {
               promptText={promptText}
               onPromptObjectChange={setPromptObject}
               onPromptTextChange={setPromptText}
-              darkMode={darkMode}
               isLoading={isLoading}
               onGenerate={handleGenerate}
             />
@@ -431,7 +425,6 @@ const App: React.FC = () => {
               onSave={(test) => {
                 // Handle the saved test
               }}
-              darkMode={darkMode}
             />
           </Box>
         </TabPanel>
@@ -444,7 +437,7 @@ const App: React.FC = () => {
             overflowY: 'auto',
             width: '100%'
           }}>
-            <SavedTests onSelectTest={handleSelectTest} darkMode={darkMode} />
+            <SavedTests onSelectTest={handleSelectTest} />
           </Box>
         </TabPanel>
 
