@@ -269,7 +269,7 @@ export class JinjaTemplateEngine {
   }
 
   /**
-   * 获取内置模板（临时方案，实际应该从文件加载）
+   * Retrieves the inline template based on the given context and language.
    */
   private getInlineTemplate(context: PromptContext, language: Language): string {
     // 这里应该从实际的 .j2 文件加载模板
