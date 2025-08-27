@@ -40,6 +40,14 @@ const CustomStrong = (props: any) => {
 
 
 // 改进的JSONL内容检测函数
+/**
+ * Detects if the provided content is in JSONL format.
+ *
+ * The function analyzes each line of the input content, attempting to parse it as JSON. It keeps track of valid JSONL lines and counts consecutive valid lines. If there are at least two consecutive JSONL lines or a sufficient total number of JSONL lines, it determines the content as JSONL. It also handles mixed content by separating valid JSONL from plain text.
+ *
+ * @param content - The string content to be analyzed for JSONL format.
+ * @returns An object indicating whether the content is JSONL, and optionally providing the JSONL content or mixed content.
+ */
 const detectJsonlContent = (content: string): { isJsonl: boolean; jsonlContent?: string; mixedContent?: { text: string; jsonl: string } } => {
   if (!content?.trim()) {
     return { isJsonl: false };
@@ -108,6 +116,9 @@ const detectJsonlContent = (content: string): { isJsonl: boolean; jsonlContent?:
 
 // 向后兼容的函数 (保留以防其他地方使用)
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+/**
+ * Checks if the given content is in JSONL format.
+ */
 const isJsonlFormat = (content: string): boolean => {
   return detectJsonlContent(content).isJsonl;
 };
@@ -123,6 +134,22 @@ interface OutputPanelProps {
   darkMode?: boolean;
 }
 
+/**
+ * Renders the output panel for displaying AI processing results.
+ *
+ * This component manages the display of the prompt result, handles auto-scrolling when the result updates, and provides functionality to save the prompt test. It utilizes effects to track loading states and previous result lengths, and conditionally renders content based on the type of prompt result (Markdown or JSONL). The component also includes buttons for generating new results and saving the current result.
+ *
+ * @param props - The properties for the OutputPanel component.
+ * @param props.promptObject - The object representing the prompt.
+ * @param props.promptText - The text of the prompt.
+ * @param props.promptResult - The result generated from the prompt.
+ * @param props.isLoading - A boolean indicating if the result is currently loading.
+ * @param props.onGenerate - A callback function to generate a new result.
+ * @param props.selectedModel - The model selected for generating results.
+ * @param props.onSave - A callback function to save the prompt test.
+ * @param [props.darkMode=false] - A boolean indicating if dark mode is enabled.
+ * @returns A React element representing the output panel.
+ */
 const OutputPanel: React.FC<OutputPanelProps> = (props) => {
   const {
     promptObject,

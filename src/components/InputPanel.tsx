@@ -11,6 +11,9 @@ interface InputPanelProps {
   onGenerate?: () => void;
 }
 
+/**
+ * Renders an input panel for processing objects and AI instructions.
+ */
 const InputPanel: React.FC<InputPanelProps> = ({
   promptObject,
   promptText,
