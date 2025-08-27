@@ -2,18 +2,14 @@ import React from 'react';
 import {
   Box,
   Typography,
-  IconButton,
-  Tabs,
-  Tab,
   FormControl,
   Select,
   MenuItem,
-  SelectChangeEvent
+  SelectChangeEvent,
+  Button
 } from '@mui/material';
 
 interface AppHeaderProps {
-  currentTab: number;
-  onTabChange: (event: React.SyntheticEvent, newValue: number) => void;
   selectedModel: string;
   onModelChange: (event: SelectChangeEvent<string>) => void;
   leftSidebarOpen: boolean;
@@ -22,18 +18,17 @@ interface AppHeaderProps {
   onToggleRightSidebar: () => void;
   onClearChat: () => void;
   availableModels: string[];
+  onToggleConversationMenu?: () => void;
 }
 
 /**
  * Renders the application header component.
  *
- * The AppHeader component displays navigation elements including tab selection, model selection, and sidebar toggle buttons.
- * It utilizes various props to manage the current state of the application, such as the currently selected tab, model, and sidebar visibility.
+ * The AppHeader component displays navigation elements including the title and model selection.
+ * It utilizes various props to manage the current state of the application, such as the currently selected model.
  * The component also provides functionality to clear the chat, enhancing user interaction.
  *
  * @param {Object} props - The properties for the AppHeader component.
- * @param {string} props.currentTab - The currently selected tab.
- * @param {function} props.onTabChange - Callback function to handle tab changes.
  * @param {string} props.selectedModel - The currently selected model.
  * @param {function} props.onModelChange - Callback function to handle model changes.
  * @param {boolean} props.leftSidebarOpen - Indicates if the left sidebar is open.
@@ -44,8 +39,6 @@ interface AppHeaderProps {
  * @param {Array<string>} props.availableModels - List of available models for selection.
  */
 const AppHeader: React.FC<AppHeaderProps> = ({
-  currentTab,
-  onTabChange,
   selectedModel,
   onModelChange,
   leftSidebarOpen,
@@ -53,7 +46,8 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   onToggleLeftSidebar,
   onToggleRightSidebar,
   onClearChat,
-  availableModels
+  availableModels,
+  onToggleConversationMenu
 }) => {
   return (
     <Box
@@ -62,11 +56,11 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         justifyContent: 'space-between',
         alignItems: 'center',
         borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
-        px: { xs: 4, md: 8, lg: 12 },
-        py: { xs: 3, md: 4 },
+        px: { xs: 4, md: 4, lg: 8 },
+        py: 0,
         flexShrink: 0,
         backgroundColor: 'background.default',
-        minHeight: '80px',
+        minHeight: '64px',
         backdropFilter: 'blur(20px)'
       }}
     >
@@ -83,43 +77,14 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         >
           AI Reader
         </Typography>
-        <Tabs 
-          value={currentTab} 
-          onChange={onTabChange} 
-          sx={{ 
-            '& .MuiTabs-indicator': {
-              backgroundColor: 'text.primary',
-              height: '3px',
-              borderRadius: '3px'
-            },
-            '& .MuiTab-root': {
-              textTransform: 'none',
-              fontWeight: 500,
-              fontSize: { xs: '0.95rem', md: '1rem' },
-              color: 'text.secondary',
-              px: { xs: 2, md: 3 },
-              py: 2,
-              minHeight: 48,
-              '&.Mui-selected': {
-                color: 'text.primary',
-                fontWeight: 600
-              },
-              '&:hover': {
-                color: 'text.primary',
-                opacity: 0.8
-              },
-              transition: 'all 0.2s ease'
-            }
-          }}
-        >
-          <Tab label="智能分析" />
-          <Tab label="历史记录" />
-          <Tab label="深度对话" />
-        </Tabs>
+
       </Box>
       
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-        <FormControl sx={{ minWidth: { xs: 180, md: 220 } }} size="medium">
+        {onToggleConversationMenu && (
+          <Button variant="outlined" size="small" onClick={onToggleConversationMenu}>会话</Button>
+        )}
+        <FormControl sx={{ minWidth: { xs: 180, md: 220 } }} size="small">
           <Select
             value={selectedModel}
             onChange={onModelChange}

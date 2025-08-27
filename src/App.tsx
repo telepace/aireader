@@ -6,15 +6,10 @@ import {
   createTheme,
   Box
 } from '@mui/material';
-import { usePromptTest } from './hooks/usePromptTest';
-import { useUIState } from './hooks/useUIState';
+  import { useUIState } from './hooks/useUIState';
 import { useModelSelection } from './hooks/useModelSelection';
-import { generateContent, createUserSession, logUserEvent, flushTraces } from './services/api-with-tracing';
+import { createUserSession, logUserEvent, flushTraces } from './services/api-with-tracing';
 import AppHeader from './components/Layout/AppHeader';
-import TabPanel from './components/Layout/TabPanel';
-import InputPanel from './components/InputPanel';
-import OutputPanel from './components/OutputPanel';
-import SavedTests from './components/SavedTests';
 import NextStepChat from './components/NextStepChat';
 import { UserSession } from './types/types';
 import './utils/langfuse-test'; // Auto-validates Langfuse integration in development
@@ -28,21 +23,9 @@ import './App.css';
  * @returns A React element representing the application interface.
  */
 const App: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState(0);
   const [nextStepClearSignal, setNextStepClearSignal] = useState<number>(0);
+  const [toggleConvMenuSignal, setToggleConvMenuSignal] = useState<number>(0);
   const [userSession, setUserSession] = useState<UserSession | null>(null);
-
-  const {
-    promptObject,
-    setPromptObject,
-    promptText,
-    setPromptText,
-    promptResult,
-    setPromptResult,
-    isLoading,
-    setIsLoading,
-    loadPromptTest
-  } = usePromptTest();
 
   const {
     leftSidebarOpen,
@@ -263,7 +246,7 @@ const App: React.FC = () => {
    * Updates the current tab value on tab change.
    */
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
-    setCurrentTab(newValue);
+    // This function is no longer needed as we have only one tab
   };
 
   /**
@@ -274,82 +257,14 @@ const App: React.FC = () => {
    * @returns {Promise<void>} A promise that resolves when the content generation process is complete.
    */
   const handleGenerate = async () => {
-    if (!promptObject || !promptText) return;
-
-    setIsLoading(true);
-    setPromptResult('');
-
-    // Log user event for analytics
-    if (userSession) {
-      logUserEvent('prompt-test-started', {
-        sessionId: userSession.sessionId,
-        model: selectedModel,
-        promptLength: promptText.length,
-        objectLength: promptObject.length
-      }, userSession.userId);
-    }
-
-    try {
-      const result = await generateContent(
-        promptObject, 
-        promptText, 
-        selectedModel, 
-        userSession?.userId
-      );
-      
-      if (result) {
-        setPromptResult(result);
-        
-        // Log successful generation
-        if (userSession) {
-          logUserEvent('prompt-test-completed', {
-            sessionId: userSession.sessionId,
-            model: selectedModel,
-            success: true,
-            responseLength: result.length
-          }, userSession.userId);
-        }
-      } else {
-        setPromptResult('API返回了空响应');
-        
-        // Log empty response
-        if (userSession) {
-          logUserEvent('prompt-test-failed', {
-            sessionId: userSession.sessionId,
-            model: selectedModel,
-            error: 'empty_response'
-          }, userSession.userId);
-        }
-      }
-    } catch (error: any) {
-      console.error('生成过程中发生错误:', error);
-      
-      // Log error
-      if (userSession) {
-        logUserEvent('prompt-test-failed', {
-          sessionId: userSession.sessionId,
-          model: selectedModel,
-          error: error.message || String(error)
-        }, userSession.userId);
-      }
-      
-      if (error.message?.includes('未找到API密钥')) {
-        setPromptResult(`❌ ${error.message}\n\n请在项目根目录创建.env文件并添加：\nREACT_APP_OPENROUTER_API_KEY=your_api_key_here\n\n💡 同时请配置Langfuse追踪（可选）：\nREACT_APP_LANGFUSE_SECRET_KEY=your_secret_key\nREACT_APP_LANGFUSE_PUBLIC_KEY=your_public_key\nREACT_APP_LANGFUSE_BASE_URL=https://cloud.langfuse.com`);
-      } else {
-        setPromptResult(`生成时出错: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    // This function is no longer needed as we have only one tab
   };
 
   /**
    * Handles the selection of a test by loading the prompt and setting the model and tab.
    */
   const handleSelectTest = (test: any) => {
-    loadPromptTest(test);
-    setSelectedModel(test.modelName);
-    setCurrentTab(0);
+    // This function is no longer needed as we have only one tab
   };
 
   // 这些变量在当前的布局中暂时未使用，但保留以备将来使用
@@ -376,8 +291,6 @@ const App: React.FC = () => {
         }}
       >
         <AppHeader
-          currentTab={currentTab}
-          onTabChange={handleTabChange}
           selectedModel={selectedModel}
           onModelChange={(e) => setSelectedModel(e.target.value)}
           leftSidebarOpen={leftSidebarOpen}
@@ -386,75 +299,21 @@ const App: React.FC = () => {
           onToggleRightSidebar={toggleRightSidebar}
           onClearChat={() => setNextStepClearSignal(Date.now())}
           availableModels={availableModels}
+          onToggleConversationMenu={() => setToggleConvMenuSignal(Date.now())}
         />
         
-        <TabPanel value={currentTab} index={0} sx={{ p: 0, display: 'flex', flexDirection: 'row', overflow: 'hidden', flexGrow: 1 }}>
-          <Box sx={{ 
-            width: { xs: '100%', md: '45%', lg: '40%' },
-            px: { xs: 3, md: 4, lg: 6 }, 
-            py: { xs: 3, md: 4, lg: 6 },
-            display: 'flex', 
-            flexDirection: 'column', 
-            overflowY: 'auto',
-            borderRight: { xs: 'none', md: '1px solid' },
-            borderColor: { xs: 'transparent', md: 'divider' }
-          }}>
-            <InputPanel
-              promptObject={promptObject}
-              promptText={promptText}
-              onPromptObjectChange={setPromptObject}
-              onPromptTextChange={setPromptText}
-              isLoading={isLoading}
-              onGenerate={handleGenerate}
-            />
-          </Box>
-          
-          <Box sx={{ 
-            width: { xs: '0%', md: '55%', lg: '60%' },
-            display: { xs: 'none', md: 'flex' },
-            flexDirection: 'column',
-            px: { md: 4, lg: 6 }, 
-            py: { md: 4, lg: 6 },
-            overflowY: 'auto'
-          }}>
-            <OutputPanel
-              promptObject={promptObject}
-              promptText={promptText}
-              promptResult={promptResult}
-              isLoading={isLoading}
-              onGenerate={handleGenerate}
-              selectedModel={selectedModel}
-              onSave={(test) => {
-                // Handle the saved test
-              }}
-            />
-          </Box>
-        </TabPanel>
-        
-        <TabPanel value={currentTab} index={1} sx={{ p: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexGrow: 1 }}>
-          <Box sx={{ 
-            flexGrow: 1, 
-            px: { xs: 3, md: 4, lg: 6 }, 
-            py: { xs: 3, md: 4, lg: 6 },
-            overflowY: 'auto',
-            width: '100%'
-          }}>
-            <SavedTests onSelectTest={handleSelectTest} />
-          </Box>
-        </TabPanel>
-
-        <TabPanel value={currentTab} index={2} sx={{ p: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexGrow: 1 }}>
-          <Box sx={{ 
-            flexGrow: 1, 
-            px: { xs: 3, md: 4, lg: 6 }, 
-            py: { xs: 3, md: 4, lg: 6 },
-            display: 'flex', 
-            flexDirection: 'column',
-            width: '100%'
-          }}>
-            <NextStepChat selectedModel={selectedModel} clearSignal={nextStepClearSignal} />
-          </Box>
-        </TabPanel>
+        {/* 深度对话区域 - 直接显示，不需要tab切换 */}
+        <Box sx={{ 
+          flexGrow: 1, 
+          px: 0, 
+          py: 0,
+          display: 'flex', 
+          flexDirection: 'column',
+          width: '100%',
+          minHeight: 0
+        }}>
+          <NextStepChat selectedModel={selectedModel} clearSignal={nextStepClearSignal} externalToggleConversationMenuSignal={toggleConvMenuSignal} />
+        </Box>
       </Container>
     </ThemeProvider>
   );

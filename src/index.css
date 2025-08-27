@@ -170,9 +170,6 @@ code {
 .markdown-body strong {
   font-weight: bold;
   color: #6366f1; /* 紫色文本 */
-  background-color: rgba(237, 233, 254, 0.5); /* 非常淡的紫色背景 */
-  padding: 0.1em 0.2em;
-  border-radius: 3px;
 }
 
 /* 引用块 */

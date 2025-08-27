@@ -6,16 +6,17 @@ import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatMessage, ChatConversation, OptionItem, UserSession } from '../types/types';
-import { listConversations, upsertConversation, deleteConversation } from '../utils/storage';
 import { generateChatStream, logUserEvent, createUserSession } from '../services/api-with-tracing';
 import { splitContentAndOptions, NextStepOption } from '../utils/contentSplitter';
 import { generateSystemPrompt } from '../services/promptTemplateV2';
+import { useConversation } from '../hooks/useConversation';
 
 // Markdown renderers (aligned with existing style)
 
 interface NextStepChatProps {
   selectedModel: string;
   clearSignal?: number;
+  externalToggleConversationMenuSignal?: number;
 }
 
 // NextStepOption interface moved to utils/contentSplitter.ts
@@ -86,20 +87,29 @@ function trimContextForApi(all: ChatMessage[]): ChatMessage[] {
  * @param {number} props.clearSignal - A signal to clear the chat state.
  * @returns {JSX.Element} The rendered NextStepChat component.
  */
-const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal, externalToggleConversationMenuSignal }) => {
+  const {
+    conversationId,
+    setConversationId,
+    messages,
+    setMessages,
+    options,
+    setOptions,
+    convMenuOpen,
+    setConvMenuOpen,
+    conversations,
+    createNewConversation,
+    chooseConversation,
+    removeConversation,
+    normalizeStoredOptions
+  } = useConversation({ selectedModel });
+  
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [options, setOptions] = useState<OptionItem[]>([]);
   const [selectedTab, setSelectedTab] = useState<'deepen' | 'next'>('deepen');
   const [reasoningOpen, setReasoningOpen] = useState(false);
   const [reasoningText, setReasoningText] = useState('');
   const [, setStreamingAssistantId] = useState<string | null>(null); // eslint-disable-line @typescript-eslint/no-unused-vars
-  const [conversationId, setConversationId] = useState<string>(() => {
-    const existing = listConversations()[0];
-    return existing ? existing.id : uuidv4();
-  });
-  const [convMenuOpen, setConvMenuOpen] = useState(false);
   const [userSession, setUserSession] = useState<UserSession | null>(null);
   
   // 历史推荐展开状态管理
@@ -124,10 +134,16 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
       setInputMessage(''); 
       setOptions([]);
       setContentCompleteStates(new Map());
-      // setPendingOptions(new Map());
       setShowHistoricalOptions({ deepen: false, next: false });
     }
-  }, [clearSignal]);
+  }, [clearSignal, setMessages, setOptions]);
+
+  // 恢复：响应来自 Header 的外部信号，切换会话菜单的开关
+  useEffect(() => {
+    if (typeof externalToggleConversationMenuSignal === 'number') {
+      setConvMenuOpen((v: boolean) => !v);
+    }
+  }, [externalToggleConversationMenuSignal, setConvMenuOpen]);
 
   // Initialize user session for chat tracing
   useEffect(() => {
@@ -142,19 +158,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
     }
   }, [conversationId, selectedModel]);
 
-  // Auto-persist conversation whenever messages/options change
-  useEffect(() => {
-    const conv: ChatConversation = {
-      id: conversationId,
-      messages,
-      timestamp: Date.now(),
-      updatedAt: Date.now(),
-      modelName: selectedModel,
-      options,
-      title: messages.find((m: ChatMessage) => m.role === 'user')?.content?.slice(0, 20) || '新会话'
-    };
-    upsertConversation(conv);
-  }, [messages, options, conversationId, selectedModel]);
+  // 持久化逻辑已移入 useConversation
 
   const ensureSystemPrompt = (current: ChatMessage[]): ChatMessage[] => {
     const hasSystem = current.some(m => m.role === 'system');
@@ -208,25 +212,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
     };
   };
 
-  const normalizeStoredOptions = (stored: any[] | undefined | null): OptionItem[] => {
-    const now = Date.now();
-    return (stored || []).map((o: any) => {
-      const type: 'deepen' | 'next' = o?.type === 'next' ? 'next' : 'deepen';
-      const content = typeof o?.content === 'string' ? o.content : '';
-      const idBase = typeof o?.id === 'string' && o.id.includes(':') ? o.id.split(':').slice(1).join(':') : (o?.id || content.trim().toLowerCase());
-      const id = `${type}:${idBase}`;
-      return {
-        id,
-        type,
-        content,
-        describe: typeof o?.describe === 'string' ? o.describe : '',
-        firstSeenAt: typeof o?.firstSeenAt === 'number' ? o.firstSeenAt : now,
-        lastSeenAt: typeof o?.lastSeenAt === 'number' ? o.lastSeenAt : now,
-        lastMessageId: typeof o?.lastMessageId === 'string' ? o.lastMessageId : '',
-        clickCount: typeof o?.clickCount === 'number' ? o.clickCount : 0,
-      } as OptionItem;
-    });
-  };
+  // 归一化逻辑已移入 useConversation
 
   /**
    * Merges incoming options with the existing options.
@@ -424,36 +410,55 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
 
   // Standalone page layout: fixed header + two scrollable columns
   return (
-    <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
-      {/* Fixed header inside the page */}
-      <Box sx={{ position: 'sticky', top: 0, zIndex: 1, p: 1, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>探索聊天</Typography>
-        <Box>
-          <Button size="small" variant="outlined" onClick={() => setConvMenuOpen((v: boolean) => !v)} sx={{ mr: 1 }}>会话</Button>
-          {convMenuOpen && (
-            <Box data-testid="conv-menu" sx={{ position:'absolute', right:8, top:44, bgcolor:'#fff', border:'1px solid #eee', borderRadius:1, p:1, boxShadow:2, width: 280, maxHeight: 300, overflowY:'auto' }}>
-              <Box sx={{ display:'flex', justifyContent:'space-between', alignItems:'center', mb:1 }}>
-                <Button size="small" variant="text" onClick={() => { setConversationId(uuidv4()); setMessages([]); setOptions([]); setShowHistoricalOptions({ deepen: false, next: false }); setConvMenuOpen(false); }}>新建会话</Button>
-                <Button size="small" variant="text" onClick={() => setConvMenuOpen(false)}>关闭</Button>
-              </Box>
-              {listConversations().map((c: ChatConversation) => (
-                <Box key={c.id} sx={{ display:'flex', justifyContent:'space-between', alignItems:'center', mb:0.5 }}>
-                  <Button size="small" variant={c.id===conversationId?'contained':'text'} onClick={() => { setConversationId(c.id); setMessages(c.messages || []); setOptions(normalizeStoredOptions(c.options as any)); setShowHistoricalOptions({ deepen: false, next: false }); }} sx={{ textTransform:'none', maxWidth: 200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                    {c.title || c.messages?.find((m: ChatMessage) => m.role==='user')?.content?.slice(0,20) || '会话'}
-                  </Button>
-                  <Button size="small" color="error" onClick={() => { deleteConversation(c.id); if (c.id===conversationId) { const left = listConversations()[0]; if (left) { setConversationId(left.id); setMessages(left.messages||[]); setOptions(normalizeStoredOptions(left.options as any)); setShowHistoricalOptions({ deepen: false, next: false });} else { setConversationId(uuidv4()); setMessages([]); setOptions([]); setShowHistoricalOptions({ deepen: false, next: false });} } }}>删除</Button>
-                </Box>
-              ))}
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      height: '100%', 
+      width: '100%',
+      bgcolor: 'background.default',
+      minHeight: 0
+    }}>
+      {/* 悬浮的会话菜单（由 Header 按钮控制显示/隐藏） */}
+      {convMenuOpen && (
+        <Box data-testid="conv-menu" sx={{ position:'absolute', right: 8, top: 8, bgcolor:'#fff', border:'1px solid #eee', borderRadius:1, p:1, boxShadow:2, width: 280, maxHeight: 300, overflowY:'auto', zIndex: 2 }}>
+          <Box sx={{ display:'flex', justifyContent:'space-between', alignItems:'center', mb:1 }}>
+            <Button size="small" variant="text" onClick={() => { createNewConversation(); setShowHistoricalOptions({ deepen: false, next: false }); }}>新建会话</Button>
+            <Button size="small" variant="text" onClick={() => setConvMenuOpen(false)}>关闭</Button>
+          </Box>
+          {conversations.map((c: ChatConversation) => (
+            <Box key={c.id} sx={{ display:'flex', justifyContent:'space-between', alignItems:'center', mb:0.5 }}>
+              <Button size="small" variant={c.id===conversationId?'contained':'text'} onClick={() => { chooseConversation(c); setShowHistoricalOptions({ deepen: false, next: false }); }} sx={{ textTransform:'none', maxWidth: 200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                {c.title || c.messages?.find((m: ChatMessage) => m.role==='user')?.content?.slice(0,20) || '会话'}
+              </Button>
+              <Button size="small" color="error" onClick={() => { removeConversation(c.id); setShowHistoricalOptions({ deepen: false, next: false }); }}>删除</Button>
             </Box>
-          )}
+          ))}
         </Box>
-      </Box>
+      )}
 
-      {/* Two columns area */}
-      <Box sx={{ position: 'absolute', top: 48, bottom: 0, left: 0, right: 0, display: 'flex', gap: 1, overflow: 'hidden' }}>
+      {/* Two columns area - using flexbox instead of absolute positioning */}
+      <Box sx={{ 
+        display: 'flex', 
+        flexGrow: 1,
+        minHeight: 0,
+        overflow: 'hidden',
+        bgcolor: 'background.default'
+      }}>
         {/* Left column: messages (scrollable) */}
-        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <Box ref={messagesContainerRef} data-testid="messages-box" sx={{ flexGrow: 1, overflowY: 'auto', p: 2, bgcolor: '#f7f7f7' }}>
+        <Box sx={{ 
+          flex: 1, 
+          minWidth: 0, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          overflow: 'hidden',
+          bgcolor: 'background.paper'
+        }}>
+          <Box ref={messagesContainerRef} data-testid="messages-box" sx={{ 
+            flexGrow: 1, 
+            overflowY: 'auto', 
+            p: 2, 
+            bgcolor: 'background.paper' 
+          }}>
             {messages.filter((m: ChatMessage) => m.role!=='system').map((m: ChatMessage) => {
               const isUser = m.role==='user';
               const { main } = splitContentAndOptions(m.content);
@@ -490,20 +495,20 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
                       gap: 1,
                       px: 2,
                       py: 1,
-                      bgcolor: 'rgba(0, 122, 255, 0.08)',
+                      bgcolor: 'rgba(0, 0, 0, 0.04)',
                       borderRadius: 2,
-                      border: '1px solid rgba(0, 122, 255, 0.2)',
+                      border: '1px solid rgba(0, 0, 0, 0.08)',
                       animation: `${fadeInAnimation} 0.5s ease-out`
                     }}>
                       <Box sx={{ 
                         width: 8, 
                         height: 8, 
                         borderRadius: '50%', 
-                        bgcolor: '#007AFF',
+                        bgcolor: '#BFBFBF',
                         animation: `${pulseAnimation} 1.5s ease-in-out infinite`
                       }} />
                       <Typography variant="caption" sx={{ 
-                        color: '#007AFF', 
+                        color: '#6B7280', 
                         fontWeight: 500,
                         fontSize: '0.8rem'
                       }}>
@@ -513,16 +518,12 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
                   )}
                   
                   <Paper elevation={1} sx={{ 
-                    p: 2.25, 
+                    px: 2.5, // 水平留白适中（约20px）
+                    py: 1.5, // 垂直留白调小（约12px）
                     maxWidth: '100%', 
                     bgcolor: isUser ? '#e7f0ff' : '#fff', 
                     borderRadius: 2,
-                    position: 'relative',
-                    // 完成状态下的微妙视觉变化
-                    ...(completionState?.isComplete && !isUser && {
-                      borderLeft: '3px solid #007AFF',
-                      bgcolor: 'rgba(247, 248, 250, 0.95)'
-                    })
+                    position: 'relative'
                   }}>
                     {isUser ? (
                       <Typography sx={{ whiteSpace: 'pre-wrap' }}>{m.content}</Typography>
@@ -544,15 +545,37 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
             )}
           </Box>
 
-          <Box sx={{ display: 'flex', p: 1, borderTop: 1, borderColor: 'divider', flexShrink: 0 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            p: 1, 
+            borderTop: 1, 
+            borderColor: 'divider', 
+            flexShrink: 0,
+            bgcolor: 'background.paper'
+          }}>
             <TextField fullWidth variant="outlined" placeholder="输入你的问题，获取答案与下一步探索方向..." value={inputMessage} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); handleSend(); } }} size="small" multiline maxRows={4} sx={{ mr: 1 }} disabled={isLoading} />
             <Button variant="contained" onClick={handleSend} disabled={isLoading || !inputMessage.trim()} sx={{ px: 2.5, fontWeight: 600 }}>发送</Button>
           </Box>
         </Box>
 
         {/* Right column: options (scrollable) */}
-        <Box sx={{ width: 360, minWidth: 320, maxWidth: 420, display: 'flex', flexDirection: 'column', borderLeft: 1, borderColor: 'divider', overflow: 'hidden' }}>
-          <Box sx={{ borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
+        <Box sx={{ 
+          width: '30%', 
+          minWidth: 360, 
+          maxWidth: 480, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          borderLeft: 1, 
+          borderColor: 'divider', 
+          overflow: 'hidden',
+          bgcolor: 'background.paper'
+        }}>
+          <Box sx={{ 
+            borderBottom: 1, 
+            borderColor: 'divider', 
+            flexShrink: 0,
+            bgcolor: 'background.paper'
+          }}>
             <Tabs
               value={selectedTab}
               onChange={(_: React.SyntheticEvent, v: 'deepen' | 'next') => setSelectedTab(v)}
@@ -562,7 +585,13 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
               <Tab value="next" label="推荐相关好书" sx={{ fontWeight: 600, textTransform: 'none' }} />
             </Tabs>
           </Box>
-          <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 1.5 }}>
+          <Box sx={{ 
+            flexGrow: 1, 
+            overflowY: 'auto', 
+            px: 3,
+            py: 3,
+            bgcolor: 'background.paper'
+          }}>
             {(() => {
               const { current, historical, hasHistorical } = getDisplayOptions(selectedTab);
               
@@ -576,7 +605,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
                   {current.length > 0 && (
                     <Box sx={{ mb: hasHistorical ? 2 : 0 }}>
                       {current.map((opt: OptionItem) => (
-                        <Box key={opt.id} sx={{ mb: 1.5 }}>
+                        <Box key={opt.id} sx={{ mb: 2.5 }}>
                           <Button 
                             variant="contained" 
                             color="primary" 
@@ -588,13 +617,13 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
                               px:1.75, 
                               py:0.75, 
                               boxShadow:'0 2px 8px rgba(43, 89, 255, 0.25)',
-                              width: '100%',
+                              width: 300,
                               justifyContent: 'flex-start'
                             }}
                           >
                             {opt.content}
                           </Button>
-                          <Typography variant="body2" sx={{ color:'#666', mt:0.5, lineHeight:1.6 }}>{opt.describe}</Typography>
+                          <Typography variant="body2" sx={{ color:'#666', mt:1.5, lineHeight:1.6 }}>{opt.describe}</Typography>
                         </Box>
                       ))}
                     </Box>
@@ -647,7 +676,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
                                   px:1.5, 
                                   py:0.5, 
                                   fontSize: '0.875rem',
-                                  width: '100%',
+                                  width: 320,
                                   justifyContent: 'flex-start',
                                   opacity: 0.8,
                                   '&:hover': {
