@@ -92,39 +92,8 @@ class LangfuseService {
     return this.isEnabled && this.langfuse !== null;
   }
 
-  /**
-   * Create a new trace for prompt testing
-   */
-  createPromptTestTrace(
-    promptObject: string,
-    promptText: string,
-    modelName: string,
-    userId?: string
-  ) {
-    if (!this.isLangfuseEnabled()) return null;
-
-    try {
-      const trace = this.langfuse!.trace({
-        name: 'prompt-test',
-        input: {
-          promptObject,
-          promptText,
-          combinedInput: `${promptText}\n\n${promptObject}`
-        },
-        metadata: {
-          model: modelName,
-          userId: userId,
-          type: 'prompt-test',
-          timestamp: new Date().toISOString()
-        }
-      });
-
-      return trace;
-    } catch (error) {
-      console.error('Failed to create prompt test trace:', error);
-      return null;
-    }
-  }
+  // Removed createPromptTestTrace - was creating too many empty traces
+  // Only chat conversations need traces for meaningful observability
 
   /**
    * Create a new trace for chat conversation

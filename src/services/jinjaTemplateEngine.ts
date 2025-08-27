@@ -273,15 +273,17 @@ export class JinjaTemplateEngine {
    */
   private getInlineTemplate(context: PromptContext, language: Language): string {
     // 这里应该从实际的 .j2 文件加载模板
-    // 为了演示，我们返回一个简化版本
+    // 目前使用内联模板，与 promptTemplateV2.ts 保持一致
     if (context === 'nextStepChat' && language === 'zh') {
       return `{{ goal | default('我的目标是「精读」当前讨论的内容（文章或书籍），并不断切换对象。（当我发送一大段长文字时就是复制的长文章）') }}
 
 每次交互，请严格执行以下3件事：
 
-**1. {{ steps.focus.title | default('聚焦与展开') }}** {{ steps.focus.description | default('先讲透内容的一个核心关键；再全面概览，让我了解全貌，语言风格清晰易懂。') }}
+**1. {{ steps.focus.title | default('聚焦与展开') }}**
+{{ steps.focus.description | default('先讲透内容的一个核心关键；再全面概览，让我了解全貌，语言风格清晰易懂。') }}
 
-**2. {{ steps.deepen.title | default('原文深挖') }} (type: deepen)** {{ steps.deepen.description | default('推荐3个最有价值的原文精读选项。') }}
+**2. {{ steps.deepen.title | default('原文深挖') }}**
+{{ steps.deepen.description | default('推荐3个最有价值的原文精读选项。') }}
 {% if steps.deepen.criteria %}
 {{ steps.deepen.criteria.length }}个选项可以参考以下行动类型：
 {% for criterion in steps.deepen.criteria %}
@@ -294,30 +296,34 @@ export class JinjaTemplateEngine {
 - 选项一定要围绕「原文」，原文指的是最近在讨论的书、文章、主题。比如我们当前在讨论的是某一本书，则精读选项一定也是围绕该书原文的，而不是脱离原文的主观讨论。
 - 当讨论新书时，即精读对象变化了，不要老对比提及先前的精读对象。比如最初在精读一篇文章，后来在精读一本新书，则不要老对比之前文章的内容和新书的内容。只专注于当前的精读对象。注意，对象是整个原文，而不是我们当前讨论的原文的子话题（不要围绕子话题出所有精读选项，应该围绕原文出选项）。
 
-**3. {{ steps.next.title | default('主题探索') }} (type: next)** {{ steps.next.description | default('推荐3本最值得阅读的相关书籍，挑选对我有价值、最不可错过的探索对象，要围绕当前主题，以这些维度做优先级的排序。选项的描述要足够吸引我，能勾起我的兴趣') }}
+**3. {{ steps.next.title | default('主题探索') }}**
+{{ steps.next.description | default('推荐3本最值得阅读的相关书籍，挑选对我有价值、最不可错过的探索对象，要围绕当前主题，以这些维度做优先级的排序。选项的描述要足够吸引我，能勾起我的兴趣') }}
 
-**格式要求** 第2和第3步的推荐项，必须严格遵循 {{ format.type | upper | default('JSON Lines (JSONL)') }} 格式{% if format.requirements %}，{{ format.requirements | join('，') }}{% endif %}。
+═══ 格式输出要求 ═══
 
+第2和第3步的推荐选项，必须严格遵循 JSONL 格式输出。
 
-**JSONL 模板:**
+**输出流程**：
+1. 首先完成第1步的文本内容
+2. 空一行
+3. 输出完整的JSONL数据，每行一个JSON对象
 
----
-{% if format.template %}
+**JSONL 输出规范**：
 {% for template_item in format.template %}
 {{ template_item | json }}
 {% endfor %}
-{% else %}
-{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}
-{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}
-{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}
-{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}
-{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}
-{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}
-{% endif %}
 
+**JSON格式严格要求**：
+- 字段名用双引号：{"type": "deepen"} ✅  {"type("deepen" ❌
+- 冒号后有空格：{"type": "next"} ✅  {"type":"next"} ❌  
+- 字符串值用双引号：{"content": "标题"} ✅  {"content": '标题'} ❌
+- 每个JSON对象独立一行，不要换行
+- 只允许这些type值：content_complete, deepen, next
+- JSON格式：{"type": "xxx", "content": "xxx", "describe": "xxx"}
+- 不要添加代码块标记或解释文字
+- 检查括号配对：{ } 必须匹配
 
-**约束条件**：不要向用户解释此格式。
-输出结构：只需输出聚焦与展开对应的文本。之后一定要**留出空白行符号**，再输出所有JSONL。`;
+输出结构：文本内容 + 空行 + JSONL数据`;
     }
     
     return '';

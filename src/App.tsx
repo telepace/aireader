@@ -36,29 +36,23 @@ const App: React.FC = () => {
 
   const { selectedModel, setSelectedModel, availableModels } = useModelSelection();
 
-  // Initialize user session on app load
+  // Initialize user session on app load (without logging app-loaded event)
   useEffect(() => {
     const session = createUserSession();
     if (session) {
       setUserSession(session);
-      logUserEvent('app-loaded', {
-        sessionId: session.sessionId,
-        timestamp: new Date().toISOString()
-      }, session.userId);
+      // Removed app-loaded event - too noisy for analytics
     }
   }, []);
 
-  // Flush traces before page unload
+  // Flush traces before page unload (without logging app-unload event)
   useEffect(() => {
     /**
      * Handles the before unload event to log user session data.
      */
     const handleBeforeUnload = () => {
       if (userSession) {
-        logUserEvent('app-unload', {
-          sessionId: userSession.sessionId,
-          sessionDuration: Date.now() - new Date(userSession.startTime).getTime()
-        }, userSession.userId);
+        // Removed app-unload event - too noisy for analytics
         flushTraces();
       }
     };

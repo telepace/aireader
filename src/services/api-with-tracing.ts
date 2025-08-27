@@ -8,7 +8,8 @@ import * as originalApi from './api';
  */
 
 /**
- * Generate content with Langfuse tracing
+ * Generate content (simplified without trace creation)
+ * Note: Only chat conversations create traces, not individual prompt tests
  */
 export const generateContent = async (
   promptObject: string,
@@ -16,69 +17,14 @@ export const generateContent = async (
   modelName: string,
   userId?: string
 ): Promise<string> => {
-  // Create trace if Langfuse is enabled
-  const trace = langfuseService.createPromptTestTrace(
-    promptObject,
-    promptText,
-    modelName,
-    userId
-  );
-
-  try {
-    // Add preprocessing span
-    // const preprocessSpan = langfuseService.addSpan(
-    //   trace,
-    //   'input-preprocessing',
-    //   { promptObject, promptText },
-    //   { combinedInput: `${promptText}\n\n${promptObject}` },
-    //   { step: 'preprocessing' }
-    // );
-
-    // Call original API
-    const startTime = Date.now();
-    const result = await originalApi.generateContent(promptObject, promptText, modelName);
-    const endTime = Date.now();
-
-    // Add generation to trace
-    langfuseService.addGeneration(
-      trace,
-      {
-        promptObject,
-        promptText,
-        combinedInput: `${promptText}\n\n${promptObject}`
-      },
-      result,
-      modelName,
-      {
-        responseTime: endTime - startTime,
-        outputLength: result.length,
-        success: true
-      }
-    );
-
-    // Update trace with final output
-    langfuseService.updateTrace(trace, {
-      output: { result, responseTime: endTime - startTime },
-      metadata: { success: true, outputLength: result.length }
-    });
-
-    return result;
-  } catch (error) {
-    // Log error to trace
-    langfuseService.updateTrace(trace, {
-      metadata: { 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
-      }
-    });
-
-    // Re-throw the error to maintain original behavior
-    throw error;
-  }
+  // Just call original API without creating trace
+  // Prompt test traces were creating too much noise in Langfuse
+  return await originalApi.generateContent(promptObject, promptText, modelName);
 };
 
 /**
- * Generate content stream with Langfuse tracing
+ * Generate content stream (simplified without trace creation)
+ * Note: Only chat conversations create traces, not individual prompt tests
  */
 export const generateContentStream = async (
   promptObject: string,
@@ -89,114 +35,16 @@ export const generateContentStream = async (
   onComplete: () => void,
   userId?: string
 ): Promise<void> => {
-  // Create trace for streaming
-  const trace = langfuseService.createPromptTestTrace(
+  // Just call original API without creating trace
+  // Prompt test traces were creating too much noise in Langfuse
+  return await originalApi.generateContentStream(
     promptObject,
     promptText,
     modelName,
-    userId
+    onChunkReceived,
+    onError,
+    onComplete
   );
-
-  let fullResponse = '';
-  let chunkCount = 0;
-  const startTime = Date.now();
-
-  // Wrap callbacks to collect metrics
-  const wrappedOnChunkReceived = (chunk: string) => {
-    fullResponse += chunk;
-    chunkCount++;
-    onChunkReceived(chunk);
-  };
-
-  const wrappedOnError = (error: Error) => {
-    const endTime = Date.now();
-    
-    // Update trace with error
-    langfuseService.updateTrace(trace, {
-      metadata: { 
-        success: false, 
-        error: error.message,
-        responseTime: endTime - startTime,
-        chunksReceived: chunkCount,
-        partialResponse: fullResponse.substring(0, 500) // First 500 chars
-      }
-    });
-
-    onError(error);
-  };
-
-  const wrappedOnComplete = () => {
-    const endTime = Date.now();
-    
-    // Add generation to trace
-    langfuseService.addGeneration(
-      trace,
-      {
-        promptObject,
-        promptText,
-        combinedInput: `${promptText}\n\n${promptObject}`
-      },
-      fullResponse,
-      modelName,
-      {
-        responseTime: endTime - startTime,
-        chunksReceived: chunkCount,
-        outputLength: fullResponse.length,
-        isStreaming: true,
-        success: true
-      }
-    );
-
-    // Update trace with final output
-    langfuseService.updateTrace(trace, {
-      output: { 
-        result: fullResponse, 
-        responseTime: endTime - startTime,
-        chunksReceived: chunkCount
-      },
-      metadata: { 
-        success: true, 
-        outputLength: fullResponse.length,
-        isStreaming: true
-      }
-    });
-
-    onComplete();
-  };
-
-  try {
-    // Add preprocessing span
-    langfuseService.addSpan(
-      trace,
-      'streaming-preprocessing',
-      { promptObject, promptText },
-      { combinedInput: `${promptText}\n\n${promptObject}` },
-      { step: 'preprocessing', isStreaming: true }
-    );
-
-    // Call original streaming API with wrapped callbacks
-    await originalApi.generateContentStream(
-      promptObject,
-      promptText,
-      modelName,
-      wrappedOnChunkReceived,
-      wrappedOnError,
-      wrappedOnComplete
-    );
-  } catch (error) {
-    const endTime = Date.now();
-    
-    // Update trace with error
-    langfuseService.updateTrace(trace, {
-      metadata: { 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error),
-        responseTime: endTime - startTime
-      }
-    });
-
-    throw error;
-  }
 };
 
 /**

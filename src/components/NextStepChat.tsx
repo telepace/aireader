@@ -145,16 +145,12 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     }
   }, [externalToggleConversationMenuSignal, setConvMenuOpen]);
 
-  // Initialize user session for chat tracing
+  // Initialize user session for chat tracing (without session-started event)
   useEffect(() => {
     const session = createUserSession();
     if (session) {
       setUserSession(session);
-      logUserEvent('chat-session-started', {
-        sessionId: session.sessionId,
-        conversationId,
-        model: selectedModel
-      }, session.userId);
+      // Removed chat-session-started event - too noisy, traces provide better insights
     }
   }, [conversationId, selectedModel]);
 
@@ -272,16 +268,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     setMessages(withoutSystem); setInputMessage(''); setIsLoading(true);
     setReasoningText(''); setReasoningOpen(false);
 
-    // Log chat message started event
-    if (userSession) {
-      logUserEvent('chat-message-started', {
-        sessionId: userSession.sessionId,
-        conversationId,
-        model: selectedModel,
-        messageLength: userText.length,
-        contextMessages: withSystem.length
-      }, userSession.userId);
-    }
+    // Removed chat-message-started event - chat traces provide better insights
 
     try {
       // create placeholder assistant message for streaming

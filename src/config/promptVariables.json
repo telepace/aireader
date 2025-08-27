@@ -31,12 +31,12 @@
         ],
         "template": [
           {"type": "content_complete", "message": "正文解析完成，生成推荐选项中..."},
-          {"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"},
-          {"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"},
-          {"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"},
-          {"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"},
-          {"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"},
-          {"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}
+          {"type": "deepen", "content": "章节一：核心概念解析", "describe": "深入分析作者在第一章提出的核心理念和基础概念。"},
+          {"type": "deepen", "content": "关键论证：主要观点剖析", "describe": "详细拆解书中最重要的论证逻辑和支撑证据。"},
+          {"type": "deepen", "content": "实例分析：典型案例解读", "describe": "通过书中的具体案例来理解作者的理论应用。"},
+          {"type": "next", "content": "《乌合之众》勒庞", "describe": "群体心理学经典之作，深入探讨群体行为的心理机制，与狂热分子的个体心理形成完美对比。"},
+          {"type": "next", "content": "《思考，快与慢》丹尼尔·卡尼曼", "describe": "诺贝尔经济学奖得主的心理学巨著，揭示人类决策的双重系统，解释个体如何被情感和认知偏差驱动。"},
+          {"type": "next", "content": "《从众心理学》所罗门·阿希", "describe": "经典社会心理学研究，通过著名的从众实验揭示社会压力如何影响个体判断和行为选择。"}
         ]
       }
     },
@@ -71,12 +71,12 @@
         ],
         "template": [
           {"type": "content_complete", "message": "Content analysis completed, generating recommendations..."},
-          {"type": "deepen", "content": "Deep dive option title", "describe": "Detailed and engaging description of this option."},
-          {"type": "deepen", "content": "Deep dive option title", "describe": "Detailed and engaging description of this option."},
-          {"type": "deepen", "content": "Deep dive option title", "describe": "Detailed and engaging description of this option."},
-          {"type": "next", "content": "Recommended book title", "describe": "Detailed and engaging description of this book."},
-          {"type": "next", "content": "Recommended book title", "describe": "Detailed and engaging description of this book."},
-          {"type": "next", "content": "Recommended book title", "describe": "Detailed and engaging description of this book."}
+          {"type": "deepen", "content": "Chapter Analysis: Core Concepts", "describe": "Deep dive into the fundamental concepts and theories presented in the first chapter."},
+          {"type": "deepen", "content": "Key Arguments: Main Thesis", "describe": "Detailed examination of the author's primary arguments and supporting evidence."},
+          {"type": "deepen", "content": "Case Studies: Practical Examples", "describe": "Analysis of specific examples and case studies used to illustrate key points."},
+          {"type": "next", "content": "The Crowd by Gustave Le Bon", "describe": "Classic work on crowd psychology that perfectly complements the individual psychology perspective."},
+          {"type": "next", "content": "Thinking, Fast and Slow by Daniel Kahneman", "describe": "Nobel Prize winner's masterwork on human decision-making and cognitive biases."},
+          {"type": "next", "content": "Influence by Robert Cialdini", "describe": "Essential guide to the psychology of persuasion and social influence."}
         ]
       }
     }
