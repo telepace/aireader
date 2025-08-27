@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Box, Button, CircularProgress, Paper, TextField, Typography, Tabs, Tab } from '@mui/material';
+import { Box, Button, CircularProgress, Paper, TextField, Typography, Tabs, Tab, keyframes } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { v4 as uuidv4 } from 'uuid';
-import { ChatMessage, ChatConversation, OptionItem } from '../types/types';
+import { ChatMessage, ChatConversation, OptionItem, UserSession } from '../types/types';
 import { listConversations, upsertConversation, deleteConversation } from '../utils/storage';
-import { generateChatStream } from '../services/api';
+import { generateChatStream, logUserEvent, createUserSession } from '../services/api-with-tracing';
+import { splitContentAndOptions, NextStepOption } from '../utils/contentSplitter';
+import { generateSystemPrompt } from '../services/promptTemplateV2';
 
 // Markdown renderers (aligned with existing style)
 
@@ -16,91 +18,45 @@ interface NextStepChatProps {
   clearSignal?: number;
 }
 
-interface NextStepOption {
-  type: 'deepen' | 'next';
-  content: string;
-  describe: string;
-}
+// NextStepOption interface moved to utils/contentSplitter.ts
 
 // OptionItem now comes from types.ts
 
-const SYSTEM_PROMPT = `我的目标是「深度阅读」当前讨论的内容（文章或书籍），并不断切换对象。（当我发送一大段长文字时就是复制的长文章）
-
-每次交互，请严格执行以下3件事：
-**1. **先聚焦重点**：找出当前对应内容中最重要的一个或一对内核/关键词，让我抓到理解的关键点，要求清晰易懂地讲明白。**再全面展开**：全面展开对应内容,尽量每个要点讲的详细全面insightful,引人入胜。
-
-**2. 原文深挖 (type: deepen)** 推荐3个最有价值的原文精读选项。
-3个选项可以参考以下行动类型：
-- 按顺序推荐原文的某个具体部分，深度展开（按情节划分、按逻辑划分，划分为第一第二..第n部分。按顺序推荐第一、二..部分。（偏向客观的呈现内容，而不是过于主观的讨论）
-- 围绕原文的一个重点，讲透彻（同样偏向客观呈现原文相关的讨论，不要过于主观的讨论）。挑选标准按照对我最有价值、最能引起我兴趣作为最重要的评估维度。
-其他
-- 类型选择机制：这些类型不必每个都要出现，可以一个类型有多个选项，某些类型没有选项。最关键的是你根据当前情况非常聪明的评估，最合适我的三个选项是什么来推荐。
-- 选项一定要围绕「原文」，原文指的是最近在讨论的书、文章、主题。比如我们当前在讨论的是某一本书，则精读选项一定也是围绕该书原文的，而不是脱离原文的主观讨论。
-- 当讨论新书时，即精读对象变化了，不要老对比提及先前的精读对象。比如最初在精读一篇文章，后来在精读一本新书，则不要老对比之前文章的内容和新书的内容。只专注于当前的精读对象。注意，对象是整个原文，而不是我们当前讨论的原文的子话题（不要围绕子话题出所有精读选项，应该围绕原文出选项）。
-
-**3. 主题探索 (type: next)** 推荐3本最值得阅读的相关书籍，挑选对我有价值、最不可错过的探索对象，要围绕当前主题，以这些维度做优先级的排序。选项的描述要足够吸引我，能勾起我的兴趣
-
-选项描述
-每个选项的描述要**讲透该选项的精髓之处**，hooked读者。言简意骇不讲废话。
-
-**格式要求** 
-第2和第3步的推荐项，必须严格遵循 JSON Lines (JSONL) 格式，每行一个JSON对象，不要在代码块前后添加任何说明。
-- 第2步推荐，type 字段的值必须是 deepen
-- 第3步推荐，type 字段的值必须是 next
-
-风格
-输出以 jsonl 的方式输出 ，并且避免因为 JSONL 格是的输出要求导致内容过于严肃，保留清楚易懂
-
-**JSONL 输出结构:**
-
-聚焦与展开的文本内容
-
----
-{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}
-{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}
-{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}
-{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}
-{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}
-{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}
-
-
-**约束条件**：不要向用户解释此格式。
-输出结构：只需输出聚焦与展开对应的文本。之后一定要**留出空白行符号**，再输出所有JSONL。`;
-
-function splitContentAndOptions(raw: string): { main: string; options: NextStepOption[] } {
-  if (!raw) return { main: '', options: [] };
-  const lines = raw.split('\n');
-  // trim trailing empty lines
-  let end = lines.length - 1;
-  while (end >= 0 && lines[end].trim() === '') end--;
-  const collected: NextStepOption[] = [];
-  for (let i = end; i >= 0; i--) {
-    const line = lines[i].trim();
-    if (!line) break; // stop at first blank line when scanning upwards
-    try {
-      const obj = JSON.parse(line);
-      if (
-        obj && typeof obj === 'object' &&
-        ((obj as any).type === 'deepen' || (obj as any).type === 'next') &&
-        typeof (obj as any).content === 'string' &&
-        typeof (obj as any).describe === 'string'
-      ) {
-        collected.push({ type: (obj as any).type, content: (obj as any).content, describe: (obj as any).describe });
-        end = i - 1; // shrink main content end pointer
-        continue;
-      }
-      // if JSON but not option, stop
-      break;
-    } catch {
-      // not JSON → stop
-      break;
-    }
+// 使用新的模板系统生成 SYSTEM_PROMPT
+const getSystemPrompt = () => {
+  try {
+    return generateSystemPrompt('nextStepChat', 'zh');
+  } catch (error) {
+    console.error('Failed to generate system prompt:', error);
+    // 降级到原始硬编码版本 - 简化模板避免 syntax issues
+    return '我的目标是「精读」当前讨论的内容（文章或书籍），并不断切换对象。（当我发送一大段长文字时就是复制的长文章）\n\n每次交互，请严格执行以下3件事：\n**1. 聚焦与展开** 先讲透内容的一个核心关键；再全面概览，让我了解全貌，语言风格清晰易懂。\n\n**2. 原文深挖 (type: deepen)** 推荐3个最有价值的原文精读选项。\n**3. 主题探索 (type: next)** 推荐3本最值得阅读的相关书籍\n\n**格式要求** 第2和第3步的推荐项，必须严格遵循 JSON Lines (JSONL) 格式，每行一个JSON对象。\n- 第2步推荐，type 字段的值必须是 deepen\n- 第3步推荐，type 字段的值必须是 next\n\n**重要：完成标志** 先输出：{"type": "content_complete", "message": "正文解析完成，生成推荐选项中..."}\n\n**JSONL 模板:**\n{"type": "content_complete", "message": "正文解析完成，生成推荐选项中..."}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细描述"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细描述"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细描述"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对该书籍的详细描述"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对该书籍的详细描述"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对该书籍的详细描述"}\n\n**约束条件**：不要向用户解释此格式。\n输出结构：只需输出聚焦与展开对应的文本。之后一定要留出空白行符号，再输出所有JSONL。';
   }
-  collected.reverse();
-  const main = lines.slice(0, end + 1).join('\n').trimEnd();
-  const options = collected.slice(0, 6);
-  return { main, options };
-}
+};
+
+// splitContentAndOptions function moved to utils/contentSplitter.ts
+
+// 定义优雅的动画效果
+const pulseAnimation = keyframes`
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+`;
+
+const fadeInAnimation = keyframes`
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
 
 const MAX_CONTEXT_CHARS = 80000;
 
@@ -121,7 +77,9 @@ function trimContextForApi(all: ChatMessage[]): ChatMessage[] {
 /**
  * The NextStepChat component manages a chat interface for user interactions with a selected model.
  *
- * It maintains the state of messages, input, loading status, options, and conversation details. The component handles sending messages, merging options, and auto-persisting conversations. It also provides a layout for displaying messages and options, allowing users to interact with the chat and explore related content.
+ * It maintains the state of messages, input, loading status, options, and conversation details.
+ * The component handles sending messages, merging options, and auto-persisting conversations.
+ * It also provides a layout for displaying messages and options, allowing users to interact with the chat and explore related content.
  *
  * @param {NextStepChatProps} props - The properties for the NextStepChat component.
  * @param {string} props.selectedModel - The model selected for the chat.
@@ -142,12 +100,47 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
     return existing ? existing.id : uuidv4();
   });
   const [convMenuOpen, setConvMenuOpen] = useState(false);
+  const [userSession, setUserSession] = useState<UserSession | null>(null);
+  
+  // 历史推荐展开状态管理
+  const [showHistoricalOptions, setShowHistoricalOptions] = useState<{[key: string]: boolean}>({
+    deepen: false,
+    next: false
+  });
+  
+  // 完成状态管理
+  const [contentCompleteStates, setContentCompleteStates] = useState<Map<string, {
+    isComplete: boolean;
+    completionMessage: string;
+    timestamp: number;
+  }>>(new Map());
+  const [pendingOptions, setPendingOptions] = useState<Map<string, OptionItem[]>>(new Map());
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (typeof clearSignal === 'number') { setMessages([]); setInputMessage(''); setOptions([]); }
+    if (typeof clearSignal === 'number') { 
+      setMessages([]); 
+      setInputMessage(''); 
+      setOptions([]);
+      setContentCompleteStates(new Map());
+      setPendingOptions(new Map());
+      setShowHistoricalOptions({ deepen: false, next: false });
+    }
   }, [clearSignal]);
+
+  // Initialize user session for chat tracing
+  useEffect(() => {
+    const session = createUserSession();
+    if (session) {
+      setUserSession(session);
+      logUserEvent('chat-session-started', {
+        sessionId: session.sessionId,
+        conversationId,
+        model: selectedModel
+      }, session.userId);
+    }
+  }, [conversationId, selectedModel]);
 
   // Auto-persist conversation whenever messages/options change
   useEffect(() => {
@@ -166,7 +159,53 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
   const ensureSystemPrompt = (current: ChatMessage[]): ChatMessage[] => {
     const hasSystem = current.some(m => m.role === 'system');
     if (hasSystem) return current;
-    return [{ id: uuidv4(), role: 'system', content: SYSTEM_PROMPT, timestamp: Date.now() }, ...current];
+    return [{ id: uuidv4(), role: 'system', content: getSystemPrompt(), timestamp: Date.now() }, ...current];
+  };
+
+  /**
+   * 按消息ID分组选项，用于实现历史推荐的折叠功能
+   */
+  const groupOptionsByMessage = (options: OptionItem[], type: 'deepen' | 'next') => {
+    const filtered = options.filter((o: OptionItem) => o.type === type);
+    const groups = new Map<string, OptionItem[]>();
+    
+    // 按 lastMessageId 分组
+    filtered.forEach(option => {
+      const messageId = option.lastMessageId || 'unknown';
+      if (!groups.has(messageId)) {
+        groups.set(messageId, []);
+      }
+      groups.get(messageId)!.push(option);
+    });
+    
+    // 按组的最新时间排序（最新的组在最前面）
+    const sortedGroups = Array.from(groups.entries()).sort((a, b) => {
+      const maxTimeA = Math.max(...a[1].map(o => o.lastSeenAt));
+      const maxTimeB = Math.max(...b[1].map(o => o.lastSeenAt));
+      return maxTimeB - maxTimeA;
+    });
+    
+    return sortedGroups;
+  };
+
+  /**
+   * 获取要显示的选项
+   */
+  const getDisplayOptions = (type: 'deepen' | 'next') => {
+    const groups = groupOptionsByMessage(options, type);
+    if (groups.length === 0) return { current: [], historical: [], hasHistorical: false };
+    
+    const [latestGroup, ...historicalGroups] = groups;
+    const currentOptions = latestGroup[1].sort((a, b) => b.firstSeenAt - a.firstSeenAt);
+    const historicalOptions = historicalGroups.flatMap(([, opts]) => 
+      opts.sort((a, b) => b.firstSeenAt - a.firstSeenAt)
+    );
+    
+    return {
+      current: currentOptions,
+      historical: historicalOptions,
+      hasHistorical: historicalOptions.length > 0
+    };
   };
 
   const normalizeStoredOptions = (stored: any[] | undefined | null): OptionItem[] => {
@@ -238,6 +277,18 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
     const withSystem = ensureSystemPrompt(trimmed);
     setMessages(withoutSystem); setInputMessage(''); setIsLoading(true);
     setReasoningText(''); setReasoningOpen(false);
+
+    // Log chat message started event
+    if (userSession) {
+      logUserEvent('chat-message-started', {
+        sessionId: userSession.sessionId,
+        conversationId,
+        model: selectedModel,
+        messageLength: userText.length,
+        contextMessages: withSystem.length
+      }, userSession.userId);
+    }
+
     try {
       // create placeholder assistant message for streaming
       const assistantId = uuidv4();
@@ -257,16 +308,98 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
           }
         },
         (err: Error) => {
+          // Log error event
+          if (userSession) {
+            logUserEvent('chat-message-failed', {
+              sessionId: userSession.sessionId,
+              conversationId,
+              model: selectedModel,
+              error: err.message
+            }, userSession.userId);
+          }
           alert(`流式生成出错: ${err.message}`);
         },
         () => {
-          // finalize parse options
-          const { options: incoming } = splitContentAndOptions(assembled);
-          if (incoming.length) mergeOptions(incoming, assistantId);
+          // Enhanced option parsing with completion signals
+          try {
+            const { main, options: incoming, isContentComplete, completionMessage } = splitContentAndOptions(assembled);
+            
+            // 更新消息内容，移除 JSON 部分，只显示主内容
+            if (main !== assembled) {
+              setMessages((prev: ChatMessage[]) => 
+                prev.map((m: ChatMessage) => 
+                  m.id === assistantId ? { ...m, content: main } : m
+                )
+              );
+            }
+            
+            // 处理完成标志
+            if (isContentComplete) {
+              setContentCompleteStates(prev => {
+                const newMap = new Map(prev);
+                newMap.set(assistantId, {
+                  isComplete: true,
+                  completionMessage: completionMessage || '正文解析完成，生成推荐选项中...',
+                  timestamp: Date.now()
+                });
+                return newMap;
+              });
+            }
+            
+            // 处理推荐选项
+            if (incoming.length > 0) {
+              // 如果正文已完成，延迟显示推荐以实现优雅过渡
+              if (isContentComplete) {
+                setTimeout(() => {
+                  mergeOptions(incoming, assistantId);
+                }, 800); // 800ms 过渡时间
+              } else {
+                mergeOptions(incoming, assistantId);
+              }
+            }
+            
+            // Log successful completion
+            if (userSession) {
+              logUserEvent('chat-message-completed', {
+                sessionId: userSession.sessionId,
+                conversationId,
+                model: selectedModel,
+                success: true,
+                responseLength: assembled.length,
+                optionsGenerated: incoming.length,
+                mainContentLength: main.length,
+                hasContentComplete: isContentComplete
+              }, userSession.userId);
+            }
+          } catch (error) {
+            console.error('Failed to parse options from response:', error);
+            // 降级处理：保持原始响应，但记录错误
+            if (userSession) {
+              logUserEvent('chat-parsing-failed', {
+                sessionId: userSession.sessionId,
+                conversationId,
+                model: selectedModel,
+                error: error instanceof Error ? error.message : String(error),
+                responseLength: assembled.length
+              }, userSession.userId);
+            }
+          }
+          
           setIsLoading(false);
-        }
+        },
+        conversationId,
+        userSession?.userId
       );
     } catch (e) {
+      // Log general error
+      if (userSession) {
+        logUserEvent('chat-message-failed', {
+          sessionId: userSession.sessionId,
+          conversationId,
+          model: selectedModel,
+          error: e instanceof Error ? e.message : String(e)
+        }, userSession.userId);
+      }
       alert(`发送消息失败: ${e instanceof Error ? e.message : String(e)}`);
       setIsLoading(false);
     }
@@ -293,22 +426,22 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
   return (
     <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
       {/* Fixed header inside the page */}
-      <Box sx={{ position: 'sticky', top: 0, zIndex: 1, p: 1, bgcolor: '#fff', borderBottom: 1, borderColor: 'divider', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+      <Box sx={{ position: 'sticky', top: 0, zIndex: 1, p: 1, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>探索聊天</Typography>
         <Box>
           <Button size="small" variant="outlined" onClick={() => setConvMenuOpen((v: boolean) => !v)} sx={{ mr: 1 }}>会话</Button>
           {convMenuOpen && (
             <Box data-testid="conv-menu" sx={{ position:'absolute', right:8, top:44, bgcolor:'#fff', border:'1px solid #eee', borderRadius:1, p:1, boxShadow:2, width: 280, maxHeight: 300, overflowY:'auto' }}>
               <Box sx={{ display:'flex', justifyContent:'space-between', alignItems:'center', mb:1 }}>
-                <Button size="small" variant="text" onClick={() => { setConversationId(uuidv4()); setMessages([]); setOptions([]); setConvMenuOpen(false); }}>新建会话</Button>
+                <Button size="small" variant="text" onClick={() => { setConversationId(uuidv4()); setMessages([]); setOptions([]); setShowHistoricalOptions({ deepen: false, next: false }); setConvMenuOpen(false); }}>新建会话</Button>
                 <Button size="small" variant="text" onClick={() => setConvMenuOpen(false)}>关闭</Button>
               </Box>
               {listConversations().map((c: ChatConversation) => (
                 <Box key={c.id} sx={{ display:'flex', justifyContent:'space-between', alignItems:'center', mb:0.5 }}>
-                  <Button size="small" variant={c.id===conversationId?'contained':'text'} onClick={() => { setConversationId(c.id); setMessages(c.messages || []); setOptions(normalizeStoredOptions(c.options as any)); }} sx={{ textTransform:'none', maxWidth: 200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  <Button size="small" variant={c.id===conversationId?'contained':'text'} onClick={() => { setConversationId(c.id); setMessages(c.messages || []); setOptions(normalizeStoredOptions(c.options as any)); setShowHistoricalOptions({ deepen: false, next: false }); }} sx={{ textTransform:'none', maxWidth: 200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                     {c.title || c.messages?.find((m: ChatMessage) => m.role==='user')?.content?.slice(0,20) || '会话'}
                   </Button>
-                  <Button size="small" color="error" onClick={() => { deleteConversation(c.id); if (c.id===conversationId) { const left = listConversations()[0]; if (left) { setConversationId(left.id); setMessages(left.messages||[]); setOptions(normalizeStoredOptions(left.options as any));} else { setConversationId(uuidv4()); setMessages([]); setOptions([]);} } }}>删除</Button>
+                  <Button size="small" color="error" onClick={() => { deleteConversation(c.id); if (c.id===conversationId) { const left = listConversations()[0]; if (left) { setConversationId(left.id); setMessages(left.messages||[]); setOptions(normalizeStoredOptions(left.options as any)); setShowHistoricalOptions({ deepen: false, next: false });} else { setConversationId(uuidv4()); setMessages([]); setOptions([]); setShowHistoricalOptions({ deepen: false, next: false });} } }}>删除</Button>
                 </Box>
               ))}
             </Box>
@@ -324,10 +457,13 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
             {messages.filter((m: ChatMessage) => m.role!=='system').map((m: ChatMessage) => {
               const isUser = m.role==='user';
               const { main } = splitContentAndOptions(m.content);
+              const completionState = contentCompleteStates.get(m.id);
+              const isCurrentStreaming = messages[messages.length-1]?.id === m.id;
+              
               return (
                 <Box key={m.id} sx={{ mb: 2, display: 'flex', flexDirection: 'column', alignItems: isUser ? 'flex-end' : 'flex-start' }}>
                   {/* Reasoning teaser positioned above currently streaming assistant bubble */}
-                  {m.role==='assistant' && messages[messages.length-1]?.id === m.id && reasoningText && (
+                  {m.role==='assistant' && isCurrentStreaming && reasoningText && (
                     <Box sx={{ alignSelf: 'flex-start', mb: 1, maxWidth: 560 }}>
                       <Box sx={{ display:'flex', alignItems:'center', mb: 0.5 }}>
                         <Typography variant="caption" sx={{ color:'#666', fontWeight: 600 }}>推理</Typography>
@@ -342,18 +478,61 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
                       )}
                     </Box>
                   )}
-                  <Paper elevation={1} sx={{ p: 2.25, maxWidth: '100%', bgcolor: isUser ? '#e7f0ff' : '#fff', borderRadius: 2, border: isUser ? 'none' : '1px solid #eee' }}>
-                    <Box sx={{ px: isUser ? 0 : 8 }}>
-                      {isUser ? (
-                        <Typography sx={{ whiteSpace: (m.content || '').length <= 12 ? 'nowrap' : 'pre-wrap', wordBreak: (m.content || '').length <= 12 ? 'keep-all' : 'break-word' }}>{m.content}</Typography>
-                      ) : (
-                        <div className="markdown-body" style={{ whiteSpace: 'normal', margin: 0 }}>
-                          <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm, remarkBreaks]}>
-                            {main || m.content}
-                          </ReactMarkdown>
-                        </div>
-                      )}
+                  
+                  {/* 优雅的完成状态显示 */}
+                  {m.role==='assistant' && completionState?.isComplete && (
+                    <Box sx={{ 
+                      alignSelf: 'flex-start', 
+                      mb: 1.5, 
+                      maxWidth: 560,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: 2,
+                      py: 1,
+                      bgcolor: 'rgba(0, 122, 255, 0.08)',
+                      borderRadius: 2,
+                      border: '1px solid rgba(0, 122, 255, 0.2)',
+                      animation: `${fadeInAnimation} 0.5s ease-out`
+                    }}>
+                      <Box sx={{ 
+                        width: 8, 
+                        height: 8, 
+                        borderRadius: '50%', 
+                        bgcolor: '#007AFF',
+                        animation: `${pulseAnimation} 1.5s ease-in-out infinite`
+                      }} />
+                      <Typography variant="caption" sx={{ 
+                        color: '#007AFF', 
+                        fontWeight: 500,
+                        fontSize: '0.8rem'
+                      }}>
+                        {completionState.completionMessage}
+                      </Typography>
                     </Box>
+                  )}
+                  
+                  <Paper elevation={1} sx={{ 
+                    p: 2.25, 
+                    maxWidth: '100%', 
+                    bgcolor: isUser ? '#e7f0ff' : '#fff', 
+                    borderRadius: 2,
+                    position: 'relative',
+                    // 完成状态下的微妙视觉变化
+                    ...(completionState?.isComplete && !isUser && {
+                      borderLeft: '3px solid #007AFF',
+                      bgcolor: 'rgba(247, 248, 250, 0.95)'
+                    })
+                  }}>
+                    {isUser ? (
+                      <Typography sx={{ whiteSpace: 'pre-wrap' }}>{m.content}</Typography>
+                    ) : (
+                      <div className="markdown-body" style={{ whiteSpace: 'normal' }}>
+                        <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm, remarkBreaks]}>
+                          {main || m.content}
+                        </ReactMarkdown>
+                      </div>
+                    )}
                   </Paper>
                 </Box>
               );
@@ -366,21 +545,13 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
           </Box>
 
           <Box sx={{ display: 'flex', p: 1, borderTop: 1, borderColor: 'divider', flexShrink: 0 }}>
-            <TextField variant="outlined" placeholder="输入你的问题，获取答案与下一步探索方向..." value={inputMessage} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); handleSend(); } }} size="small" multiline maxRows={4} sx={{ mr: 1, flex: 1 }} disabled={isLoading} />
-            <Button
-              variant="contained"
-              size="small"
-              onClick={handleSend}
-              disabled={isLoading || !inputMessage.trim()}
-              sx={{ px: 1.5, py: 0.5, minWidth: 'auto', fontSize: 13, fontWeight: 600, letterSpacing: 0, whiteSpace: 'nowrap', flexShrink: 0 }}
-            >
-              发送
-            </Button>
+            <TextField fullWidth variant="outlined" placeholder="输入你的问题，获取答案与下一步探索方向..." value={inputMessage} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); handleSend(); } }} size="small" multiline maxRows={4} sx={{ mr: 1 }} disabled={isLoading} />
+            <Button variant="contained" onClick={handleSend} disabled={isLoading || !inputMessage.trim()} sx={{ px: 2.5, fontWeight: 600 }}>发送</Button>
           </Box>
         </Box>
 
         {/* Right column: options (scrollable) */}
-        <Box sx={{ width: { xs: 360, sm: 400, md: 440, lg: 480 }, minWidth: 340, maxWidth: 500, display: 'flex', flexDirection: 'column', borderLeft: 1, borderColor: 'divider', overflow: 'hidden', bgcolor: '#fff' }}>
+        <Box sx={{ width: 360, minWidth: 320, maxWidth: 420, display: 'flex', flexDirection: 'column', borderLeft: 1, borderColor: 'divider', overflow: 'hidden' }}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
             <Tabs
               value={selectedTab}
@@ -391,18 +562,120 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal 
               <Tab value="next" label="推荐相关好书" sx={{ fontWeight: 600, textTransform: 'none' }} />
             </Tabs>
           </Box>
-          <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 4, py: 2 }}>
+          <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 1.5 }}>
             {(() => {
-              const filtered = options.filter((o: OptionItem) => o.type === selectedTab);
-              if (filtered.length === 0) {
+              const { current, historical, hasHistorical } = getDisplayOptions(selectedTab);
+              
+              if (current.length === 0 && historical.length === 0) {
                 return <Typography variant="body2" sx={{ color: '#777' }}>暂无推荐，请先提问或继续对话。</Typography>;
               }
-              return filtered.map((opt: OptionItem) => (
-                <Box key={opt.id} sx={{ mb: 1.5 }}>
-                  <Button variant="contained" color="primary" onClick={() => handleOptionClick(opt)} sx={{ textTransform:'none', fontWeight:600, borderRadius:2, px:1.75, py:0.75, boxShadow:'0 2px 8px rgba(43, 89, 255, 0.25)' }}>{opt.content}</Button>
-                  <Typography variant="body2" sx={{ color:'#666', mt:0.5, lineHeight:1.6, px:3 }}>{opt.describe}</Typography>
-                </Box>
-              ));
+
+              return (
+                <>
+                  {/* 最新推荐 */}
+                  {current.length > 0 && (
+                    <Box sx={{ mb: hasHistorical ? 2 : 0 }}>
+                      {current.map((opt: OptionItem) => (
+                        <Box key={opt.id} sx={{ mb: 1.5 }}>
+                          <Button 
+                            variant="contained" 
+                            color="primary" 
+                            onClick={() => handleOptionClick(opt)} 
+                            sx={{ 
+                              textTransform:'none', 
+                              fontWeight:600, 
+                              borderRadius:2, 
+                              px:1.75, 
+                              py:0.75, 
+                              boxShadow:'0 2px 8px rgba(43, 89, 255, 0.25)',
+                              width: '100%',
+                              justifyContent: 'flex-start'
+                            }}
+                          >
+                            {opt.content}
+                          </Button>
+                          <Typography variant="body2" sx={{ color:'#666', mt:0.5, lineHeight:1.6 }}>{opt.describe}</Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+
+                  {/* 历史推荐折叠/展开区域 */}
+                  {hasHistorical && (
+                    <Box sx={{ borderTop: 1, borderColor: 'divider', pt: 1.5 }}>
+                      <Button
+                        variant="text"
+                        onClick={() => setShowHistoricalOptions(prev => ({
+                          ...prev,
+                          [selectedTab]: !prev[selectedTab]
+                        }))}
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: 500,
+                          color: '#666',
+                          fontSize: '0.875rem',
+                          mb: showHistoricalOptions[selectedTab] ? 1.5 : 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.5,
+                          width: '100%',
+                          justifyContent: 'flex-start'
+                        }}
+                      >
+                        {showHistoricalOptions[selectedTab] ? '▲' : '▼'}
+                        <span>历史推荐 ({historical.length})</span>
+                      </Button>
+                      
+                      {/* 历史推荐选项 */}
+                      {showHistoricalOptions[selectedTab] && (
+                        <Box sx={{ 
+                          bgcolor: 'rgba(0, 0, 0, 0.02)', 
+                          borderRadius: 1, 
+                          p: 1,
+                          border: '1px solid rgba(0, 0, 0, 0.08)'
+                        }}>
+                          {historical.map((opt: OptionItem) => (
+                            <Box key={opt.id} sx={{ mb: 1.5, '&:last-child': { mb: 0 } }}>
+                              <Button 
+                                variant="outlined" 
+                                color="primary" 
+                                onClick={() => handleOptionClick(opt)} 
+                                sx={{ 
+                                  textTransform:'none', 
+                                  fontWeight:500, 
+                                  borderRadius:2, 
+                                  px:1.5, 
+                                  py:0.5, 
+                                  fontSize: '0.875rem',
+                                  width: '100%',
+                                  justifyContent: 'flex-start',
+                                  opacity: 0.8,
+                                  '&:hover': {
+                                    opacity: 1
+                                  }
+                                }}
+                              >
+                                {opt.content}
+                              </Button>
+                              <Typography 
+                                variant="caption" 
+                                sx={{ 
+                                  color:'#888', 
+                                  mt:0.25, 
+                                  lineHeight:1.4,
+                                  fontSize: '0.75rem'
+                                }}
+                              >
+                                {opt.describe}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
+                  )}
+                </>
+              );
             })()}
           </Box>
         </Box>

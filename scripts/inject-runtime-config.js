@@ -13,6 +13,9 @@ const CONFIG_FILE = path.join(__dirname, '../build/config.js');
 // 从环境变量中读取配置
 const runtimeConfig = {
   REACT_APP_OPENROUTER_API_KEY: process.env.REACT_APP_OPENROUTER_API_KEY || '__REACT_APP_OPENROUTER_API_KEY__',
+  REACT_APP_LANGFUSE_SECRET_KEY: process.env.REACT_APP_LANGFUSE_SECRET_KEY || '__REACT_APP_LANGFUSE_SECRET_KEY__',
+  REACT_APP_LANGFUSE_PUBLIC_KEY: process.env.REACT_APP_LANGFUSE_PUBLIC_KEY || '__REACT_APP_LANGFUSE_PUBLIC_KEY__',
+  REACT_APP_LANGFUSE_BASE_URL: process.env.REACT_APP_LANGFUSE_BASE_URL || '__REACT_APP_LANGFUSE_BASE_URL__',
   REACT_APP_APP_NAME: process.env.REACT_APP_APP_NAME || '__REACT_APP_APP_NAME__',
   REACT_APP_APP_VERSION: process.env.REACT_APP_APP_VERSION || '__REACT_APP_APP_VERSION__'
 };
@@ -28,6 +31,9 @@ window.ENV = ${JSON.stringify(runtimeConfig, null, 2)};
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
   console.log('Runtime ENV injected:', {
     hasApiKey: !!window.ENV.REACT_APP_OPENROUTER_API_KEY && window.ENV.REACT_APP_OPENROUTER_API_KEY !== "__REACT_APP_OPENROUTER_API_KEY__",
+    hasLangfuseSecret: !!window.ENV.REACT_APP_LANGFUSE_SECRET_KEY && window.ENV.REACT_APP_LANGFUSE_SECRET_KEY !== "__REACT_APP_LANGFUSE_SECRET_KEY__",
+    hasLangfusePublic: !!window.ENV.REACT_APP_LANGFUSE_PUBLIC_KEY && window.ENV.REACT_APP_LANGFUSE_PUBLIC_KEY !== "__REACT_APP_LANGFUSE_PUBLIC_KEY__",
+    langfuseBaseUrl: window.ENV.REACT_APP_LANGFUSE_BASE_URL,
     appName: window.ENV.REACT_APP_APP_NAME,
     appVersion: window.ENV.REACT_APP_APP_VERSION,
     timestamp: '${new Date().toISOString()}'
@@ -49,6 +55,9 @@ try {
   console.log('📍 Config file:', CONFIG_FILE);
   console.log('🔑 Environment variables found:', {
     REACT_APP_OPENROUTER_API_KEY: process.env.REACT_APP_OPENROUTER_API_KEY ? '***SET***' : 'NOT_SET',
+    REACT_APP_LANGFUSE_SECRET_KEY: process.env.REACT_APP_LANGFUSE_SECRET_KEY ? '***SET***' : 'NOT_SET',
+    REACT_APP_LANGFUSE_PUBLIC_KEY: process.env.REACT_APP_LANGFUSE_PUBLIC_KEY ? '***SET***' : 'NOT_SET',
+    REACT_APP_LANGFUSE_BASE_URL: process.env.REACT_APP_LANGFUSE_BASE_URL || 'NOT_SET',
     REACT_APP_APP_NAME: process.env.REACT_APP_APP_NAME || 'NOT_SET',
     REACT_APP_APP_VERSION: process.env.REACT_APP_APP_VERSION || 'NOT_SET'
   });

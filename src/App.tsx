@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Container,
   CssBaseline,
@@ -9,7 +9,7 @@ import {
 import { usePromptTest } from './hooks/usePromptTest';
 import { useUIState } from './hooks/useUIState';
 import { useModelSelection } from './hooks/useModelSelection';
-import { generateContent } from './services/api';
+import { generateContent, createUserSession, logUserEvent, flushTraces } from './services/api-with-tracing';
 import AppHeader from './components/Layout/AppHeader';
 import TabPanel from './components/Layout/TabPanel';
 import InputPanel from './components/InputPanel';
@@ -17,6 +17,8 @@ import OutputPanel from './components/OutputPanel';
 import ChatPanel from './components/ChatPanel';
 import SavedTests from './components/SavedTests';
 import NextStepChat from './components/NextStepChat';
+import { UserSession } from './types/types';
+import './utils/langfuse-test'; // Auto-validates Langfuse integration in development
 import './App.css';
 
 /**
@@ -29,6 +31,7 @@ import './App.css';
 const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState(0);
   const [nextStepClearSignal, setNextStepClearSignal] = useState<number>(0);
+  const [userSession, setUserSession] = useState<UserSession | null>(null);
 
   const {
     promptObject,
@@ -54,129 +57,159 @@ const App: React.FC = () => {
 
   const { selectedModel, setSelectedModel, availableModels } = useModelSelection();
 
+  // Initialize user session on app load
+  useEffect(() => {
+    const session = createUserSession();
+    if (session) {
+      setUserSession(session);
+      logUserEvent('app-loaded', {
+        sessionId: session.sessionId,
+        timestamp: new Date().toISOString()
+      }, session.userId);
+    }
+  }, []);
+
+  // Flush traces before page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (userSession) {
+        logUserEvent('app-unload', {
+          sessionId: userSession.sessionId,
+          sessionDuration: Date.now() - new Date(userSession.startTime).getTime()
+        }, userSession.userId);
+        flushTraces();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [userSession]);
+
   const theme = createTheme({
     palette: {
       mode: darkMode ? 'dark' : 'light',
       primary: {
-        main: '#6366f1',
-        light: '#818cf8',
-        dark: '#4f46e5',
-        contrastText: '#ffffff'
+        main: darkMode ? '#ffffff' : '#000000',
+        light: darkMode ? '#f8f9fa' : '#333333',
+        dark: darkMode ? '#e9ecef' : '#000000',
+        contrastText: darkMode ? '#000000' : '#ffffff'
       },
       secondary: {
-        main: '#06b6d4',
-        light: '#67e8f9',
-        dark: '#0891b2',
+        main: darkMode ? '#6c757d' : '#6c757d',
+        light: darkMode ? '#adb5bd' : '#adb5bd',
+        dark: darkMode ? '#495057' : '#495057',
         contrastText: '#ffffff'
       },
       background: {
-        default: darkMode ? '#0f172a' : '#fafafa',
-        paper: darkMode ? '#1e293b' : '#ffffff',
+        default: darkMode ? '#000000' : '#ffffff',
+        paper: darkMode ? '#111111' : '#fafafa',
       },
       text: {
-        primary: darkMode ? '#f1f5f9' : '#1e293b',
-        secondary: darkMode ? '#94a3b8' : '#64748b',
+        primary: darkMode ? '#ffffff' : '#000000',
+        secondary: darkMode ? '#adb5bd' : '#6c757d',
       },
-      divider: darkMode ? '#334155' : '#e2e8f0',
+      divider: darkMode ? '#333333' : '#e9ecef',
       success: {
-        main: '#10b981',
-        light: '#34d399',
-        dark: '#059669'
+        main: '#28a745',
+        light: '#34ce57',
+        dark: '#1e7e34'
       },
       warning: {
-        main: '#f59e0b',
-        light: '#fbbf24',
-        dark: '#d97706'
+        main: '#ffc107',
+        light: '#ffcd39',
+        dark: '#e0a800'
       },
       error: {
-        main: '#ef4444',
-        light: '#f87171',
-        dark: '#dc2626'
+        main: '#dc3545',
+        light: '#e15662',
+        dark: '#c82333'
       },
       info: {
-        main: '#3b82f6',
-        light: '#60a5fa',
-        dark: '#2563eb'
+        main: '#17a2b8',
+        light: '#3dd5f3',
+        dark: '#117a8b'
       }
     },
     typography: {
-      fontFamily: '"Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       h1: {
-        fontWeight: 800,
-        fontSize: '2.5rem',
-        lineHeight: 1.2,
-        letterSpacing: '-0.025em'
-      },
-      h2: {
         fontWeight: 700,
         fontSize: '2rem',
-        lineHeight: 1.3,
+        lineHeight: 1.1,
+        letterSpacing: '-0.03em'
+      },
+      h2: {
+        fontWeight: 600,
+        fontSize: '1.5rem',
+        lineHeight: 1.2,
         letterSpacing: '-0.025em'
       },
       h3: {
         fontWeight: 600,
-        fontSize: '1.75rem',
+        fontSize: '1.25rem',
         lineHeight: 1.3,
         letterSpacing: '-0.02em'
       },
       h4: {
         fontWeight: 600,
-        fontSize: '1.5rem',
+        fontSize: '1.125rem',
         lineHeight: 1.4,
         letterSpacing: '-0.015em'
       },
       h5: {
-        fontWeight: 600,
-        fontSize: '1.25rem',
+        fontWeight: 500,
+        fontSize: '1rem',
         lineHeight: 1.4,
         letterSpacing: '-0.01em'
       },
       h6: {
-        fontWeight: 600,
-        fontSize: '1.125rem',
+        fontWeight: 500,
+        fontSize: '0.875rem',
         lineHeight: 1.5,
-        letterSpacing: '-0.005em'
+        letterSpacing: '0em'
       },
       body1: {
         fontSize: '1rem',
         lineHeight: 1.6,
-        letterSpacing: 0
+        letterSpacing: 0,
+        fontWeight: 400
       },
       body2: {
         fontSize: '0.875rem',
         lineHeight: 1.6,
-        letterSpacing: 0
+        letterSpacing: 0,
+        fontWeight: 400
       }
     },
     shape: {
-      borderRadius: 12
+      borderRadius: 8
     },
     shadows: [
       'none',
-      '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-      '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-      '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-      '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none',
+      'none'
     ],
     components: {
       MuiButton: {
@@ -236,8 +269,9 @@ const App: React.FC = () => {
 
   /**
    * Handles the generation of content based on the provided prompt and model.
+   * Now includes Langfuse tracing and user session tracking.
    *
-   * The function checks for the presence of promptObject and promptText before proceeding. It sets a loading state and initializes the prompt result. It then calls the generateContent function with the promptObject, promptText, and selectedModel. Depending on the result, it updates the prompt result or handles errors, including specific messages for missing API keys. Finally, it resets the loading state.
+   * The function checks for the presence of promptObject and promptText before proceeding. It sets a loading state and initializes the prompt result. It then calls the generateContent function with the promptObject, promptText, and selectedModel, along with user session information for tracing. Depending on the result, it updates the prompt result or handles errors, including specific messages for missing API keys. Finally, it resets the loading state.
    *
    * @returns {Promise<void>} A promise that resolves when the content generation process is complete.
    */
@@ -247,17 +281,62 @@ const App: React.FC = () => {
     setIsLoading(true);
     setPromptResult('');
 
+    // Log user event for analytics
+    if (userSession) {
+      logUserEvent('prompt-test-started', {
+        sessionId: userSession.sessionId,
+        model: selectedModel,
+        promptLength: promptText.length,
+        objectLength: promptObject.length
+      }, userSession.userId);
+    }
+
     try {
-      const result = await generateContent(promptObject, promptText, selectedModel);
+      const result = await generateContent(
+        promptObject, 
+        promptText, 
+        selectedModel, 
+        userSession?.userId
+      );
+      
       if (result) {
         setPromptResult(result);
+        
+        // Log successful generation
+        if (userSession) {
+          logUserEvent('prompt-test-completed', {
+            sessionId: userSession.sessionId,
+            model: selectedModel,
+            success: true,
+            responseLength: result.length
+          }, userSession.userId);
+        }
       } else {
         setPromptResult('API返回了空响应');
+        
+        // Log empty response
+        if (userSession) {
+          logUserEvent('prompt-test-failed', {
+            sessionId: userSession.sessionId,
+            model: selectedModel,
+            error: 'empty_response'
+          }, userSession.userId);
+        }
       }
     } catch (error: any) {
       console.error('生成过程中发生错误:', error);
+      
+      // Log error
+      if (userSession) {
+        logUserEvent('prompt-test-failed', {
+          sessionId: userSession.sessionId,
+          model: selectedModel,
+          error: error.message || String(error)
+        }, userSession.userId);
+      }
+      
       if (error.message?.includes('未找到API密钥')) {
-        setPromptResult(`❌ ${error.message}\n\n请在项目根目录创建.env文件并添加：\nREACT_APP_OPENROUTER_API_KEY=your_api_key_here`);
+        setPromptResult(`❌ ${error.message}\n\n请在项目根目录创建.env文件并添加：\nREACT_APP_OPENROUTER_API_KEY=your_api_key_here\n\n💡 同时请配置Langfuse追踪（可选）：\nREACT_APP_LANGFUSE_SECRET_KEY=your_secret_key\nREACT_APP_LANGFUSE_PUBLIC_KEY=your_public_key\nREACT_APP_LANGFUSE_BASE_URL=https://cloud.langfuse.com`);
       } else {
         setPromptResult(`生成时出错: ${error instanceof Error ? error.message : String(error)}`);
       }
@@ -312,32 +391,36 @@ const App: React.FC = () => {
           availableModels={availableModels}
         />
         
-        <TabPanel value={currentTab} index={0} sx={{ p: 0, display: 'flex', flexDirection: 'row', overflow: 'hidden', flexGrow: 1, gap: 0 }}>
-          <Box
-            sx={{
-              width: leftSidebarOpen ? sidebarWidth : 0,
-              minWidth: leftSidebarOpen ? sidebarWidth : 0,
-              overflow: 'hidden',
-              transition: `width ${transitionDuration} cubic-bezier(0.4, 0, 0.2, 1), min-width ${transitionDuration} cubic-bezier(0.4, 0, 0.2, 1)`,
-              borderRight: leftSidebarOpen ? `1px solid ${theme.palette.divider}` : 'none',
-              display: 'flex', 
-              flexDirection: 'column',
-              bgcolor: darkMode ? 'rgba(30, 41, 59, 0.7)' : 'rgba(248, 250, 252, 0.8)',
-              backdropFilter: 'blur(10px)',
-            }}
-          >
-            <Box sx={{ p: 2, flexGrow: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', gap: 2 }}>
-              <InputPanel
-                promptObject={promptObject}
-                promptText={promptText}
-                onPromptObjectChange={setPromptObject}
-                onPromptTextChange={setPromptText}
-                darkMode={darkMode}
-              />
-            </Box>
+        <TabPanel value={currentTab} index={0} sx={{ p: 0, display: 'flex', flexDirection: 'row', overflow: 'hidden', flexGrow: 1 }}>
+          <Box sx={{ 
+            width: { xs: '100%', md: '45%', lg: '40%' },
+            px: { xs: 3, md: 4, lg: 6 }, 
+            py: { xs: 3, md: 4, lg: 6 },
+            display: 'flex', 
+            flexDirection: 'column', 
+            overflowY: 'auto',
+            borderRight: { xs: 'none', md: '1px solid' },
+            borderColor: { xs: 'transparent', md: 'divider' }
+          }}>
+            <InputPanel
+              promptObject={promptObject}
+              promptText={promptText}
+              onPromptObjectChange={setPromptObject}
+              onPromptTextChange={setPromptText}
+              darkMode={darkMode}
+              isLoading={isLoading}
+              onGenerate={handleGenerate}
+            />
           </Box>
-
-          <Box sx={{ flexGrow: 1, p: 3, display: 'flex', flexDirection: 'column', overflowY: 'auto', gap: 2 }}>
+          
+          <Box sx={{ 
+            width: { xs: '0%', md: '55%', lg: '60%' },
+            display: { xs: 'none', md: 'flex' },
+            flexDirection: 'column',
+            px: { md: 4, lg: 6 }, 
+            py: { md: 4, lg: 6 },
+            overflowY: 'auto'
+          }}>
             <OutputPanel
               promptObject={promptObject}
               promptText={promptText}
@@ -346,41 +429,34 @@ const App: React.FC = () => {
               onGenerate={handleGenerate}
               selectedModel={selectedModel}
               onSave={(test) => {
-                // Handle the saved test - could be used for notifications or updates
+                // Handle the saved test
               }}
               darkMode={darkMode}
             />
           </Box>
-
-          <Box
-            sx={{
-              width: rightSidebarOpen ? rightSidebarWidth : 0,
-              minWidth: rightSidebarOpen ? rightSidebarWidth : 0,
-              overflow: 'hidden',
-              transition: `width ${transitionDuration} cubic-bezier(0.4, 0, 0.2, 1), min-width ${transitionDuration} cubic-bezier(0.4, 0, 0.2, 1)`,
-              borderLeft: rightSidebarOpen ? `1px solid ${theme.palette.divider}` : 'none',
-              display: 'flex',
-              flexDirection: 'column',
-              bgcolor: darkMode ? 'rgba(30, 41, 59, 0.7)' : 'rgba(248, 250, 252, 0.8)',
-              backdropFilter: 'blur(10px)',
-            }}
-          >
-            <Box sx={{ p: 2, flexGrow: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', gap: 2 }}>
-              <ChatPanel
-                promptTest={selectedPromptTest}
-                selectedModel={selectedModel}
-                darkMode={darkMode}
-              />
-            </Box>
-          </Box>
         </TabPanel>
         
-        <TabPanel value={currentTab} index={1} sx={{ p: 3, overflowY: 'auto', flexGrow: 1 }}>
-          <SavedTests onSelectTest={handleSelectTest} darkMode={darkMode} />
+        <TabPanel value={currentTab} index={1} sx={{ p: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexGrow: 1 }}>
+          <Box sx={{ 
+            flexGrow: 1, 
+            px: { xs: 3, md: 4, lg: 6 }, 
+            py: { xs: 3, md: 4, lg: 6 },
+            overflowY: 'auto',
+            width: '100%'
+          }}>
+            <SavedTests onSelectTest={handleSelectTest} darkMode={darkMode} />
+          </Box>
         </TabPanel>
 
         <TabPanel value={currentTab} index={2} sx={{ p: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexGrow: 1 }}>
-          <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ 
+            flexGrow: 1, 
+            px: { xs: 3, md: 4, lg: 6 }, 
+            py: { xs: 3, md: 4, lg: 6 },
+            display: 'flex', 
+            flexDirection: 'column',
+            width: '100%'
+          }}>
             <NextStepChat selectedModel={selectedModel} clearSignal={nextStepClearSignal} />
           </Box>
         </TabPanel>
