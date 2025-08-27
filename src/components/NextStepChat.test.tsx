@@ -7,6 +7,17 @@ import NextStepChat from './NextStepChat';
 const NextStepChatModule = require('./NextStepChat');
 
 // 模拟splitContentAndOptions函数的实现进行测试
+/**
+ * Splits the raw input string into main content and a collection of options.
+ *
+ * The function processes each line of the input, identifying valid JSON lines that conform to specific criteria.
+ * It collects these JSON objects into an array while keeping track of their indices. After processing, it filters
+ * out the identified JSON lines to extract the main content, which is returned alongside the collected options,
+ * limited to the first six entries.
+ *
+ * @param raw - The raw input string containing content and options.
+ * @returns An object containing the main content as a string and an array of options.
+ */
 function splitContentAndOptions(raw: string): { main: string; options: any[] } {
   if (!raw) return { main: '', options: [] };
   
