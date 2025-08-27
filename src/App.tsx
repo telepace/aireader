@@ -23,7 +23,7 @@ import './App.css';
 /**
  * Main application component that manages the user interface and state.
  *
- * This component utilizes various hooks to manage state, including the current tab, prompt object, and loading status. It renders a responsive layout with sidebars and different panels for input, output, and saved tests. The component also handles tab changes, content generation, and model selection, while providing a theme based on user preferences. The application is structured to ensure a seamless user experience with dynamic updates based on user interactions.
+ * This component utilizes various hooks to manage state, including the current tab, prompt object, and loading status. It initializes the user session, handles tab changes, content generation, and model selection, while providing a theme based on user preferences. The application is structured to ensure a seamless user experience with dynamic updates based on user interactions and logs user events for analytics.
  *
  * @returns A React element representing the application interface.
  */
