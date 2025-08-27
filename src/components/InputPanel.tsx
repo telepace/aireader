@@ -12,6 +12,20 @@ interface InputPanelProps {
 
 /**
  * Renders an input panel for processing objects and AI instructions.
+ *
+ * This component consists of two main text input areas for the user to provide content and analysis instructions,
+ * along with a button to initiate the analysis. It manages the layout and styling based on the dark mode setting
+ * and loading state, ensuring a responsive design. The component also handles changes to the input fields
+ * through provided callback functions.
+ *
+ * @param promptObject - The text content to be analyzed.
+ * @param promptText - The instructions for how to analyze the content.
+ * @param onPromptObjectChange - Callback function to handle changes to the promptObject.
+ * @param onPromptTextChange - Callback function to handle changes to the promptText.
+ * @param darkMode - Optional flag to enable dark mode styling (default is false).
+ * @param isLoading - Optional flag to indicate if the analysis is in progress (default is false).
+ * @param onGenerate - Callback function to initiate the analysis when the button is clicked.
+ * @returns A React element representing the input panel.
  */
 const InputPanel: React.FC<InputPanelProps> = ({
   promptObject,
