@@ -14,6 +14,8 @@ import NextStepChat from './components/NextStepChat';
 import { UpgradePrompt, MigrationPrompt } from './components/Auth';
 import { useAuthStore } from './stores/authStore';
 import { UserSession } from './types/types';
+import ErrorBoundary from './components/ErrorBoundary';
+import LocalErrorBoundary from './components/LocalErrorBoundary';
 import './utils/langfuse-test'; // Auto-validates Langfuse integration in development
 import './App.css';
 
@@ -256,60 +258,112 @@ const App: React.FC = () => {
   // const transitionDuration = '0.3s';
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Container 
-        maxWidth={false} 
-        sx={{ 
-          height: '100vh',
-          display: 'flex', 
-          flexDirection: 'column',
-          p: '0 !important',
-          m: '0 !important',
-          bgcolor: 'background.default',
-          color: 'text.primary',
-          overflow: 'hidden',
-          minHeight: 0,
-          position: 'relative'
-        }}
-      >
-        <AppHeader
-          selectedModel={selectedModel}
-          onModelChange={(e) => setSelectedModel(e.target.value)}
-          leftSidebarOpen={leftSidebarOpen}
-          rightSidebarOpen={rightSidebarOpen}
-          onToggleLeftSidebar={toggleLeftSidebar}
-          onToggleRightSidebar={toggleRightSidebar}
-          onClearChat={() => setNextStepClearSignal(Date.now())}
-          availableModels={availableModels}
-          onToggleConversationMenu={(e) => {
-            setConvMenuAnchorEl(e.currentTarget as HTMLElement);
-            setToggleConvMenuSignal(Date.now());
+    <ErrorBoundary 
+      onError={(error, errorInfo, errorId) => {
+        // 可以在这里集成错误监控服务
+        console.error('Global error caught:', { error, errorId });
+        
+        // 发送到分析服务 (如果有的话)
+        if (userSession) {
+          try {
+            // 这里可以调用错误上报API
+            console.log('Error tracking for user:', userSession.userId);
+          } catch (trackingError) {
+            console.warn('Failed to track error:', trackingError);
+          }
+        }
+      }}
+    >
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Container 
+          maxWidth={false} 
+          sx={{ 
+            height: '100vh',
+            display: 'flex', 
+            flexDirection: 'column',
+            p: '0 !important',
+            m: '0 !important',
+            bgcolor: 'background.default',
+            color: 'text.primary',
+            overflow: 'hidden',
+            minHeight: 0,
+            position: 'relative'
           }}
-        />
-        
-        {/* 深度对话区域 - 直接显示，不需要tab切换 */}
-        <Box sx={{ 
-          flexGrow: 1, 
-          px: 0, 
-          py: 0,
-          display: 'flex', 
-          flexDirection: 'column',
-          width: '100%',
-          minHeight: 0
-        }}>
-          <NextStepChat selectedModel={selectedModel} clearSignal={nextStepClearSignal} externalToggleConversationMenuSignal={toggleConvMenuSignal} conversationMenuAnchorEl={convMenuAnchorEl} />
-        </Box>
-        
-        {/* 认证相关弹窗 */}
-        {isInitialized && (
-          <>
-            <UpgradePrompt />
-            <MigrationPrompt />
-          </>
-        )}
-      </Container>
-    </ThemeProvider>
+        >
+          {/* Header包裹局部错误边界 */}
+          <LocalErrorBoundary 
+            componentName="应用头部"
+            onError={(error, componentName) => {
+              console.warn(`${componentName} error:`, error);
+            }}
+          >
+            <AppHeader
+              selectedModel={selectedModel}
+              onModelChange={(e) => setSelectedModel(e.target.value)}
+              leftSidebarOpen={leftSidebarOpen}
+              rightSidebarOpen={rightSidebarOpen}
+              onToggleLeftSidebar={toggleLeftSidebar}
+              onToggleRightSidebar={toggleRightSidebar}
+              onClearChat={() => setNextStepClearSignal(Date.now())}
+              availableModels={availableModels}
+              onToggleConversationMenu={(e) => {
+                setConvMenuAnchorEl(e.currentTarget as HTMLElement);
+                setToggleConvMenuSignal(Date.now());
+              }}
+            />
+          </LocalErrorBoundary>
+          
+          {/* 深度对话区域 - 包裹局部错误边界 */}
+          <Box sx={{ 
+            flexGrow: 1, 
+            px: 0, 
+            py: 0,
+            display: 'flex', 
+            flexDirection: 'column',
+            width: '100%',
+            minHeight: 0
+          }}>
+            <LocalErrorBoundary 
+              componentName="聊天界面"
+              showDetails={process.env.NODE_ENV === 'development'}
+              onError={(error, componentName) => {
+                console.warn(`${componentName} error:`, error);
+                
+                // 聊天界面错误可能更严重，记录更多信息
+                if (userSession) {
+                  console.log('Chat error for user:', userSession.userId, {
+                    selectedModel,
+                    error: error.message,
+                    timestamp: new Date().toISOString()
+                  });
+                }
+              }}
+            >
+              <NextStepChat 
+                selectedModel={selectedModel} 
+                clearSignal={nextStepClearSignal} 
+                externalToggleConversationMenuSignal={toggleConvMenuSignal} 
+                conversationMenuAnchorEl={convMenuAnchorEl} 
+              />
+            </LocalErrorBoundary>
+          </Box>
+          
+          {/* 认证相关弹窗 - 包裹局部错误边界 */}
+          {isInitialized && (
+            <LocalErrorBoundary 
+              componentName="认证系统"
+              onError={(error, componentName) => {
+                console.warn(`${componentName} error:`, error);
+              }}
+            >
+              <UpgradePrompt />
+              <MigrationPrompt />
+            </LocalErrorBoundary>
+          )}
+        </Container>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 };
 

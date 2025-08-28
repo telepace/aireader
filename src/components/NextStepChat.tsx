@@ -10,6 +10,12 @@ import { generateChatStream, logUserEvent, createUserSession } from '../services
 import { splitContentAndOptions, NextStepOption } from '../utils/contentSplitter';
 import { generateSystemPrompt } from '../services/promptTemplateV2';
 import { useConversation } from '../hooks/useConversation';
+import { useTaskManager, Task } from '../hooks/useTaskManager';
+import { useCardState } from '../hooks/useCardState';
+import { useNotification } from '../hooks/useNotification';
+import EnhancedOptionCard from './EnhancedOptionCard';
+import TaskQueuePanel from './TaskQueuePanel';
+import NotificationContainer from './NotificationContainer';
 
 // Markdown renderers (aligned with existing style)
 
@@ -106,6 +112,21 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     removeConversation
   } = useConversation({ selectedModel });
   
+  // 新增：任务管理系统
+  const taskManager = useTaskManager({ 
+    maxConcurrent: 3,
+    retryLimit: 2 
+  });
+  
+  const cardStateManager = useCardState();
+  
+  // 通知系统
+  const notification = useNotification({
+    maxVisible: 3,
+    defaultDuration: 4000,
+    position: 'bottom-right'
+  });
+  
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'deepen' | 'next'>('deepen');
@@ -116,6 +137,18 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
   const [, setStreamingAssistantId] = useState<string | null>(null); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [userSession, setUserSession] = useState<UserSession | null>(null);
   const [exitingIds, setExitingIds] = useState<Set<string>>(new Set());
+  
+  // 任务队列面板状态管理
+  const [queuePanelVisible, setQueuePanelVisible] = useState(false);
+  const [queueStats, setQueueStats] = useState({ 
+    total: 0, 
+    pending: 0, 
+    processing: 0, 
+    completed: 0, 
+    failed: 0, 
+    cancelled: 0, 
+    paused: 0 
+  });
   
   // 历史推荐展开状态管理
   const [showHistoricalOptions, setShowHistoricalOptions] = useState<{[key: string]: boolean}>({
@@ -173,6 +206,175 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
       // Removed chat-session-started event - too noisy, traces provide better insights
     }
   }, [conversationId, selectedModel]);
+
+  // 设置任务执行器
+  useEffect(() => {
+    taskManager.setTaskExecutor(async (task: Task): Promise<ChatMessage> => {
+      const userMessage: ChatMessage = { 
+        id: uuidv4(), 
+        role: 'user', 
+        content: task.content, 
+        timestamp: Date.now() 
+      };
+
+      const currentMessages = [...messages, userMessage];
+      const trimmed = trimContextForApi(currentMessages);
+      const withSystem = ensureSystemPrompt(trimmed);
+
+      let assembled = '';
+      const assistantId = uuidv4();
+
+      return new Promise((resolve, reject) => {
+        generateChatStream(
+          withSystem,
+          selectedModel,
+          ({ content, reasoning }: { content?: string; reasoning?: string }) => {
+            if (content) {
+              assembled += content;
+              // 更新任务进度（简单的基于内容长度的估算）
+              const progress = Math.min(95, (assembled.length / 500) * 100);
+              taskManager.updateTaskProgress(task.id, progress);
+            }
+            if (reasoning) {
+              // 可以在这里处理推理内容，但对于后台任务可能不需要显示
+            }
+          },
+          (err: Error) => {
+            reject(err);
+          },
+          () => {
+            try {
+              const { main, options: incoming } = splitContentAndOptions(assembled);
+              
+              const result: ChatMessage = {
+                id: assistantId,
+                role: 'assistant',
+                content: main,
+                timestamp: Date.now()
+              };
+
+              // 如果有新的选项，也需要合并到主选项列表中
+              if (incoming.length > 0) {
+                setTimeout(() => {
+                  // 直接调用选项合并逻辑
+                  setOptions((prevOptions: OptionItem[]) => {
+                    const now = Date.now();
+                    const map = new Map(prevOptions.map((o: OptionItem) => [o.id, o] as const));
+                    for (const o of incoming) {
+                      const id = `${o.type}:${o.content.trim().toLowerCase()}`;
+                      const ex = map.get(id);
+                      if (ex) {
+                        ex.describe = o.describe;
+                        ex.lastSeenAt = now;
+                        ex.lastMessageId = assistantId;
+                      } else {
+                        map.set(id, { id, type: o.type, content: o.content, describe: o.describe, firstSeenAt: now, lastSeenAt: now, lastMessageId: assistantId, clickCount: 0 });
+                      }
+                    }
+                    return Array.from(map.values()).sort((a: OptionItem, b: OptionItem) => b.firstSeenAt - a.firstSeenAt);
+                  });
+                }, 100);
+              }
+
+              taskManager.updateTaskProgress(task.id, 100);
+              resolve(result);
+            } catch (error) {
+              reject(error);
+            }
+          },
+          conversationId,
+          userSession?.userId
+        );
+      });
+    });
+  }, [taskManager, messages, selectedModel, conversationId, userSession]);
+
+  // 监听任务完成事件
+  useEffect(() => {
+    const unsubscribeComplete = taskManager.addEventListener('taskCompleted', (task: Task) => {
+      if (task.result) {
+        // 添加用户消息（如果还没有的话）
+        setMessages(prev => {
+          const hasUserMessage = prev.some(m => 
+            m.role === 'user' && 
+            m.content === task.content &&
+            Math.abs(m.timestamp - task.createdAt) < 1000
+          );
+          
+          if (!hasUserMessage) {
+            const userMessage: ChatMessage = {
+              id: uuidv4(),
+              role: 'user',
+              content: task.content,
+              timestamp: task.createdAt
+            };
+            return [...prev, userMessage, task.result!];
+          } else {
+            return [...prev, task.result!];
+          }
+        });
+
+        // 显示完成通知
+        notification.showTaskComplete(task.content, task.result.id);
+      }
+    });
+
+    const unsubscribeUpdate = taskManager.addEventListener('taskStarted', (task: Task) => {
+      cardStateManager.syncWithTask(task);
+    });
+
+    const unsubscribeProgress = taskManager.addEventListener('taskProgress', (task: Task) => {
+      cardStateManager.syncWithTask(task);
+    });
+
+    const unsubscribeFailed = taskManager.addEventListener('taskFailed', (task: Task) => {
+      cardStateManager.syncWithTask(task);
+      // 显示失败通知
+      notification.showTaskFailed(task.content, task.error || '未知错误');
+    });
+
+    const unsubscribeCancelled = taskManager.addEventListener('taskCancelled', (task: Task) => {
+      cardStateManager.syncWithTask(task);
+    });
+
+    return () => {
+      unsubscribeComplete();
+      unsubscribeUpdate();
+      unsubscribeProgress();
+      unsubscribeFailed();
+      unsubscribeCancelled();
+    };
+  }, [taskManager, cardStateManager, setMessages]);
+
+  // 监听队列状态变化
+  useEffect(() => {
+    const updateStats = () => {
+      const newStats = taskManager.getQueueStats();
+      setQueueStats(newStats);
+      
+      // 自动显示/隐藏队列面板
+      const shouldShow = newStats.processing > 0 || newStats.pending > 0 || newStats.total > 3;
+      setQueuePanelVisible(shouldShow);
+    };
+
+    // 初始状态
+    updateStats();
+
+    // 监听任务状态变化
+    const unsubscribeAdd = taskManager.addEventListener('taskAdded', updateStats);
+    const unsubscribeStart = taskManager.addEventListener('taskStarted', updateStats);
+    const unsubscribeComplete = taskManager.addEventListener('taskCompleted', updateStats);
+    const unsubscribeFailed = taskManager.addEventListener('taskFailed', updateStats);
+    const unsubscribeCancelled = taskManager.addEventListener('taskCancelled', updateStats);
+
+    return () => {
+      unsubscribeAdd();
+      unsubscribeStart();
+      unsubscribeComplete();
+      unsubscribeFailed();
+      unsubscribeCancelled();
+    };
+  }, [taskManager]);
 
   // 持久化逻辑已移入 useConversation
 
@@ -411,21 +613,61 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
   };
 
   const handleSend = async () => { if (!inputMessage.trim() || isLoading) return; await sendMessageInternal(inputMessage.trim()); };
+  
   /**
-   * Handles the click event for an option.
-   * @param opt - The option item that was clicked.
+   * 新的并发处理版本 - 处理选项点击事件
+   * @param opt - 被点击的选项项目
    */
   const handleOptionClick = async (opt: OptionItem) => {
-    if (isLoading) return;
-    // 轻微延迟后再触发退出动画（约100ms）
-    setTimeout(() => {
-      setExitingIds((prev: Set<string>) => {
-        const next = new Set(prev);
-        next.add(opt.id);
-        return next;
+    // ✅ 移除全局loading检查，允许并发点击
+    // if (isLoading) return; // 删除这个阻塞逻辑
+    
+    try {
+      // 立即提供视觉反馈
+      const cardId = `${opt.type}:${opt.content.trim().toLowerCase()}`;
+      
+      // 将任务添加到队列
+      const taskId = taskManager.enqueueTask({
+        type: opt.type,
+        content: opt.content,
+        describe: opt.describe,
+        priority: opt.type === 'deepen' ? 1.2 : 1.0
       });
-    }, 200);
-    await sendMessageInternal(opt.content);
+      
+      // 处理卡片点击状态
+      cardStateManager.handleCardClick(opt, taskId);
+      
+      // 更新选项点击计数
+      setOptions(prev => prev.map(o => 
+        o.id === opt.id ? { ...o, clickCount: (o.clickCount || 0) + 1 } : o
+      ));
+      
+      // 记录用户事件
+      if (userSession) {
+        logUserEvent('option-clicked', {
+          sessionId: userSession.sessionId,
+          conversationId,
+          optionType: opt.type,
+          optionContent: opt.content,
+          taskId: taskId,
+          clickCount: (opt.clickCount || 0) + 1
+        }, userSession.userId);
+      }
+
+      // 短暂延迟后触发退出动画（为了视觉连贯性）
+      setTimeout(() => {
+        setExitingIds((prev: Set<string>) => {
+          const next = new Set(prev);
+          next.add(opt.id);
+          return next;
+        });
+      }, 600); // 给用户足够时间看到状态变化
+      
+    } catch (error) {
+      console.error('Failed to handle option click:', error);
+      // 可以在这里显示错误通知
+      alert('处理请求时出现错误，请稍后重试');
+    }
   };
 
   // Standalone page layout: fixed header + two scrollable columns
@@ -666,83 +908,49 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                   {/* 最新推荐 */}
                   {current.length > 0 && (
                     <Box sx={{ mb: hasHistorical ? 2 : 0 }}>
-                      {current.map((opt: OptionItem) => (
-                        <Collapse
-                          key={opt.id}
-                          in={!exitingIds.has(opt.id)}
-                          timeout={360}
-                          easing={{ exit: 'cubic-bezier(0, 0, 0.2, 1)' }}
-                          onExited={() => {
-                            setOptions((prev: OptionItem[]) => prev.filter((o: OptionItem) => o.id !== opt.id));
-                            setExitingIds((prev: Set<string>) => {
-                              const next = new Set(prev);
-                              next.delete(opt.id);
-                              return next;
-                            });
-                          }}
-                        >
-                          <Fade in={!exitingIds.has(opt.id)} timeout={300} easing={{ exit: 'cubic-bezier(0, 0, 0.2, 1)' }}>
-                            <Box sx={{ mb: 4, position: 'relative', transition: 'transform 320ms cubic-bezier(0, 0, 0.2, 1)', transform: exitingIds.has(opt.id) ? 'translateY(4px) scale(0.98)' : 'none' }}>
-                              {/* 新的UI设计：经典布局 + 中性灰色 */}
-                              <Box 
-                                onClick={() => handleOptionClick(opt)}
-                                sx={{ 
-                                  position: 'relative',
-                                  maxWidth: '100%',
-                                  mx: 'auto',
-                                  cursor: 'pointer',
-                                  '&:hover .title-button': {
-                                    transform: 'translateY(-50%) translateY(-1px) rotate(-1deg)',
-                                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)'
-                                  }
-                                }}
-                              >
-                                {/* 主容器 */}
-                                <Box sx={{
-                                  bgcolor: '#ffffff',
-                                  borderRadius: 2,
-                                  p: 2,
-                                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
-                                  border: '1px solid #e2e8f0',
-                                  transition: 'all 0.2s ease-in-out',
-                                  '&:hover': {
-                                    transform: 'translateY(-3px)',
-                                    borderColor: '#a0aec0',
-                                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)'
-                                  }
-                                }}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', '&:hover .underline': { transform: 'scaleX(1)' } }}>
-                                    <Box sx={{ flexGrow: 1 }}>
-                                      <Box sx={{ position: 'relative', display: 'inline-block' }}>
-                                        <Typography sx={{ fontWeight: 600, fontSize: '0.8125rem', color: '#2d3748', mb: 0.5 }}>
-                                          {opt.content}
-                                        </Typography>
-                                        <Box className="underline" sx={{
-                                          position: 'absolute',
-                                          left: 0,
-                                          right: 0,
-                                          bottom: -2,
-                                          height: 2,
-                                          backgroundColor: '#4299e1',
-                                          transform: 'scaleX(0)',
-                                          transformOrigin: 'left',
-                                          transition: 'transform 300ms ease'
-                                        }} />
-                                      </Box>
-                                      <Typography sx={{ fontSize: '0.875rem', color: '#718096', lineHeight: 1.5, mt: 1 }}>
-                                        {opt.describe}
-                                      </Typography>
-                                    </Box>
-                                    <Box component="span" sx={{ fontSize: '1.5rem', color: '#a0aec0', ml: 2, transition: 'transform 0.2s ease-in-out, color 0.2s ease-in-out' }}>
-                                      ›
-                                    </Box>
-                                  </Box>
-                                </Box>
-                              </Box>
-                            </Box>
-                          </Fade>
-                        </Collapse>
-                      ))}
+                      {current.map((opt: OptionItem) => {
+                        const cardId = `${opt.type}:${opt.content.trim().toLowerCase()}`;
+                        const cardState = cardStateManager.cardStates.get(cardId);
+                        
+                        return (
+                          <Collapse
+                            key={opt.id}
+                            in={!exitingIds.has(opt.id)}
+                            timeout={360}
+                            easing={{ exit: 'cubic-bezier(0, 0, 0.2, 1)' }}
+                            onExited={() => {
+                              setOptions((prev: OptionItem[]) => prev.filter((o: OptionItem) => o.id !== opt.id));
+                              setExitingIds((prev: Set<string>) => {
+                                const next = new Set(prev);
+                                next.delete(opt.id);
+                                return next;
+                              });
+                            }}
+                          >
+                            <EnhancedOptionCard
+                              option={opt}
+                              state={cardState}
+                              onClick={() => handleOptionClick(opt)}
+                              onCancel={() => {
+                                if (cardState?.taskId) {
+                                  taskManager.cancelTask(cardState.taskId);
+                                }
+                              }}
+                              onPause={() => {
+                                if (cardState?.taskId) {
+                                  taskManager.pauseTask(cardState.taskId);
+                                }
+                              }}
+                              onResume={() => {
+                                if (cardState?.taskId) {
+                                  taskManager.resumeTask(cardState.taskId);
+                                }
+                              }}
+                              disabled={false} // 不再全局禁用
+                            />
+                          </Collapse>
+                        );
+                      })}
                     </Box>
                   )}
 
@@ -779,78 +987,51 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                           borderRadius: 0, 
                           p: 1
                         }}>
-                          {historical.map((opt: OptionItem) => (
-                            <Collapse
-                              key={opt.id}
-                              in={!exitingIds.has(opt.id)}
-                              timeout={360}
-                              easing={{ exit: 'cubic-bezier(0, 0, 0.2, 1)' }}
-                              onExited={() => {
-                                setOptions((prev: OptionItem[]) => prev.filter((o: OptionItem) => o.id !== opt.id));
-                                setExitingIds((prev: Set<string>) => {
-                                  const next = new Set(prev);
-                                  next.delete(opt.id);
-                                  return next;
-                                });
-                              }}
-                            >
-                              <Fade in={!exitingIds.has(opt.id)} timeout={300} easing={{ exit: 'cubic-bezier(0, 0, 0.2, 1)' }}>
-                                <Box sx={{ mb: 2, '&:last-child': { mb: 0 }, transition: 'transform 320ms cubic-bezier(0, 0, 0.2, 1)', transform: exitingIds.has(opt.id) ? 'translateY(4px) scale(0.98)' : 'none' }}>
-                                  {/* 历史推荐也使用新的UI设计，但稍微简化 */}
-                                  <Box 
+                          {historical.map((opt: OptionItem) => {
+                            const cardId = `${opt.type}:${opt.content.trim().toLowerCase()}`;
+                            const cardState = cardStateManager.cardStates.get(cardId);
+                            
+                            return (
+                              <Collapse
+                                key={opt.id}
+                                in={!exitingIds.has(opt.id)}
+                                timeout={360}
+                                easing={{ exit: 'cubic-bezier(0, 0, 0.2, 1)' }}
+                                onExited={() => {
+                                  setOptions((prev: OptionItem[]) => prev.filter((o: OptionItem) => o.id !== opt.id));
+                                  setExitingIds((prev: Set<string>) => {
+                                    const next = new Set(prev);
+                                    next.delete(opt.id);
+                                    return next;
+                                  });
+                                }}
+                              >
+                                <Box sx={{ mb: 1 }}>
+                                  <EnhancedOptionCard
+                                    option={opt}
+                                    state={cardState}
                                     onClick={() => handleOptionClick(opt)}
-                                    sx={{ 
-                                      position: 'relative',
-                                      maxWidth: '100%',
-                                      mx: 'auto',
-                                      cursor: 'pointer'
-                                    }}
-                                  >
-                                    <Box sx={{
-                                      bgcolor: '#ffffff',
-                                      borderRadius: 2,
-                                      p: 2,
-                                      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
-                                      border: '1px solid #e2e8f0',
-                                      transition: 'all 0.2s ease-in-out',
-                                      '&:hover': {
-                                        transform: 'translateY(-3px)',
-                                        borderColor: '#a0aec0',
-                                        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)'
+                                    onCancel={() => {
+                                      if (cardState?.taskId) {
+                                        taskManager.cancelTask(cardState.taskId);
                                       }
-                                    }}>
-                                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', '&:hover .underline': { transform: 'scaleX(1)' } }}>
-                                        <Box sx={{ flexGrow: 1 }}>
-                                          <Box sx={{ position: 'relative', display: 'inline-block' }}>
-                                            <Typography sx={{ fontWeight: 600, fontSize: '0.8125rem', color: '#2d3748', mb: 0.5 }}>
-                                              {opt.content}
-                                            </Typography>
-                                            <Box className="underline" sx={{
-                                              position: 'absolute',
-                                              left: 0,
-                                              right: 0,
-                                              bottom: -2,
-                                              height: 2,
-                                              backgroundColor: '#4299e1',
-                                              transform: 'scaleX(0)',
-                                              transformOrigin: 'left',
-                                              transition: 'transform 300ms ease'
-                                            }} />
-                                          </Box>
-                                          <Typography sx={{ fontSize: '0.875rem', color: '#718096', lineHeight: 1.5, mt: 1 }}>
-                                            {opt.describe}
-                                          </Typography>
-                                        </Box>
-                                        <Box component="span" sx={{ fontSize: '1.5rem', color: '#a0aec0', ml: 2, transition: 'transform 0.2s ease-in-out, color 0.2s ease-in-out' }}>
-                                          ›
-                                        </Box>
-                                      </Box>
-                                    </Box>
-                                  </Box>
+                                    }}
+                                    onPause={() => {
+                                      if (cardState?.taskId) {
+                                        taskManager.pauseTask(cardState.taskId);
+                                      }
+                                    }}
+                                    onResume={() => {
+                                      if (cardState?.taskId) {
+                                        taskManager.resumeTask(cardState.taskId);
+                                      }
+                                    }}
+                                    disabled={false}
+                                  />
                                 </Box>
-                              </Fade>
-                            </Collapse>
-                          ))}
+                              </Collapse>
+                            );
+                          })}
                         </Box>
                       )}
                     </Box>
@@ -861,6 +1042,28 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
           </Box>
         </Box>
       </Box>
+      
+      {/* 任务队列面板 */}
+      <TaskQueuePanel
+        tasks={taskManager.tasks}
+        stats={queueStats}
+        visible={queuePanelVisible}
+        onClose={() => setQueuePanelVisible(false)}
+        onTaskCancel={(taskId) => taskManager.cancelTask(taskId)}
+        onTaskPause={(taskId) => taskManager.pauseTask(taskId)}
+        onTaskResume={(taskId) => taskManager.resumeTask(taskId)}
+        onClearCompleted={() => taskManager.clearCompleted()}
+        onToggleExpand={() => {
+          // 可以在这里添加展开/收起的逻辑
+        }}
+      />
+      
+      {/* 通知容器 */}
+      <NotificationContainer
+        notifications={notification.notifications}
+        config={notification.config}
+        onClose={notification.removeNotification}
+      />
     </Box>
   );
 };

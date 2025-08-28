@@ -15,6 +15,8 @@ import remarkGfm from 'remark-gfm';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatMessage, PromptTest } from '../types/types';
 import { generateChat } from '../services/api';
+import { useChatFormValidation } from '../hooks/useFormValidation';
+import { validateMarkdownContent } from '../utils/validation';
 
 // 自定义组件，确保正确处理自定义格式
 const CustomParagraph = (props: any) => {
@@ -76,9 +78,15 @@ interface ChatPanelProps {
  */
 const ChatPanel: React.FC<ChatPanelProps> = ({ promptTest, selectedModel }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const {
+    getFieldProps,
+    validateForm,
+    hasErrors,
+    fields,
+  } = useChatFormValidation();
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -87,18 +95,24 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ promptTest, selectedModel }) => {
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
+    const inputMessage = fields.message?.value || '';
+    if (!inputMessage.trim() || !validateForm() || hasErrors) return;
 
+    // Use sanitized value for the message
+    const sanitizedMessage = fields.message?.sanitizedValue || inputMessage;
+    
     const userMessage: ChatMessage = {
       id: uuidv4(),
       role: 'user',
-      content: inputMessage,
+      content: sanitizedMessage,
       timestamp: Date.now(),
     };
 
     const currentMessages = [...messages, userMessage];
     setMessages(currentMessages);
-    setInputMessage('');
+    
+    // Reset the input field
+    getFieldProps('message').onChange({ target: { value: '' } } as any);
     setIsLoading(true);
 
     try {
@@ -325,7 +339,7 @@ ${promptTest.promptResult}
                       br: CustomBreak
                     }}
                   >
-                    {message.content}
+                    {validateMarkdownContent(message.content).sanitizedValue}
                   </ReactMarkdown>
                 </div>
               </Paper>
@@ -345,8 +359,7 @@ ${promptTest.promptResult}
           fullWidth
           variant="outlined"
           placeholder="输入消息..."
-          value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
+          {...getFieldProps('message')}
           onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
           disabled={isLoading}
           size="small"
@@ -357,7 +370,7 @@ ${promptTest.promptResult}
         <Button 
           variant="contained"
           onClick={handleSendMessage}
-          disabled={isLoading || !inputMessage.trim()}
+          disabled={isLoading || !fields.message?.value?.trim() || hasErrors}
         >
           发送
         </Button>

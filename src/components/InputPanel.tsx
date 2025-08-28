@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { TextField, Typography, Box, Button } from '@mui/material';
+import { usePromptFormValidation } from '../hooks/useFormValidation';
 
 interface InputPanelProps {
   promptObject: string;
@@ -35,6 +36,43 @@ const InputPanel: React.FC<InputPanelProps> = ({
   isLoading = false,
   onGenerate
 }) => {
+  const {
+    getFieldProps,
+    validateForm,
+    fields,
+    hasErrors,
+  } = usePromptFormValidation();
+
+  // Sync external values with form validation
+  useEffect(() => {
+    if (fields.promptObject.value !== promptObject) {
+      getFieldProps('promptObject').onChange({ target: { value: promptObject } } as any);
+    }
+  }, [promptObject, fields.promptObject.value, getFieldProps]);
+
+  useEffect(() => {
+    if (fields.promptText.value !== promptText) {
+      getFieldProps('promptText').onChange({ target: { value: promptText } } as any);
+    }
+  }, [promptText, fields.promptText.value, getFieldProps]);
+
+  // Handle field changes with validation
+  const handlePromptObjectChange = (value: string) => {
+    getFieldProps('promptObject').onChange({ target: { value } } as any);
+    onPromptObjectChange(fields.promptObject.sanitizedValue || value);
+  };
+
+  const handlePromptTextChange = (value: string) => {
+    getFieldProps('promptText').onChange({ target: { value } } as any);
+    onPromptTextChange(fields.promptText.sanitizedValue || value);
+  };
+
+  // Enhanced generate handler with validation
+  const handleGenerate = () => {
+    if (validateForm() && onGenerate && !hasErrors) {
+      onGenerate();
+    }
+  };
   return (
     <Box 
       sx={{ 
@@ -64,7 +102,10 @@ const InputPanel: React.FC<InputPanelProps> = ({
           fullWidth
           variant="outlined"
           value={promptObject}
-          onChange={(e) => onPromptObjectChange(e.target.value)}
+          onChange={(e) => handlePromptObjectChange(e.target.value)}
+          onBlur={getFieldProps('promptObject').onBlur}
+          error={getFieldProps('promptObject').error}
+          helperText={getFieldProps('promptObject').helperText}
           placeholder="粘贴或输入您想要分析的文本内容..."
           sx={{ 
             flexGrow: 1,
@@ -119,7 +160,10 @@ const InputPanel: React.FC<InputPanelProps> = ({
           fullWidth
           variant="outlined"
           value={promptText}
-          onChange={(e) => onPromptTextChange(e.target.value)}
+          onChange={(e) => handlePromptTextChange(e.target.value)}
+          onBlur={getFieldProps('promptText').onBlur}
+          error={getFieldProps('promptText').error}
+          helperText={getFieldProps('promptText').helperText}
           placeholder="输入您希望AI如何分析这些内容的指令..."
           rows={4}
           sx={{ 
@@ -157,8 +201,8 @@ const InputPanel: React.FC<InputPanelProps> = ({
       <Box sx={{ flexShrink: 0 }}>
         <Button
           variant="contained"
-          onClick={onGenerate}
-          disabled={isLoading || !promptObject.trim() || !promptText.trim()}
+          onClick={handleGenerate}
+          disabled={isLoading || !promptObject.trim() || !promptText.trim() || hasErrors}
           fullWidth
           size="large"
           sx={{
