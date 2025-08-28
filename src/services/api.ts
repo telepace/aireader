@@ -13,12 +13,11 @@ const BASE_API_URL = 'https://openrouter.ai/api/v1';
  *
  * This function attempts to obtain the API key by first checking runtime configurations, specifically looking for
  * REACT_APP_OPENROUTER_API_KEY in the window's ENV object. If not found, it falls back to the build-time environment
- * variable. The function validates the retrieved key and throws an error if it is invalid or not set, providing
- * debug information for troubleshooting.
+ * variable. The function validates the retrieved key and logs debug information if it is invalid or not set, allowing
+ * the application to start normally while handling API call errors gracefully.
  *
  * @param modelName - The name of the model for which the API key is being retrieved.
  * @returns The retrieved API key as a string.
- * @throws Error If the API key is not found or is invalid.
  */
 const getApiKey = (modelName: string): string => {
   // 优先级：运行时配置 > 构建时环境变量
@@ -67,13 +66,13 @@ const SITE_INFO = {
 /**
  * Generate content based on a prompt using a specified model.
  *
- * This function constructs a request to the chat completions API with the provided promptObject and promptText. It sends the request using axios and processes the response to extract the generated content. If the response structure is unexpected, an error is thrown. The function also handles any errors that occur during the API call.
+ * This asynchronous function retrieves an API key based on the model name and constructs a request to the chat completions API using axios. It sends the prompt text and object as part of the request payload. The function processes the response to extract the generated content, throwing an error if the response structure is unexpected or if an error occurs during the API call.
  *
  * @param promptObject - A string representing the object to be included in the prompt.
  * @param promptText - A string containing the text of the prompt.
  * @param modelName - A string specifying the model to be used for content generation.
  * @returns A promise that resolves to the generated content as a string.
- * @throws Error If the API response structure is unexpected or if an error occurs during the API call.
+ * @throws Error If the API key is not found, the API response structure is unexpected, or if an error occurs during the API call.
  */
 export const generateContent = async (
   promptObject: string,
@@ -125,7 +124,7 @@ export const generateContent = async (
 /**
  * Generates a content stream by making an API request and processing the response in real-time.
  *
- * This function initiates a streaming API request using the provided promptObject and promptText. It handles the response by reading the stream, decoding the data, and invoking the onChunkReceived callback for each chunk of content received. In case of errors during the request or processing, the onError callback is triggered, and upon successful completion, the onComplete callback is called.
+ * This function initiates a streaming API request using the provided promptObject and promptText. It retrieves the API key based on the modelName, constructs the request, and processes the response stream. Each chunk of content received is passed to the onChunkReceived callback, while errors trigger the onError callback. Upon successful completion of the stream, the onComplete callback is invoked.
  *
  * @param promptObject - The object containing the prompt details for the API request.
  * @param promptText - The text prompt to be sent to the API.
@@ -244,6 +243,19 @@ export const generateContentStream = async (
   }
 };
 
+/**
+ * Generate a chat response based on the provided messages and model name.
+ *
+ * This function retrieves the API key for the specified model, filters and formats the messages,
+ * constructs a request payload, and sends a POST request to the chat completions API.
+ * It handles various error scenarios, including API response structure validation and specific HTTP error codes.
+ *
+ * @param messages - An array of ChatMessage objects containing the chat messages.
+ * @param modelName - The name of the model to be used for generating the chat response.
+ * @returns A promise that resolves to the generated chat response as a string.
+ * @throws Error If the API key is not found, the API response structure is unexpected,
+ *               or specific HTTP error codes are encountered (e.g., rate limit exceeded, authentication failed).
+ */
 export const generateChat = async (
   messages: ChatMessage[],
   modelName: string
@@ -319,6 +331,21 @@ export const generateChat = async (
   }
 }; 
 
+/**
+ * Generates a chat stream by sending messages to a specified model and processing the response.
+ *
+ * The function retrieves the API key for the model, constructs a request payload with the messages,
+ * and handles the streaming response from the API. It processes each chunk of data, extracting content
+ * and reasoning, and invokes the appropriate callbacks for delta updates, errors, and completion.
+ *
+ * @param messages - An array of ChatMessage objects containing the messages to be sent.
+ * @param modelName - The name of the model to be used for generating responses.
+ * @param onDelta - A callback function that is called with the delta updates from the stream.
+ * @param onError - A callback function that is called with an error if one occurs.
+ * @param onComplete - A callback function that is called when the streaming is complete.
+ * @returns A promise that resolves when the chat stream generation is complete.
+ * @throws Error If the API key is not found, the API request fails, or the response body is null.
+ */
 export const generateChatStream = async (
   messages: ChatMessage[],
   modelName: string,
