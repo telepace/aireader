@@ -24,6 +24,13 @@ import {
 } from '@mui/icons-material'
 import { useUser, useIsAuthenticated, useIsAnonymous, useAuthStore } from '../../stores/authStore'
 
+/**
+ * Renders the user status component, displaying authentication state and user options.
+ *
+ * The component utilizes hooks to determine the user's authentication status and displays appropriate UI elements based on whether the user is authenticated, anonymous, or offline. It includes functionality for signing in with different providers and signing out, as well as a menu for user settings and preferences.
+ *
+ * @returns A JSX element representing the user status, including user information and action buttons.
+ */
 const UserStatus: React.FC = () => {
   const user = useUser()
   const isAuthenticated = useIsAuthenticated()
@@ -33,19 +40,31 @@ const UserStatus: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const open = Boolean(anchorEl)
 
+  /**
+   * Sets the anchor element based on the mouse event.
+   */
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget)
   }
 
+  /**
+   * Closes the anchor element by setting it to null.
+   */
   const handleClose = () => {
     setAnchorEl(null)
   }
 
+  /**
+   * Handles the sign-out process by signing out the user and closing the session.
+   */
   const handleSignOut = async () => {
     await signOut()
     handleClose()
   }
 
+  /**
+   * Handles user sign-in with the specified provider.
+   */
   const handleSignIn = async (provider: 'github' | 'google') => {
     await signInWithProvider(provider)
     handleClose()
