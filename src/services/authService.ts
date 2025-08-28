@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase, isSupabaseAvailable } from './supabase'
 import { AuthUser, AnonymousUser } from '../types/types'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 import type { User as DatabaseUser } from '../types/database'
@@ -13,6 +13,18 @@ export class AuthService {
    */
   static async createAnonymousUser(): Promise<AnonymousUser> {
     try {
+      // Check if Supabase is available
+      if (!isSupabaseAvailable()) {
+        console.warn('⚠️ Supabase not available - using local anonymous user');
+        // Return a local anonymous user without database persistence
+        const anonymousToken = crypto.randomUUID();
+        return {
+          id: `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          anonymous_token: anonymousToken,
+          is_anonymous: true
+        } as AnonymousUser;
+      }
+
       // 生成匿名令牌
       const anonymousToken = crypto.randomUUID()
       

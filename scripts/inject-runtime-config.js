@@ -16,6 +16,8 @@ const runtimeConfig = {
   REACT_APP_LANGFUSE_SECRET_KEY: process.env.REACT_APP_LANGFUSE_SECRET_KEY || '',
   REACT_APP_LANGFUSE_PUBLIC_KEY: process.env.REACT_APP_LANGFUSE_PUBLIC_KEY || '',
   REACT_APP_LANGFUSE_BASE_URL: process.env.REACT_APP_LANGFUSE_BASE_URL || 'https://cloud.langfuse.com',
+  REACT_APP_SUPABASE_URL: process.env.REACT_APP_SUPABASE_URL || '',
+  REACT_APP_SUPABASE_ANON_KEY: process.env.REACT_APP_SUPABASE_ANON_KEY || '',
   REACT_APP_APP_NAME: process.env.REACT_APP_APP_NAME || 'AI Prompt Tester',
   REACT_APP_APP_VERSION: process.env.REACT_APP_APP_VERSION || '1.0.0'
 };
@@ -32,6 +34,8 @@ console.log('📊 Runtime Configuration Loaded:', {
   hasApiKey: !!window.ENV.REACT_APP_OPENROUTER_API_KEY && window.ENV.REACT_APP_OPENROUTER_API_KEY.length > 0,
   hasLangfuseSecret: !!window.ENV.REACT_APP_LANGFUSE_SECRET_KEY && window.ENV.REACT_APP_LANGFUSE_SECRET_KEY.length > 0,
   hasLangfusePublic: !!window.ENV.REACT_APP_LANGFUSE_PUBLIC_KEY && window.ENV.REACT_APP_LANGFUSE_PUBLIC_KEY.length > 0,
+  hasSupabaseUrl: !!window.ENV.REACT_APP_SUPABASE_URL && window.ENV.REACT_APP_SUPABASE_URL.length > 0,
+  hasSupabaseKey: !!window.ENV.REACT_APP_SUPABASE_ANON_KEY && window.ENV.REACT_APP_SUPABASE_ANON_KEY.length > 0,
   langfuseBaseUrl: window.ENV.REACT_APP_LANGFUSE_BASE_URL,
   appName: window.ENV.REACT_APP_APP_NAME,
   appVersion: window.ENV.REACT_APP_APP_VERSION,
