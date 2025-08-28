@@ -10,14 +10,14 @@ const path = require('path');
 
 const CONFIG_FILE = path.join(__dirname, '../build/config.js');
 
-// 从环境变量中读取配置
+// 从环境变量中读取配置 - 使用安全默认值
 const runtimeConfig = {
-  REACT_APP_OPENROUTER_API_KEY: process.env.REACT_APP_OPENROUTER_API_KEY || '__REACT_APP_OPENROUTER_API_KEY__',
-  REACT_APP_LANGFUSE_SECRET_KEY: process.env.REACT_APP_LANGFUSE_SECRET_KEY || '__REACT_APP_LANGFUSE_SECRET_KEY__',
-  REACT_APP_LANGFUSE_PUBLIC_KEY: process.env.REACT_APP_LANGFUSE_PUBLIC_KEY || '__REACT_APP_LANGFUSE_PUBLIC_KEY__',
-  REACT_APP_LANGFUSE_BASE_URL: process.env.REACT_APP_LANGFUSE_BASE_URL || '__REACT_APP_LANGFUSE_BASE_URL__',
-  REACT_APP_APP_NAME: process.env.REACT_APP_APP_NAME || '__REACT_APP_APP_NAME__',
-  REACT_APP_APP_VERSION: process.env.REACT_APP_APP_VERSION || '__REACT_APP_APP_VERSION__'
+  REACT_APP_OPENROUTER_API_KEY: process.env.REACT_APP_OPENROUTER_API_KEY || '',
+  REACT_APP_LANGFUSE_SECRET_KEY: process.env.REACT_APP_LANGFUSE_SECRET_KEY || '',
+  REACT_APP_LANGFUSE_PUBLIC_KEY: process.env.REACT_APP_LANGFUSE_PUBLIC_KEY || '',
+  REACT_APP_LANGFUSE_BASE_URL: process.env.REACT_APP_LANGFUSE_BASE_URL || 'https://cloud.langfuse.com',
+  REACT_APP_APP_NAME: process.env.REACT_APP_APP_NAME || 'AI Prompt Tester',
+  REACT_APP_APP_VERSION: process.env.REACT_APP_APP_VERSION || '1.0.0'
 };
 
 // 生成运行时配置内容
@@ -27,18 +27,37 @@ const configContent = `// Runtime Configuration - Auto Generated
 
 window.ENV = ${JSON.stringify(runtimeConfig, null, 2)};
 
-// 调试信息 - 只在开发环境显示
-if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-  console.log('Runtime ENV injected:', {
-    hasApiKey: !!window.ENV.REACT_APP_OPENROUTER_API_KEY && window.ENV.REACT_APP_OPENROUTER_API_KEY !== "__REACT_APP_OPENROUTER_API_KEY__",
-    hasLangfuseSecret: !!window.ENV.REACT_APP_LANGFUSE_SECRET_KEY && window.ENV.REACT_APP_LANGFUSE_SECRET_KEY !== "__REACT_APP_LANGFUSE_SECRET_KEY__",
-    hasLangfusePublic: !!window.ENV.REACT_APP_LANGFUSE_PUBLIC_KEY && window.ENV.REACT_APP_LANGFUSE_PUBLIC_KEY !== "__REACT_APP_LANGFUSE_PUBLIC_KEY__",
-    langfuseBaseUrl: window.ENV.REACT_APP_LANGFUSE_BASE_URL,
-    appName: window.ENV.REACT_APP_APP_NAME,
-    appVersion: window.ENV.REACT_APP_APP_VERSION,
-    timestamp: '${new Date().toISOString()}'
-  });
-}
+// 调试信息 - 在生产环境也显示以便于问题排查
+console.log('📊 Runtime Configuration Loaded:', {
+  hasApiKey: !!window.ENV.REACT_APP_OPENROUTER_API_KEY && window.ENV.REACT_APP_OPENROUTER_API_KEY.length > 0,
+  hasLangfuseSecret: !!window.ENV.REACT_APP_LANGFUSE_SECRET_KEY && window.ENV.REACT_APP_LANGFUSE_SECRET_KEY.length > 0,
+  hasLangfusePublic: !!window.ENV.REACT_APP_LANGFUSE_PUBLIC_KEY && window.ENV.REACT_APP_LANGFUSE_PUBLIC_KEY.length > 0,
+  langfuseBaseUrl: window.ENV.REACT_APP_LANGFUSE_BASE_URL,
+  appName: window.ENV.REACT_APP_APP_NAME,
+  appVersion: window.ENV.REACT_APP_APP_VERSION,
+  timestamp: '${new Date().toISOString()}',
+  hostname: window.location.hostname
+});
+
+// 应用启动状态检查
+window.addEventListener('DOMContentLoaded', function() {
+  console.log('🚀 DOM Content Loaded - checking app initialization...');
+  
+  setTimeout(function() {
+    const root = document.getElementById('root');
+    if (root && root.children.length === 0) {
+      console.error('❌ React app failed to render - root element is empty');
+      console.log('🔧 Troubleshooting info:', {
+        rootElement: !!root,
+        hasReactDevTools: !!(window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__,
+        userAgent: navigator.userAgent,
+        location: window.location.href
+      });
+    } else {
+      console.log('✅ React app appears to be rendering');
+    }
+  }, 3000);
+});
 `;
 
 try {
