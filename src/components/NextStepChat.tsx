@@ -105,8 +105,10 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'deepen' | 'next'>('deepen');
-  const [reasoningOpen, setReasoningOpen] = useState(false);
+  const [reasoningOpen, setReasoningOpen] = useState(true);
   const [reasoningText, setReasoningText] = useState('');
+  const reasoningRef = useRef<HTMLDivElement>(null);
+  const reasoningAutoFollowRef = useRef<boolean>(true);
   const [, setStreamingAssistantId] = useState<string | null>(null); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [userSession, setUserSession] = useState<UserSession | null>(null);
   const [exitingIds, setExitingIds] = useState<Set<string>>(new Set());
@@ -117,6 +119,21 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     next: true
   });
   
+  // 推理内容流式更新时，若接近底部则平滑滚动到底部
+  useEffect(() => {
+    if (!reasoningOpen) return;
+    const el = reasoningRef.current;
+    if (!el) return;
+    const threshold = 24; // px
+    const atBottom = el.scrollHeight - (el.scrollTop + el.clientHeight) < threshold;
+    if (reasoningAutoFollowRef.current || atBottom) {
+      // 等下一帧内容布局完成后再滚动，避免闪动
+      requestAnimationFrame(() => {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      });
+    }
+  }, [reasoningText, reasoningOpen]);
+
   // 完成状态管理
   const [contentCompleteStates, setContentCompleteStates] = useState<Map<string, {
     isComplete: boolean;
@@ -265,7 +282,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     const trimmed = trimContextForApi(withoutSystem);
     const withSystem = ensureSystemPrompt(trimmed);
     setMessages(withoutSystem); setInputMessage(''); setIsLoading(true);
-    setReasoningText(''); setReasoningOpen(false);
+    setReasoningText(''); setReasoningOpen(true);
 
     // Removed chat-message-started event - chat traces provide better insights
 
@@ -324,6 +341,10 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                 });
                 return newMap;
               });
+              // 推理完成后，自动折叠推理窗口（短暂延迟以避免突兀）
+              setTimeout(() => {
+                setReasoningOpen(false);
+              }, 600);
             }
             
             // 处理推荐选项
@@ -397,11 +418,14 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
    */
   const handleOptionClick = async (opt: OptionItem) => {
     if (isLoading) return;
-    setExitingIds((prev: Set<string>) => {
-      const next = new Set(prev);
-      next.add(opt.id);
-      return next;
-    });
+    // 轻微延迟后再触发退出动画（约100ms）
+    setTimeout(() => {
+      setExitingIds((prev: Set<string>) => {
+        const next = new Set(prev);
+        next.add(opt.id);
+        return next;
+      });
+    }, 200);
     await sendMessageInternal(opt.content);
   };
 
@@ -469,16 +493,51 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                 <Box key={m.id} sx={{ mb: 2, display: 'flex', flexDirection: 'column', alignItems: isUser ? 'flex-end' : 'flex-start' }}>
                   {/* Reasoning teaser positioned above currently streaming assistant bubble */}
                   {m.role==='assistant' && isCurrentStreaming && reasoningText && (
-                    <Box sx={{ alignSelf: 'flex-start', mb: 1, maxWidth: 560 }}>
+                    <Box sx={{ alignSelf: 'flex-start', mb: 1, maxWidth: '100%' }}>
                       <Box sx={{ display:'flex', alignItems:'center', mb: 0.5 }}>
                         <Typography variant="caption" sx={{ color:'#666', fontWeight: 600 }}>推理</Typography>
-                        <Button size="small" variant="text" onClick={() => setReasoningOpen((v: boolean) => !v)} sx={{ textTransform:'none', fontWeight:600, ml: 1, px:0 }}>
+                        <Button size="small" variant="text" onClick={() => setReasoningOpen((v: boolean) => !v)} sx={{ textTransform:'none', fontSize: '0.75rem', fontWeight:500, ml: 1, px:0 }}>
                           {reasoningOpen ? '收起 ▴' : '展开 ▾'}
                         </Button>
                       </Box>
                       {reasoningOpen && (
-                        <Box sx={{ fontFamily:'monospace', whiteSpace:'pre-wrap', maxHeight: 240, overflowY:'auto', p: 0.5, bgcolor:'transparent', border:'none' }}>
-                          {reasoningText}
+                        <Box
+                          ref={reasoningRef}
+                          onScroll={(e: React.UIEvent<HTMLDivElement>) => {
+                            const el = e.currentTarget;
+                            const threshold = 24;
+                            const atBottom = el.scrollHeight - (el.scrollTop + el.clientHeight) < threshold;
+                            reasoningAutoFollowRef.current = atBottom;
+                          }}
+                          sx={{
+                            fontFamily:'monospace',
+                            whiteSpace:'pre-wrap',
+                            lineHeight: 1.5,
+                            fontSize: '0.75rem',
+                            height: '9em', // 固定 6 行高度
+                            overflowY:'auto',
+                            bgcolor:'background.paper',
+                            border:'1px solid',
+                            borderColor:'divider',
+                            borderRadius: 1,
+                            px: 2,
+                            pt: 1,
+                            pb: 0.5,
+                            maxWidth: '100%',
+                            width: '100%'
+                          }}
+                        >
+                          {reasoningText
+                            .split(/\n{2,}/)
+                            .map((para: string, idx: number, arr: string[]) => (
+                              <Typography
+                                key={idx}
+                                component="div"
+                                sx={{ m: 0, mb: idx < arr.length - 1 ? 0.5 : 0, fontSize: 'inherit', lineHeight: 'inherit', whiteSpace: 'pre-wrap' }}
+                              >
+                                {para}
+                              </Typography>
+                            ))}
                         </Box>
                       )}
                     </Box>
@@ -600,7 +659,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
               const { current, historical, hasHistorical } = getDisplayOptions(selectedTab);
               
               if (current.length === 0 && historical.length === 0) {
-                return <Typography variant="body2" sx={{ color: '#777' }}>暂无推荐，请先提问或继续对话。</Typography>;
+                return <Typography variant="body2" sx={{ color: '#777' }}>暂无推荐选项，请先提问或继续对话。</Typography>;
               }
 
               return (
@@ -612,7 +671,8 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                         <Collapse
                           key={opt.id}
                           in={!exitingIds.has(opt.id)}
-                          timeout={220}
+                          timeout={360}
+                          easing={{ exit: 'cubic-bezier(0, 0, 0.2, 1)' }}
                           onExited={() => {
                             setOptions((prev: OptionItem[]) => prev.filter((o: OptionItem) => o.id !== opt.id));
                             setExitingIds((prev: Set<string>) => {
@@ -622,8 +682,8 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                             });
                           }}
                         >
-                          <Fade in={!exitingIds.has(opt.id)} timeout={200}>
-                            <Box sx={{ mb: 4, position: 'relative' }}>
+                          <Fade in={!exitingIds.has(opt.id)} timeout={300} easing={{ exit: 'cubic-bezier(0, 0, 0.2, 1)' }}>
+                            <Box sx={{ mb: 4, position: 'relative', transition: 'transform 320ms cubic-bezier(0, 0, 0.2, 1)', transform: exitingIds.has(opt.id) ? 'translateY(4px) scale(0.98)' : 'none' }}>
                               {/* 新的UI设计：经典布局 + 中性灰色 */}
                               <Box 
                                 onClick={() => handleOptionClick(opt)}
@@ -724,7 +784,8 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                             <Collapse
                               key={opt.id}
                               in={!exitingIds.has(opt.id)}
-                              timeout={220}
+                              timeout={360}
+                              easing={{ exit: 'cubic-bezier(0, 0, 0.2, 1)' }}
                               onExited={() => {
                                 setOptions((prev: OptionItem[]) => prev.filter((o: OptionItem) => o.id !== opt.id));
                                 setExitingIds((prev: Set<string>) => {
@@ -734,8 +795,8 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                                 });
                               }}
                             >
-                              <Fade in={!exitingIds.has(opt.id)} timeout={200}>
-                                <Box sx={{ mb: 2, '&:last-child': { mb: 0 } }}>
+                              <Fade in={!exitingIds.has(opt.id)} timeout={300} easing={{ exit: 'cubic-bezier(0, 0, 0.2, 1)' }}>
+                                <Box sx={{ mb: 2, '&:last-child': { mb: 0 }, transition: 'transform 320ms cubic-bezier(0, 0, 0.2, 1)', transform: exitingIds.has(opt.id) ? 'translateY(4px) scale(0.98)' : 'none' }}>
                                   {/* 历史推荐也使用新的UI设计，但稍微简化 */}
                                   <Box 
                                     onClick={() => handleOptionClick(opt)}
