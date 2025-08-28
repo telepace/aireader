@@ -24,6 +24,13 @@ import {
 import { useDataMigration } from '../../hooks/useDataMigration'
 import { useIsAuthenticated } from '../../stores/authStore'
 
+/**
+ * Renders a migration prompt dialog for users to sync local data to the cloud.
+ *
+ * The component checks if the user is authenticated and has pending migration data. If so, it displays a prompt allowing the user to initiate the migration process. It handles migration execution, displays success or error messages based on the migration result, and provides options to skip or dismiss the prompt. The component also shows migration progress and statistics about the data to be synced.
+ *
+ * @returns A React element representing the migration prompt dialog, or null if the prompt should not be shown.
+ */
 const MigrationPrompt: React.FC = () => {
   const isAuthenticated = useIsAuthenticated()
   const {
@@ -48,6 +55,14 @@ const MigrationPrompt: React.FC = () => {
     }
   }, [isAuthenticated, hasPendingMigration, migrationCompleted])
 
+  /**
+   * Handles the migration process and updates the UI accordingly.
+   *
+   * This function executes the migration by calling executeMigration,
+   * then updates the migration result and marks the migration as completed.
+   * If the migration is successful, it sets a timeout to close the prompt
+   * after 2 seconds. In case of an error, it logs the failure to the console.
+   */
   const handleMigrate = async () => {
     try {
       const result = await executeMigration()
@@ -65,12 +80,18 @@ const MigrationPrompt: React.FC = () => {
     }
   }
 
+  /**
+   * Hides the prompt and marks it as skipped in session storage.
+   */
   const handleSkip = () => {
     setShowPrompt(false)
     // 可以设置一个标记，避免此会话中再次提示
     sessionStorage.setItem('migration_prompt_skipped', Date.now().toString())
   }
 
+  /**
+   * Hides the prompt by setting showPrompt to false.
+   */
   const handleDismiss = () => {
     setShowPrompt(false)
   }
