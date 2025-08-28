@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Button, CircularProgress, Paper, TextField, Typography, Tabs, Tab, keyframes } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
@@ -89,7 +89,6 @@ function trimContextForApi(all: ChatMessage[]): ChatMessage[] {
 const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal, externalToggleConversationMenuSignal }) => {
   const {
     conversationId,
-    setConversationId,
     messages,
     setMessages,
     options,
@@ -99,8 +98,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     conversations,
     createNewConversation,
     chooseConversation,
-    removeConversation,
-    normalizeStoredOptions
+    removeConversation
   } = useConversation({ selectedModel });
   
   const [inputMessage, setInputMessage] = useState('');
@@ -155,14 +153,6 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
 
   // 持久化逻辑已移入 useConversation
 
-  // 当“推荐相关好书”出现历史推荐时，自动默认展开
-  useEffect(() => {
-    const { hasHistorical } = getDisplayOptions('next');
-    if (hasHistorical && !showHistoricalOptions.next) {
-      setShowHistoricalOptions((prev) => ({ ...prev, next: true }));
-    }
-  }, [options]);
-
   const ensureSystemPrompt = (current: ChatMessage[]): ChatMessage[] => {
     const hasSystem = current.some(m => m.role === 'system');
     if (hasSystem) return current;
@@ -172,7 +162,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
   /**
    * 按消息ID分组选项，用于实现历史推荐的折叠功能
    */
-  const groupOptionsByMessage = (options: OptionItem[], type: 'deepen' | 'next') => {
+  const groupOptionsByMessage = useCallback((options: OptionItem[], type: 'deepen' | 'next') => {
     const filtered = options.filter((o: OptionItem) => o.type === type);
     const groups = new Map<string, OptionItem[]>();
     
@@ -193,12 +183,12 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     });
     
     return sortedGroups;
-  };
+  }, []);
 
   /**
    * 获取要显示的选项
    */
-  const getDisplayOptions = (type: 'deepen' | 'next') => {
+  const getDisplayOptions = useCallback((type: 'deepen' | 'next') => {
     const groups = groupOptionsByMessage(options, type);
     if (groups.length === 0) return { current: [], historical: [], hasHistorical: false };
     
@@ -213,7 +203,15 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
       historical: historicalOptions,
       hasHistorical: historicalOptions.length > 0
     };
-  };
+  }, [options, groupOptionsByMessage]);
+
+  // 当"推荐相关好书"出现历史推荐时，自动默认展开
+  useEffect(() => {
+    const { hasHistorical } = getDisplayOptions('next');
+    if (hasHistorical && !showHistoricalOptions.next) {
+      setShowHistoricalOptions((prev) => ({ ...prev, next: true }));
+    }
+  }, [options, getDisplayOptions, showHistoricalOptions.next]);
 
   // 归一化逻辑已移入 useConversation
 

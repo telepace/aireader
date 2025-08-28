@@ -47,4 +47,20 @@ export interface TracingContext {
   userId?: string;
   sessionId?: string;
   conversationId?: string;
+}
+
+// Authentication interfaces
+export interface AuthUser {
+  id: string;
+  email?: string;
+  display_name?: string;
+  avatar_url?: string;
+  provider?: 'github' | 'google' | 'anonymous';
+  is_anonymous: boolean;
+}
+
+export interface AnonymousUser {
+  id: string;
+  anonymous_token: string;
+  is_anonymous: true;
 } 

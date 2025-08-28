@@ -22,7 +22,7 @@ jest.mock('langfuse', () => {
 });
 
 // Mock api-with-tracing with a minimal implementation for tests
-jest.mock('../services/api-with-tracing', () => ({
+jest.mock('./services/api-with-tracing', () => ({
   __esModule: true,
   generateChatStream: async (
     messages: any,

@@ -34,7 +34,7 @@ export function useConversation({ selectedModel }: UseConversationOptions): UseC
   const [hydrated, setHydrated] = useState(false);
   const allowEmptyPersist = useRef(false);
 
-  const conversations = useMemo(() => listConversations(), [conversationId, messages, options, selectedModel]);
+  const conversations = useMemo(() => listConversations(), []);
 
   // 初次挂载时，根据当前 conversationId 进行状态水合，避免把空状态覆盖已有会话
   useEffect(() => {

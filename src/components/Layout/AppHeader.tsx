@@ -8,6 +8,7 @@ import {
   SelectChangeEvent,
   Button
 } from '@mui/material';
+import { UserStatus } from '../Auth';
 
 interface AppHeaderProps {
   selectedModel: string;
@@ -112,6 +113,9 @@ const AppHeader: React.FC<AppHeaderProps> = ({
             ))}
           </Select>
         </FormControl>
+        
+        {/* 用户状态组件 */}
+        <UserStatus />
       </Box>
     </Box>
   );

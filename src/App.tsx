@@ -6,11 +6,13 @@ import {
   createTheme,
   Box
 } from '@mui/material';
-  import { useUIState } from './hooks/useUIState';
+import { useUIState } from './hooks/useUIState';
 import { useModelSelection } from './hooks/useModelSelection';
-import { createUserSession, logUserEvent, flushTraces } from './services/api-with-tracing';
+import { createUserSession, flushTraces } from './services/api-with-tracing';
 import AppHeader from './components/Layout/AppHeader';
 import NextStepChat from './components/NextStepChat';
+import { UpgradePrompt, MigrationPrompt } from './components/Auth';
+import { useAuthStore } from './stores/authStore';
 import { UserSession } from './types/types';
 import './utils/langfuse-test'; // Auto-validates Langfuse integration in development
 import './App.css';
@@ -31,6 +33,14 @@ const App: React.FC = () => {
   } = useUIState();
 
   const { selectedModel, setSelectedModel, availableModels } = useModelSelection();
+  
+  // 认证系统初始化
+  const { initializeAuth, isInitialized } = useAuthStore();
+
+  // Initialize authentication system
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
 
   // Initialize user session on app load (without logging app-loaded event)
   useEffect(() => {
@@ -232,30 +242,6 @@ const App: React.FC = () => {
     }
   });
 
-  /**
-   * Updates the current tab value on tab change.
-   */
-  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
-    // This function is no longer needed as we have only one tab
-  };
-
-  /**
-   * Handles the generation of content based on the provided prompt and model.
-   *
-   * The function checks for the presence of promptObject and promptText before proceeding. It sets a loading state and initializes the prompt result. It logs user events for analytics, calls the generateContent function with the necessary parameters, and updates the prompt result based on the response. In case of errors, it handles specific messages for missing API keys and logs the error details. Finally, it resets the loading state.
-   *
-   * @returns {Promise<void>} A promise that resolves when the content generation process is complete.
-   */
-  const handleGenerate = async () => {
-    // This function is no longer needed as we have only one tab
-  };
-
-  /**
-   * Handles the selection of a test by loading the prompt and setting the model and tab.
-   */
-  const handleSelectTest = (test: any) => {
-    // This function is no longer needed as we have only one tab
-  };
 
   // 这些变量在当前的布局中暂时未使用，但保留以备将来使用
   // const sidebarWidth = 320;
@@ -304,6 +290,14 @@ const App: React.FC = () => {
         }}>
           <NextStepChat selectedModel={selectedModel} clearSignal={nextStepClearSignal} externalToggleConversationMenuSignal={toggleConvMenuSignal} />
         </Box>
+        
+        {/* 认证相关弹窗 */}
+        {isInitialized && (
+          <>
+            <UpgradePrompt />
+            <MigrationPrompt />
+          </>
+        )}
       </Container>
     </ThemeProvider>
   );
