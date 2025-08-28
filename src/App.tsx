@@ -18,7 +18,7 @@ import './utils/langfuse-test'; // Auto-validates Langfuse integration in develo
 import './App.css';
 
 /**
- * Main application component that manages the user interface and state.
+ * Main application component that manages the user interface, state, and authentication.
  */
 const App: React.FC = () => {
   const [nextStepClearSignal, setNextStepClearSignal] = useState<number>(0);
