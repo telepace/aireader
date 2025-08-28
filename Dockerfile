@@ -30,8 +30,8 @@ ENV REACT_APP_APP_VERSION=$REACT_APP_APP_VERSION
 # 构建应用（包含运行时配置注入）
 RUN npm run build:railway
 
-# 安装 http-server 用于提供静态文件（更轻量）
-RUN npm install -g http-server
+# 安装 serve 用于提供静态文件（更稳定的SPA支持）
+RUN npm install -g serve
 
 # 安装必要的工具
 RUN apk add --no-cache curl
@@ -48,4 +48,4 @@ RUN ls -la build/ && \
 RUN echo '<!DOCTYPE html><html><head><title>Aireader - Railway Health Check</title><meta charset="utf-8"><style>body{font-family:system-ui,sans-serif;padding:2rem;background:#f8fafc}h1{color:#6366f1}</style></head><body><h1>🚀 Aireader - Deployed Successfully!</h1><p><strong>Status:</strong> Running</p><p><strong>Port:</strong> 3000</p><p><strong>Time:</strong> <script>document.write(new Date().toLocaleString())</script></p><a href="/">Go to App</a></body></html>' > build/health.html
 
 # 启动应用
-CMD ["http-server", "build", "-p", "3000", "--host", "0.0.0.0", "-c-1", "--cors"]
+CMD ["serve", "-s", "build", "-l", "3000", "--no-clipboard"]
