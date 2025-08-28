@@ -484,11 +484,30 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                     </Box>
                   )}
                   
-                  {/* 优雅的完成状态显示 */}
+                  <Paper elevation={1} sx={{ 
+                    px: isUser ? 2 : 8, // 用户消息水平留白约28px，assistant消息水平留白约32px
+                    py: isUser ? 1 : 3,
+                    maxWidth: '100%', 
+                    bgcolor: isUser ? '#eeeeee' : '#fff', 
+                    borderRadius: 2,
+                    position: 'relative'
+                  }}>
+                    {isUser ? (
+                      <Typography sx={{ whiteSpace: 'pre-wrap' }}>{m.content}</Typography>
+                    ) : (
+                      <div className="markdown-body" style={{ whiteSpace: 'normal' }}>
+                        <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm, remarkBreaks]}>
+                          {main || m.content}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                  </Paper>
+
+                  {/* 完成提示：移动到消息下方 */}
                   {m.role==='assistant' && completionState?.isComplete && (
                     <Box sx={{ 
                       alignSelf: 'flex-start', 
-                      mb: 1.5, 
+                      mt: 1.5, 
                       maxWidth: 560,
                       display: 'flex',
                       alignItems: 'center',
@@ -516,25 +535,6 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                       </Typography>
                     </Box>
                   )}
-                  
-                  <Paper elevation={1} sx={{ 
-                    px: isUser ? 2 : 8, // 用户消息水平留白约28px，assistant消息水平留白约32px
-                    py: isUser ? 1 : 3,
-                    maxWidth: '100%', 
-                    bgcolor: isUser ? '#eeeeee' : '#fff', 
-                    borderRadius: 2,
-                    position: 'relative'
-                  }}>
-                    {isUser ? (
-                      <Typography sx={{ whiteSpace: 'pre-wrap' }}>{m.content}</Typography>
-                    ) : (
-                      <div className="markdown-body" style={{ whiteSpace: 'normal' }}>
-                        <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm, remarkBreaks]}>
-                          {main || m.content}
-                        </ReactMarkdown>
-                      </div>
-                    )}
-                  </Paper>
                 </Box>
               );
             })}
