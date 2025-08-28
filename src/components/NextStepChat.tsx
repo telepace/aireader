@@ -795,7 +795,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                               }}
                             >
                               <Fade in={!exitingIds.has(opt.id)} timeout={300} easing={{ exit: 'cubic-bezier(0, 0, 0.2, 1)' }}>
-                                <Box sx={{ mb: 2, '&:last-child': { mb: 0 }, transition: 'transform 320ms cubic-bezier(0, 0, 0.2, 1)', transform: exitingIds.has(opt.id) ? 'translateY(4px) scale(0.98)' : 'none' }}>
+                                <Box sx={{ mb: 2, '&:last-child': { mb: 4 }, transition: 'transform 320ms cubic-bezier(0, 0, 0.2, 1)', transform: exitingIds.has(opt.id) ? 'translateY(4px) scale(0.98)' : 'none' }}>
                                   {/* 历史推荐也使用新的UI设计，但稍微简化 */}
                                   <Box 
                                     onClick={() => handleOptionClick(opt)}
