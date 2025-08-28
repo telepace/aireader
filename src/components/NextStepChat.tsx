@@ -25,6 +25,9 @@ interface NextStepChatProps {
 // OptionItem now comes from types.ts
 
 // 使用新的模板系统生成 SYSTEM_PROMPT
+/**
+ * Generates a system prompt for the next step in a chat.
+ */
 const getSystemPrompt = () => {
   try {
     return generateSystemPrompt('nextStepChat', 'zh');
@@ -85,6 +88,7 @@ function trimContextForApi(all: ChatMessage[]): ChatMessage[] {
  * @param {string} props.selectedModel - The model selected for the chat.
  * @param {number} props.clearSignal - A signal to clear the chat state.
  * @param {number} props.externalToggleConversationMenuSignal - A signal to toggle the conversation menu.
+ * @param {HTMLElement} props.conversationMenuAnchorEl - The anchor element for the conversation menu.
  * @returns {JSX.Element} The rendered NextStepChat component.
  */
 const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal, externalToggleConversationMenuSignal, conversationMenuAnchorEl }) => {
@@ -271,8 +275,8 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
    * Sends a message internally and manages the chat state.
    *
    * This function creates a user message and updates the chat context by trimming and ensuring the system prompt.
-   * It sets the loading state and initializes a placeholder for the assistant's response.
-   * The function then generates a chat stream, updating the assistant's message in real-time, handling errors, and processing completion signals and options.
+   * It sets the loading state and initializes a placeholder for the assistant's response. The function generates a chat stream,
+   * updating the assistant's message in real-time, handling errors, and processing completion signals and options.
    *
    * @param userText - The text content of the user's message.
    */
@@ -409,11 +413,6 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
   const handleSend = async () => { if (!inputMessage.trim() || isLoading) return; await sendMessageInternal(inputMessage.trim()); };
   /**
    * Handles the click event for an option.
-   *
-   * This function first checks if the application is currently loading; if so, it exits early.
-   * It then removes the clicked option from the list of available options to prevent it from occupying space.
-   * Finally, it sends a message using the content of the clicked option through the `sendMessageInternal` function.
-   *
    * @param opt - The option item that was clicked.
    */
   const handleOptionClick = async (opt: OptionItem) => {
