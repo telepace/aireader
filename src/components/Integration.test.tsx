@@ -97,7 +97,7 @@ const TestIntegrationComponent: React.FC = () => {
           promptObject: 'loaded object',
           promptText: 'loaded text',
           promptResult: 'loaded result',
-          model: 'deepseek/deepseek-chat-v3-0324',
+          modelName: 'deepseek/deepseek-chat-v3-0324',
           timestamp: Date.now()
         })}
       >

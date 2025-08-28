@@ -134,7 +134,7 @@ describe('usePromptTest', () => {
       promptObject: 'test object',
       promptText: 'test prompt',
       promptResult: 'test result',
-      model: 'test-model',
+      modelName: 'test-model',
       timestamp: Date.now()
     };
 
