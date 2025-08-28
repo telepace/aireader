@@ -287,7 +287,7 @@ ${promptTest.promptResult}
                 sx={{ 
                   p: 3,
                   maxWidth: '100%',
-                  bgcolor: message.role === 'user' ? '#e3f2fd' : '#fff',
+                  bgcolor: message.role === 'user' ? '#eeeeee' : '#fff',
                   borderRadius: 2,
                   color: 'inherit'
                 }}

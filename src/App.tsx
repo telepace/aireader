@@ -23,6 +23,7 @@ import './App.css';
 const App: React.FC = () => {
   const [nextStepClearSignal, setNextStepClearSignal] = useState<number>(0);
   const [toggleConvMenuSignal, setToggleConvMenuSignal] = useState<number>(0);
+  const [convMenuAnchorEl, setConvMenuAnchorEl] = useState<HTMLElement | null>(null);
   const [userSession, setUserSession] = useState<UserSession | null>(null);
 
   const {
@@ -275,7 +276,10 @@ const App: React.FC = () => {
           onToggleRightSidebar={toggleRightSidebar}
           onClearChat={() => setNextStepClearSignal(Date.now())}
           availableModels={availableModels}
-          onToggleConversationMenu={() => setToggleConvMenuSignal(Date.now())}
+          onToggleConversationMenu={(e) => {
+            setConvMenuAnchorEl(e.currentTarget as HTMLElement);
+            setToggleConvMenuSignal(Date.now());
+          }}
         />
         
         {/* 深度对话区域 - 直接显示，不需要tab切换 */}
@@ -288,7 +292,7 @@ const App: React.FC = () => {
           width: '100%',
           minHeight: 0
         }}>
-          <NextStepChat selectedModel={selectedModel} clearSignal={nextStepClearSignal} externalToggleConversationMenuSignal={toggleConvMenuSignal} />
+          <NextStepChat selectedModel={selectedModel} clearSignal={nextStepClearSignal} externalToggleConversationMenuSignal={toggleConvMenuSignal} conversationMenuAnchorEl={convMenuAnchorEl} />
         </Box>
         
         {/* 认证相关弹窗 */}
