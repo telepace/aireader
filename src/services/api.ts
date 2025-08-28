@@ -35,19 +35,21 @@ const getApiKey = (modelName: string): string => {
     apiKey = process.env.REACT_APP_OPENROUTER_API_KEY || '';
   }
   
-  // 3. 验证API密钥
+  // 3. 验证API密钥 (非阻塞)
   if (!apiKey || 
       apiKey === 'undefined' || 
       apiKey === 'null' || 
       apiKey === '__REACT_APP_OPENROUTER_API_KEY__') {
     
-    console.error('API Key Debug Info:', {
+    console.warn('API Key Debug Info:', {
       runtimeKey: (window as any).ENV?.REACT_APP_OPENROUTER_API_KEY,
       buildTimeKey: process.env.REACT_APP_OPENROUTER_API_KEY,
-      finalKey: apiKey
+      finalKey: apiKey,
+      message: 'API密钥未配置，应用将正常启动但API调用将失败'
     });
     
-    throw new Error('未找到API密钥。请检查:\n1. Railway环境变量REACT_APP_OPENROUTER_API_KEY是否已设置\n2. 是否需要重新部署以应用新的环境变量\n3. 本地开发时检查.env文件中的REACT_APP_OPENROUTER_API_KEY配置');
+    // Return empty string instead of throwing - let API calls handle the error
+    return '';
   }
   
   return apiKey;
@@ -78,6 +80,11 @@ export const generateContent = async (
   promptText: string,
   modelName: string
 ): Promise<string> => {
+  const apiKey = getApiKey(modelName);
+  if (!apiKey) {
+    throw new Error('未找到API密钥。请检查:\n1. Railway环境变量REACT_APP_OPENROUTER_API_KEY是否已设置\n2. 是否需要重新部署以应用新的环境变量\n3. 本地开发时检查.env文件中的REACT_APP_OPENROUTER_API_KEY配置');
+  }
+
   try {
     const apiUrl = `${BASE_API_URL}/chat/completions`;
     const response = await axios.post(
@@ -95,7 +102,7 @@ export const generateContent = async (
       },
       {
         headers: {
-          'Authorization': `Bearer ${getApiKey(modelName)}`,
+          'Authorization': `Bearer ${apiKey}`,
           'HTTP-Referer': SITE_INFO.referer,
           'X-Title': SITE_INFO.title,
           'Content-Type': 'application/json'
@@ -137,6 +144,12 @@ export const generateContentStream = async (
   onError: (error: Error) => void,
   onComplete: () => void
 ): Promise<void> => {
+  const apiKey = getApiKey(modelName);
+  if (!apiKey) {
+    onError(new Error('未找到API密钥。请检查:\n1. Railway环境变量REACT_APP_OPENROUTER_API_KEY是否已设置\n2. 是否需要重新部署以应用新的环境变量\n3. 本地开发时检查.env文件中的REACT_APP_OPENROUTER_API_KEY配置'));
+    return;
+  }
+
   try {
     console.log('Initiating API request for streaming...');
     
@@ -148,7 +161,7 @@ export const generateContentStream = async (
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${getApiKey(modelName)}`,
+        'Authorization': `Bearer ${apiKey}`,
         'HTTP-Referer': SITE_INFO.referer,
         'X-Title': SITE_INFO.title,
         'Content-Type': 'application/json'
@@ -235,6 +248,11 @@ export const generateChat = async (
   messages: ChatMessage[],
   modelName: string
 ): Promise<string> => {
+  const apiKey = getApiKey(modelName);
+  if (!apiKey) {
+    throw new Error('未找到API密钥。请检查:\n1. Railway环境变量REACT_APP_OPENROUTER_API_KEY是否已设置\n2. 是否需要重新部署以应用新的环境变量\n3. 本地开发时检查.env文件中的REACT_APP_OPENROUTER_API_KEY配置');
+  }
+
   try {
     const apiMessages = messages
       .filter(msg => msg.role !== 'system')
@@ -264,7 +282,7 @@ export const generateChat = async (
       requestPayload, 
       {
         headers: {
-          'Authorization': `Bearer ${getApiKey(modelName)}`,
+          'Authorization': `Bearer ${apiKey}`,
           'HTTP-Referer': SITE_INFO.referer,
           'X-Title': SITE_INFO.title,
           'Content-Type': 'application/json'
@@ -308,6 +326,12 @@ export const generateChatStream = async (
   onError: (error: Error) => void,
   onComplete: () => void
 ): Promise<void> => {
+  const apiKey = getApiKey(modelName);
+  if (!apiKey) {
+    onError(new Error('未找到API密钥。请检查:\n1. Railway环境变量REACT_APP_OPENROUTER_API_KEY是否已设置\n2. 是否需要重新部署以应用新的环境变量\n3. 本地开发时检查.env文件中的REACT_APP_OPENROUTER_API_KEY配置'));
+    return;
+  }
+
   try {
     const systemPrompt = messages.find(m => m.role === 'system');
     const apiMessages = messages
@@ -326,7 +350,7 @@ export const generateChatStream = async (
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${getApiKey(modelName)}`,
+        'Authorization': `Bearer ${apiKey}`,
         'HTTP-Referer': SITE_INFO.referer,
         'X-Title': SITE_INFO.title,
         'Content-Type': 'application/json'
