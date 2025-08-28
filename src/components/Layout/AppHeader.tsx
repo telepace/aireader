@@ -54,21 +54,44 @@ const AppHeader: React.FC<AppHeaderProps> = ({
     <Box
       sx={{
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'stretch',
         borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
-        px: { xs: 4, md: 4, lg: 8 },
+        px: 0,
         py: 0,
         flexShrink: 0,
-        backgroundColor: 'background.default',
-        minHeight: '64px',
-        backdropFilter: 'blur(20px)'
+        backgroundColor: 'background.paper',
+        minHeight: '64px'
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 4, md: 6 } }}>
+      {/* 左列：AI Reader + 操作按钮 */}
+      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 3, pl: { xs: 4, md: 4, lg: 8 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 4, md: 6 } }}>
+          <Typography 
+            variant="h1" 
+            component="h1"
+            sx={{
+              fontWeight: 700,
+              color: 'text.primary',
+              fontSize: { xs: '1.375rem', md: '1.75rem' },
+              letterSpacing: '-0.03em'
+            }}
+          >
+            AI Reader
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+          {onToggleConversationMenu && (
+            <Button variant="outlined" size="small" onClick={onToggleConversationMenu}>会话</Button>
+          )}
+          {/* 模型选择暂时隐藏 */}
+        </Box>
+      </Box>
+
+      {/* 右列：与右侧内容栏对齐的 Next Step 标题 */}
+      <Box sx={{ width: '30%', minWidth: 360, maxWidth: 480, display: 'flex', alignItems: 'center', borderLeft: 1, borderColor: 'divider', pl: 5 }}>
         <Typography 
-          variant="h1" 
-          component="h1"
+          variant="h1"
+          component="h2"
           sx={{
             fontWeight: 700,
             color: 'text.primary',
@@ -76,46 +99,8 @@ const AppHeader: React.FC<AppHeaderProps> = ({
             letterSpacing: '-0.03em'
           }}
         >
-          AI Reader
+          Next Step
         </Typography>
-
-      </Box>
-      
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-        {onToggleConversationMenu && (
-          <Button variant="outlined" size="small" onClick={onToggleConversationMenu}>会话</Button>
-        )}
-        <FormControl sx={{ minWidth: { xs: 180, md: 220 } }} size="small">
-          <Select
-            value={selectedModel}
-            onChange={onModelChange}
-            displayEmpty
-            variant="outlined"
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: '12px',
-                fontSize: { xs: '0.875rem', md: '0.95rem' },
-                '& fieldset': {
-                  border: '1px solid rgba(0, 0, 0, 0.12)'
-                },
-                '&:hover fieldset': {
-                  border: '1px solid rgba(0, 0, 0, 0.2)'
-                },
-                '&.Mui-focused fieldset': {
-                  border: '1px solid rgba(0, 0, 0, 0.3)',
-                  borderWidth: '2px'
-                }
-              }
-            }}
-          >
-            {availableModels.map(model => (
-              <MenuItem key={model} value={model}>{model}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        
-        {/* 用户状态组件 */}
-        <UserStatus />
       </Box>
     </Box>
   );

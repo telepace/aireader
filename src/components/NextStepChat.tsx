@@ -567,15 +567,17 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
             borderBottom: 1, 
             borderColor: 'divider', 
             flexShrink: 0,
-            bgcolor: 'background.paper'
+            bgcolor: 'background.paper',
+            px: 5
           }}>
             <Tabs
               value={selectedTab}
               onChange={(_: React.SyntheticEvent, v: 'deepen' | 'next') => setSelectedTab(v)}
               variant="fullWidth"
+              sx={{ px: 0 }}
             >
-              <Tab value="deepen" label="精读当前内容" sx={{ fontWeight: 600, textTransform: 'none' }} />
-              <Tab value="next" label="推荐相关好书" sx={{ fontWeight: 600, textTransform: 'none' }} />
+              <Tab value="deepen" label="精读当前内容" sx={{ fontWeight: 600, textTransform: 'none', px: 0, minWidth: 'auto' }} />
+              <Tab value="next" label="推荐相关好书" sx={{ fontWeight: 600, textTransform: 'none', px: 0, minWidth: 'auto' }} />
             </Tabs>
           </Box>
           <Box sx={{ 
@@ -616,58 +618,45 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                             >
                               {/* 主容器 */}
                               <Box sx={{
-                                bgcolor: '#fafaf9',
-                                borderRadius: 0,
+                                bgcolor: '#ffffff',
+                                borderRadius: 2,
                                 p: 2,
-                                pt: 4,
-                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                                border: '1px solid #e7e5e4',
-                                transition: 'all 0.3s ease',
+                                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
+                                border: '1px solid #e2e8f0',
+                                transition: 'all 0.2s ease-in-out',
                                 '&:hover': {
-                                  borderColor: '#d6d3d1',
-                                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)'
+                                  transform: 'translateY(-3px)',
+                                  borderColor: '#a0aec0',
+                                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)'
                                 }
                               }}>
-                                {/* 标题按钮 - 移除onClick事件，避免冲突 */}
-                                <Button
-                                  className="title-button"
-                                  variant="contained"
-                                  sx={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 16,
-                                    bgcolor: '#ECEBE4',
-                                    color: '#000000',
-                                    fontWeight: 500,
-                                    px: 2,
-                                    py: 0.75,
-                                    fontSize: '0.8rem',
-                                    transition: 'all 0.3s ease',
-                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                                    maxWidth: '80%',
-                                    lineHeight: 1.3,
-                                    textTransform: 'none',
-                                    borderRadius: 0,
-                                    clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)',
-                                    transform: 'translateY(-50%)'
-                                  }}
-                                >
-                                  {opt.content}
-                                </Button>
-                                
-                                {/* 描述内容 */}
-                              <Typography 
-                                variant="caption" 
-                                sx={{ 
-                                  color: '#78716c',
-                                  lineHeight: 1.4,
-                                  fontSize: '0.75rem',
-                                  pt: 2
-                                }}
-                              >
-                                {opt.describe}
-                              </Typography>
-                            </Box>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', '&:hover .underline': { transform: 'scaleX(1)' } }}>
+                                  <Box sx={{ flexGrow: 1 }}>
+                                    <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                                      <Typography sx={{ fontWeight: 600, fontSize: '0.8125rem', color: '#2d3748', mb: 0.5 }}>
+                                        {opt.content}
+                                      </Typography>
+                                      <Box className="underline" sx={{
+                                        position: 'absolute',
+                                        left: 0,
+                                        right: 0,
+                                        bottom: -2,
+                                        height: 2,
+                                        backgroundColor: '#4299e1',
+                                        transform: 'scaleX(0)',
+                                        transformOrigin: 'left',
+                                        transition: 'transform 300ms ease'
+                                      }} />
+                                    </Box>
+                                    <Typography sx={{ fontSize: '0.875rem', color: '#718096', lineHeight: 1.5, mt: 1 }}>
+                                      {opt.describe}
+                                    </Typography>
+                                  </Box>
+                                  <Box component="span" sx={{ fontSize: '1.5rem', color: '#a0aec0', ml: 2, transition: 'transform 0.2s ease-in-out, color 0.2s ease-in-out' }}>
+                                    ›
+                                  </Box>
+                                </Box>
+                              </Box>
                           </Box>
                         </Box>
                       ))}
@@ -716,66 +705,48 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                                   position: 'relative',
                                   maxWidth: '100%',
                                   mx: 'auto',
-                                  cursor: 'pointer',
-                                  '&:hover .title-button': {
-                                    transform: 'translateY(-50%) translateY(-1px)',
-                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
-                                  }
+                                  cursor: 'pointer'
                                 }}
                               >
                                 <Box sx={{
-                                  bgcolor: '#fafaf9',
-                                  borderRadius: 0,
-                                  p: 1.5,
-                                  pt: 2,
-                                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-                                  border: '1px solid #e7e5e4',
-                                  transition: 'all 0.3s ease',
+                                  bgcolor: '#ffffff',
+                                  borderRadius: 2,
+                                  p: 2,
+                                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
+                                  border: '1px solid #e2e8f0',
+                                  transition: 'all 0.2s ease-in-out',
                                   '&:hover': {
-                                    borderColor: '#d6d3d1',
-                                    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)'
+                                    transform: 'translateY(-3px)',
+                                    borderColor: '#a0aec0',
+                                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)'
                                   }
                                 }}>
-                                  {/* 历史推荐的标题按钮 - 移除onClick事件，避免冲突 */}
-                                  <Button
-                                    className="title-button"
-                                    variant="contained"
-                                    sx={{
-                                      position: 'absolute',
-                                      top: 0,
-                                      left: 12,
-                                      bgcolor: '#ECEBE4',
-                                      color: '#000000',
-                                      fontWeight: 500,
-                                      px: 1.5,
-                                      py: 0.75,
-                                      fontSize: '0.8rem',
-                                      transition: 'all 0.3s ease',
-                                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                                      maxWidth: '80%',
-                                  lineHeight: 1.3,
-                                      textTransform: 'none',
-                                      borderRadius: 0,
-                                      clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)',
-                                      transform: 'translateY(-50%)'
-                                    }}
-                                  >
-                                    {opt.content}
-                                  </Button>
-                                  
-                                  {/* 历史推荐的描述内容 */}
-                                  <Typography 
-                                    variant="caption" 
-                                    sx={{ 
-                                      display: 'block',
-                                      color: '#78716c',
-                                      lineHeight: 1.4,
-                                      fontSize: '0.75rem',
-                                      pt: 2
-                                    }}
-                                  >
-                                    {opt.describe}
-                                  </Typography>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', '&:hover .underline': { transform: 'scaleX(1)' } }}>
+                                    <Box sx={{ flexGrow: 1 }}>
+                                      <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                                        <Typography sx={{ fontWeight: 600, fontSize: '0.8125rem', color: '#2d3748', mb: 0.5 }}>
+                                          {opt.content}
+                                        </Typography>
+                                        <Box className="underline" sx={{
+                                          position: 'absolute',
+                                          left: 0,
+                                          right: 0,
+                                          bottom: -2,
+                                          height: 2,
+                                          backgroundColor: '#4299e1',
+                                          transform: 'scaleX(0)',
+                                          transformOrigin: 'left',
+                                          transition: 'transform 300ms ease'
+                                        }} />
+                                      </Box>
+                                      <Typography sx={{ fontSize: '0.875rem', color: '#718096', lineHeight: 1.5, mt: 1 }}>
+                                        {opt.describe}
+                                      </Typography>
+                                    </Box>
+                                    <Box component="span" sx={{ fontSize: '1.5rem', color: '#a0aec0', ml: 2, transition: 'transform 0.2s ease-in-out, color 0.2s ease-in-out' }}>
+                                      ›
+                                    </Box>
+                                  </Box>
                                 </Box>
                               </Box>
                             </Box>
