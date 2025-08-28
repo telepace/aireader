@@ -40,10 +40,15 @@ const getApiKey = (modelName: string): string => {
       apiKey === 'null' || 
       apiKey === '__REACT_APP_OPENROUTER_API_KEY__') {
     
-    console.warn('API Key Debug Info:', {
-      runtimeKey: (window as any).ENV?.REACT_APP_OPENROUTER_API_KEY,
-      buildTimeKey: process.env.REACT_APP_OPENROUTER_API_KEY,
-      finalKey: apiKey,
+    // ✅ 安全的调试信息 - 不暴露敏感数据
+    console.warn('API Key Status:', {
+      hasRuntimeKey: !!(window as any).ENV?.REACT_APP_OPENROUTER_API_KEY && 
+                     (window as any).ENV?.REACT_APP_OPENROUTER_API_KEY !== '__REACT_APP_OPENROUTER_API_KEY__',
+      hasBuildTimeKey: !!process.env.REACT_APP_OPENROUTER_API_KEY,
+      hasValidKey: !!apiKey && apiKey.length > 10,
+      keySource: (window as any).ENV?.REACT_APP_OPENROUTER_API_KEY && 
+                 (window as any).ENV?.REACT_APP_OPENROUTER_API_KEY !== '__REACT_APP_OPENROUTER_API_KEY__' 
+                 ? 'runtime' : 'build-time',
       message: 'API密钥未配置，应用将正常启动但API调用将失败'
     });
     
