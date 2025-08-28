@@ -448,7 +448,8 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
           <Box ref={messagesContainerRef} data-testid="messages-box" sx={{ 
             flexGrow: 1, 
             overflowY: 'auto', 
-            p: 2, 
+            py:4,
+            px:8, 
             bgcolor: 'background.paper' 
           }}>
             {messages.filter((m: ChatMessage) => m.role!=='system').map((m: ChatMessage) => {
@@ -510,10 +511,10 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                   )}
                   
                   <Paper elevation={1} sx={{ 
-                    px: 2.5, // 水平留白适中（约20px）
-                    py: 1, // 垂直留白调小（约12px）
+                    px: isUser ? 2 : 8, // 用户消息水平留白约28px，assistant消息水平留白约32px
+                    py: isUser ? 1 : 3,
                     maxWidth: '100%', 
-                    bgcolor: isUser ? '#e7f0ff' : '#fff', 
+                    bgcolor: isUser ? '#eeeeee' : '#fff', 
                     borderRadius: 2,
                     position: 'relative'
                   }}>
@@ -580,7 +581,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
           <Box sx={{ 
             flexGrow: 1, 
             overflowY: 'auto', 
-            px: 3,
+            px: 5,
             pt: 6,
             pb: 4,
             bgcolor: 'background.paper'
@@ -600,65 +601,68 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                       {current.map((opt: OptionItem) => (
                         <Box key={opt.id} sx={{ mb: 6, position: 'relative' }}>
                           {/* 新的UI设计：经典布局 + 中性灰色 */}
-                          <Box sx={{ 
-                            position: 'relative',
-                            maxWidth: '100%',
-                            mx: 'auto'
-                          }}>
-                            {/* 主容器 */}
-                            <Box sx={{
-                              bgcolor: '#fafaf9',
-                              borderRadius: 1,
-                              p: 2,
-                              pt: 4,
-                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                              border: '1px solid #e7e5e4',
-                              transition: 'all 0.3s ease',
-                              '&:hover': {
-                                borderColor: '#d6d3d1',
-                                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)'
-                              }
-                            }}>
-                              {/* 标题按钮 */}
-                              <Button
-                                variant="contained"
-                                onClick={() => handleOptionClick(opt)}
-                                sx={{
-                                  position: 'absolute',
-                                  top: 0,
-                                  left: 16,
-                                  bgcolor: '#e7e5e4',
-                                  color: '#292524',
-                                  fontWeight: 500,
-                                  px: 2,
-                                  py: 0.75,
-                                  fontSize: '0.8rem',
-                                  transition: 'all 0.3s ease',
-                                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                                  maxWidth: '80%',
-                                  lineHeight: 1.3,
-                                  textTransform: 'none',
-                                  borderRadius: 0,
-                                  clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)',
-                                  transform: 'translateY(-50%)',
-                                  '&:hover': {
-                                    bgcolor: 'rgba(214, 211, 209, 0.8)',
-                                    transform: 'translateY(-50%) translateY(-1px) rotate(-1deg)',
-                                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)'
-                                  }
-                                }}
-                              >
-                                {opt.content}
-                              </Button>
-                              
-                              {/* 描述内容 */}
+                                                      <Box 
+                              onClick={() => handleOptionClick(opt)}
+                              sx={{ 
+                                position: 'relative',
+                                maxWidth: '100%',
+                                mx: 'auto',
+                                cursor: 'pointer',
+                                '&:hover .title-button': {
+                                  transform: 'translateY(-50%) translateY(-1px) rotate(-1deg)',
+                                  boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)'
+                                }
+                              }}
+                            >
+                              {/* 主容器 */}
+                              <Box sx={{
+                                bgcolor: '#fafaf9',
+                                borderRadius: 0,
+                                p: 2,
+                                pt: 4,
+                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                                border: '1px solid #e7e5e4',
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                  borderColor: '#d6d3d1',
+                                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)'
+                                }
+                              }}>
+                                {/* 标题按钮 - 移除onClick事件，避免冲突 */}
+                                <Button
+                                  className="title-button"
+                                  variant="contained"
+                                  sx={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 16,
+                                    bgcolor: '#ECEBE4',
+                                    color: '#000000',
+                                    fontWeight: 500,
+                                    px: 2,
+                                    py: 0.75,
+                                    fontSize: '0.8rem',
+                                    transition: 'all 0.3s ease',
+                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                                    maxWidth: '80%',
+                                    lineHeight: 1.3,
+                                    textTransform: 'none',
+                                    borderRadius: 0,
+                                    clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)',
+                                    transform: 'translateY(-50%)'
+                                  }}
+                                >
+                                  {opt.content}
+                                </Button>
+                                
+                                {/* 描述内容 */}
                               <Typography 
                                 variant="caption" 
                                 sx={{ 
                                   color: '#78716c',
                                   lineHeight: 1.4,
                                   fontSize: '0.75rem',
-                                  pt: 3
+                                  pt: 2
                                 }}
                               >
                                 {opt.describe}
@@ -700,22 +704,30 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                       {showHistoricalOptions[selectedTab] && (
                         <Box sx={{ 
                           bgcolor: 'transparent', 
-                          borderRadius: 1, 
+                          borderRadius: 0, 
                           p: 1
                         }}>
                           {historical.map((opt: OptionItem) => (
                             <Box key={opt.id} sx={{ mb: 6, '&:last-child': { mb: 0 } }}>
                               {/* 历史推荐也使用新的UI设计，但稍微简化 */}
-                              <Box sx={{ 
-                                position: 'relative',
-                                maxWidth: '100%',
-                                mx: 'auto'
-                              }}>
+                              <Box 
+                                onClick={() => handleOptionClick(opt)}
+                                sx={{ 
+                                  position: 'relative',
+                                  maxWidth: '100%',
+                                  mx: 'auto',
+                                  cursor: 'pointer',
+                                  '&:hover .title-button': {
+                                    transform: 'translateY(-50%) translateY(-1px)',
+                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                                  }
+                                }}
+                              >
                                 <Box sx={{
                                   bgcolor: '#fafaf9',
-                                  borderRadius: 1,
+                                  borderRadius: 0,
                                   p: 1.5,
-                                  pt: 3,
+                                  pt: 2,
                                   boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
                                   border: '1px solid #e7e5e4',
                                   transition: 'all 0.3s ease',
@@ -724,16 +736,16 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                                     boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)'
                                   }
                                 }}>
-                                  {/* 历史推荐的标题按钮 */}
+                                  {/* 历史推荐的标题按钮 - 移除onClick事件，避免冲突 */}
                                   <Button
+                                    className="title-button"
                                     variant="contained"
-                                    onClick={() => handleOptionClick(opt)}
                                     sx={{
                                       position: 'absolute',
                                       top: 0,
                                       left: 12,
-                                      bgcolor: '#e7e5e4',
-                                      color: '#292524',
+                                      bgcolor: '#ECEBE4',
+                                      color: '#000000',
                                       fontWeight: 500,
                                       px: 1.5,
                                       py: 0.75,
@@ -741,16 +753,11 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                                       transition: 'all 0.3s ease',
                                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
                                       maxWidth: '80%',
-                                      lineHeight: 1.3,
+                                  lineHeight: 1.3,
                                       textTransform: 'none',
                                       borderRadius: 0,
                                       clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)',
-                                      transform: 'translateY(-50%)',
-                                      '&:hover': {
-                                        bgcolor: 'rgba(214, 211, 209, 0.8)',
-                                        transform: 'translateY(-50%) translateY(-1px)',
-                                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
-                                      }
+                                      transform: 'translateY(-50%)'
                                     }}
                                   >
                                     {opt.content}
@@ -764,7 +771,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                                       color: '#78716c',
                                       lineHeight: 1.4,
                                       fontSize: '0.75rem',
-                                      pt: 2.5
+                                      pt: 2
                                     }}
                                   >
                                     {opt.describe}
