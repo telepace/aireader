@@ -19,7 +19,7 @@ interface AppHeaderProps {
   onToggleRightSidebar: () => void;
   onClearChat: () => void;
   availableModels: string[];
-  onToggleConversationMenu?: () => void;
+  onToggleConversationMenu?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 /**
@@ -81,7 +81,14 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
           {onToggleConversationMenu && (
-            <Button variant="outlined" size="small" onClick={onToggleConversationMenu}>会话</Button>
+            <Button 
+              variant="outlined" 
+              size="small" 
+              onClick={(e) => onToggleConversationMenu(e)}
+              sx={{ borderColor: 'divider', color: 'text.primary', '&:hover': { borderColor: 'divider' } }}
+            >
+              会话
+            </Button>
           )}
           {/* 模型选择暂时隐藏 */}
         </Box>
