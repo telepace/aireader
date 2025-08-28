@@ -23,11 +23,7 @@ interface AppHeaderProps {
 }
 
 /**
- * Renders the application header component.
- *
- * The AppHeader component displays navigation elements including the title and model selection.
- * It utilizes various props to manage the current state of the application, such as the currently selected model.
- * The component also provides functionality to clear the chat, enhancing user interaction.
+ * Renders the application header component with navigation elements.
  *
  * @param {Object} props - The properties for the AppHeader component.
  * @param {string} props.selectedModel - The currently selected model.
@@ -38,6 +34,7 @@ interface AppHeaderProps {
  * @param {function} props.onToggleRightSidebar - Callback function to toggle the right sidebar.
  * @param {function} props.onClearChat - Callback function to clear the chat.
  * @param {Array<string>} props.availableModels - List of available models for selection.
+ * @param {function} props.onToggleConversationMenu - Callback function to toggle the conversation menu.
  */
 const AppHeader: React.FC<AppHeaderProps> = ({
   selectedModel,
