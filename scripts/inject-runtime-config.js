@@ -49,7 +49,7 @@ window.addEventListener('DOMContentLoaded', function() {
       console.error('❌ React app failed to render - root element is empty');
       console.log('🔧 Troubleshooting info:', {
         rootElement: !!root,
-        hasReactDevTools: !!(window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__,
+        hasReactDevTools: !!window.__REACT_DEVTOOLS_GLOBAL_HOOK__,
         userAgent: navigator.userAgent,
         location: window.location.href
       });
