@@ -22,10 +22,22 @@ import {
 } from '@mui/icons-material'
 import { useUpgradePrompt, useAuthStore } from '../../stores/authStore'
 
+/**
+ * Renders an upgrade prompt dialog for users to save their data to the cloud.
+ *
+ * This component checks if the upgrade prompt should be displayed based on the
+ * `shouldShow` state from `useUpgradePrompt`. If shown, it presents the user
+ * with their data statistics and options to log in using either GitHub or Google.
+ * The `handleUpgrade` function is called to upgrade the user when a login option
+ * is selected, utilizing the `upgradeAnonymousUser` function from `useAuthStore`.
+ */
 const UpgradePrompt: React.FC = () => {
   const { shouldShow, stats, dismiss } = useUpgradePrompt()
   const { upgradeAnonymousUser, isLoading } = useAuthStore()
 
+  /**
+   * Upgrades an anonymous user using the specified provider.
+   */
   const handleUpgrade = async (provider: 'github' | 'google') => {
     await upgradeAnonymousUser(provider)
   }
