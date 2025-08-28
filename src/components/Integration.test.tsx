@@ -29,6 +29,9 @@ Object.defineProperty(window, 'localStorage', {
 });
 
 // Test component that uses multiple hooks
+/**
+ * A React functional component that manages and displays prompt-related data and UI state.
+ */
 const TestIntegrationComponent: React.FC = () => {
   const { 
     promptObject, 
