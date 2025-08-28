@@ -30,7 +30,7 @@ const getSystemPrompt = () => {
   } catch (error) {
     console.error('Failed to generate system prompt:', error);
     // 降级到原始硬编码版本 - 简化模板避免 syntax issues
-    return '我的目标是「精读」当前讨论的内容（文章或书籍），并不断切换对象。（当我发送一大段长文字时就是复制的长文章）\n\n每次交互，请严格执行以下3件事：\n**1. 聚焦与展开** 先讲透内容的一个核心关键；全面展开全文内容,让我了解全貌，全面又深度的讲讲全文。\n\n**2. 原文深挖 (type: deepen)** 推荐3个最有价值的原文精读选项。按顺序推荐原文的某个具体部分，深度展开（按情节划分、按逻辑划分，划分为第一第二..第n部分。按顺序推荐第一、二..部分。（偏向客观的呈现内容，而不是过于主观的讨论）\n - 选项一定要围绕「原文」，原文指的是最近在讨论的书、文章、主题。比如我们当前在讨论的是某一本书，则精读选项一定也是围绕该书原文的，而不是脱离原文的主观讨论。\n - 注意，对象是整个原文，而不是我们当前讨论的原文的子话题（不要围绕子话题出所有精读选项，应该围绕原文出选项）。\n- 当讨论新书时，即精读对象变化了，不要老对比提及先前的精读对象。比如最初在精读一篇文章，后来在精读一本新书，则不要老对比之前文章的内容和新书的内容。只专注于当前的精读对象。\n\n\n**3. 主题探索 (type: next)** 推荐3本最值得阅读的相关书籍，挑选对我有价值、最不可错过的探索对象，要围绕当前主题，以这些维度做优先级的排序。选项的描述要足够吸引我，能勾起我的兴趣\n\n选项描述\n- 每个选项的描述要**讲透该选项的精髓之处**，hooked读者。\n\n**格式要求** \n第2和第3步的推荐项，必须严格遵循 JSON Lines (JSONL) 格式，每行一个JSON对象，不要在代码块前后添加任何说明。\n- 第2步推荐，type 字段的值必须是 deepen\n- 第3步推荐，type 字段的值必须是 next\n\n风格\n输出以 jsonl 的方式输出 ，并且避免因为 JSONL 格式的输出要求导致内容过于严肃，要求清楚易懂\n\n\n**JSONL 输出结构:**\n\n聚焦与展开的文本内容\n\n---\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n\n\n**约束条件**：不要向用户解释此格式。\n输出结构：只需输出聚焦与展开对应的文本。之后一定要**留出空白行符号**，再输出所有JSONL。';
+    return '我的目标是「精读」当前讨论的内容（文章或书籍），并不断切换对象。（当我发送一大段长文字时就是复制的长文章）\n\n每次交互，请严格执行以下3件事：\n**1. 聚焦与展开** 先讲透内容的一个核心关键；全面并深度地展开讲全文内容，目标是看了你的内容，我就吸收了一本书绝大多数的精华内容，感觉只看你的内容就够了，不用再亲自看这本书了。全文能讲的越具体详实越好，但不要废话。\n\n**2. 原文深挖 (type: deepen)** 推荐3个最有价值的原文精读选项。按顺序推荐原文的某个具体部分，深度展开（按情节划分、按逻辑划分，第一、第二、第n部分）按顺序推荐第一、二..第n部分。（偏向客观的呈现内容，而不是过于主观的讨论）\n - 选项一定要围绕「原文」，原文指的是最近在讨论的书、文章、主题。比如我们当前在讨论的是某一本书，则精读选项一定也是围绕该书原文的，而不是脱离原文的主观讨论。\n - 注意，对象是整个原文，而不是我们当前讨论的原文的子话题（不要围绕子话题出所有精读选项，应该围绕原文出选项）。\n- 当讨论新书时，即精读对象变化了，不要老对比提及先前的精读对象。比如最初在精读一篇文章，后来在精读一本新书，则不要老对比之前文章的内容和新书的内容。只专注于当前的精读对象。\n- 选项标题的开头应该是"第一部分:...","第n部分:...", "重点:..."\n\n\n**3. 主题探索 (type: next)** 首次推荐6本最值得阅读的相关书籍，之后每次推荐3本。挑选对我有价值、最不可错过的探索对象，要围绕当前主题，以这些维度做优先级的排序。选项的描述要足够吸引我，能勾起我的兴趣。\n\n选项描述\n- 每个选项的描述要**讲透该选项的精髓sharp之处**，hooked读者。\n\n**格式要求** \n第2和第3步的推荐项，必须严格遵循 JSON Lines (JSONL) 格式，每行一个JSON对象，不要在代码块前后添加任何说明。\n- 第2步推荐，type 字段的值必须是 deepen\n- 第3步推荐，type 字段的值必须是 next。\n- 第一次交互推荐6本书、之后每次推荐3本书。\n\n风格\n输出以 jsonl 的方式输出 ，并且避免因为 JSONL 格式的输出要求导致内容过于严肃，要求清楚易懂\n\n\n**JSONL 输出结构:**\n\n聚焦与展开的文本内容\n\n---\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n\n\n**约束条件**：不要向用户解释此格式。\n输出结构：只需输出聚焦与展开对应的文本。之后一定要**留出空白行符号**，再输出所有JSONL。';
   }
 };
 
@@ -317,7 +317,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                 const newMap = new Map(prev);
                 newMap.set(assistantId, {
                   isComplete: true,
-                  completionMessage: completionMessage || '正文解析完成，生成推荐选项中...',
+                  completionMessage: completionMessage || '推荐选项已生成，点击探索',
                   timestamp: Date.now()
                 });
                 return newMap;
@@ -511,7 +511,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                   
                   <Paper elevation={1} sx={{ 
                     px: 2.5, // 水平留白适中（约20px）
-                    py: 1.5, // 垂直留白调小（约12px）
+                    py: 1, // 垂直留白调小（约12px）
                     maxWidth: '100%', 
                     bgcolor: isUser ? '#e7f0ff' : '#fff', 
                     borderRadius: 2,
@@ -581,7 +581,8 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
             flexGrow: 1, 
             overflowY: 'auto', 
             px: 3,
-            py: 3,
+            pt: 6,
+            pb: 4,
             bgcolor: 'background.paper'
           }}>
             {(() => {
@@ -597,33 +598,73 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                   {current.length > 0 && (
                     <Box sx={{ mb: hasHistorical ? 2 : 0 }}>
                       {current.map((opt: OptionItem) => (
-                        <Box key={opt.id} sx={{ mb: 2.5 }}>
-                          <Button 
-                            variant="contained" 
-                            color="primary" 
-                            onClick={() => handleOptionClick(opt)} 
-                            sx={{ 
-                              textTransform:'none', 
-                              fontWeight:500, 
-                              borderRadius:2, 
-                              px:1.5, 
-                              py:0.5, 
-                              fontSize: '0.875rem',
-                              width: '100%',
-                              justifyContent: 'flex-start',
-                              backgroundColor: '#000000',
-                              color: '#FFFFFF',
-                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
-                              border: 'none',
-                              '&:hover': { 
-                                backgroundColor: '#111111',
-                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.35)'
+                        <Box key={opt.id} sx={{ mb: 6, position: 'relative' }}>
+                          {/* 新的UI设计：经典布局 + 中性灰色 */}
+                          <Box sx={{ 
+                            position: 'relative',
+                            maxWidth: '100%',
+                            mx: 'auto'
+                          }}>
+                            {/* 主容器 */}
+                            <Box sx={{
+                              bgcolor: '#fafaf9',
+                              borderRadius: 1,
+                              p: 2,
+                              pt: 4,
+                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                              border: '1px solid #e7e5e4',
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                borderColor: '#d6d3d1',
+                                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)'
                               }
-                            }}
-                          >
-                            {opt.content}
-                          </Button>
-                          <Typography variant="body2" sx={{ color:'#666', mt:1.5, lineHeight:1.6 }}>{opt.describe}</Typography>
+                            }}>
+                              {/* 标题按钮 */}
+                              <Button
+                                variant="contained"
+                                onClick={() => handleOptionClick(opt)}
+                                sx={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 16,
+                                  bgcolor: '#e7e5e4',
+                                  color: '#292524',
+                                  fontWeight: 500,
+                                  px: 2,
+                                  py: 0.75,
+                                  fontSize: '0.8rem',
+                                  transition: 'all 0.3s ease',
+                                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                                  maxWidth: '80%',
+                                  lineHeight: 1.3,
+                                  textTransform: 'none',
+                                  borderRadius: 0,
+                                  clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)',
+                                  transform: 'translateY(-50%)',
+                                  '&:hover': {
+                                    bgcolor: 'rgba(214, 211, 209, 0.8)',
+                                    transform: 'translateY(-50%) translateY(-1px) rotate(-1deg)',
+                                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)'
+                                  }
+                                }}
+                              >
+                                {opt.content}
+                              </Button>
+                              
+                              {/* 描述内容 */}
+                              <Typography 
+                                variant="caption" 
+                                sx={{ 
+                                  color: '#78716c',
+                                  lineHeight: 1.4,
+                                  fontSize: '0.75rem',
+                                  pt: 3
+                                }}
+                              >
+                                {opt.describe}
+                              </Typography>
+                            </Box>
+                          </Box>
                         </Box>
                       ))}
                     </Box>
@@ -663,44 +704,73 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                           p: 1
                         }}>
                           {historical.map((opt: OptionItem) => (
-                            <Box key={opt.id} sx={{ mb: 1.5, '&:last-child': { mb: 0 } }}>
-                              <Button 
-                                variant="contained" 
-                                color="primary" 
-                                onClick={() => handleOptionClick(opt)} 
-                                sx={{ 
-                                  textTransform:'none', 
-                                  fontWeight:500, 
-                                  borderRadius:2, 
-                                  px:1.5, 
-                                  py:0.5, 
-                                  fontSize: '0.875rem',
-                                  width: '100%',
-                                  justifyContent: 'flex-start',
-                                  backgroundColor: '#000000',
-                                  color: '#FFFFFF',
-                                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
-                                  border: 'none',
+                            <Box key={opt.id} sx={{ mb: 6, '&:last-child': { mb: 0 } }}>
+                              {/* 历史推荐也使用新的UI设计，但稍微简化 */}
+                              <Box sx={{ 
+                                position: 'relative',
+                                maxWidth: '100%',
+                                mx: 'auto'
+                              }}>
+                                <Box sx={{
+                                  bgcolor: '#fafaf9',
+                                  borderRadius: 1,
+                                  p: 1.5,
+                                  pt: 3,
+                                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                                  border: '1px solid #e7e5e4',
+                                  transition: 'all 0.3s ease',
                                   '&:hover': {
-                                    backgroundColor: '#111111',
-                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.35)'
+                                    borderColor: '#d6d3d1',
+                                    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)'
                                   }
-                                }}
-                              >
-                                {opt.content}
-                              </Button>
-                              <Typography 
-                                variant="caption" 
-                                sx={{ 
-                                  display: 'block',
-                                  color:'#888', 
-                                  mt:0.25, 
-                                  lineHeight:1.4,
-                                  fontSize: '0.75rem'
-                                }}
-                              >
-                                {opt.describe}
-                              </Typography>
+                                }}>
+                                  {/* 历史推荐的标题按钮 */}
+                                  <Button
+                                    variant="contained"
+                                    onClick={() => handleOptionClick(opt)}
+                                    sx={{
+                                      position: 'absolute',
+                                      top: 0,
+                                      left: 12,
+                                      bgcolor: '#e7e5e4',
+                                      color: '#292524',
+                                      fontWeight: 500,
+                                      px: 1.5,
+                                      py: 0.75,
+                                      fontSize: '0.8rem',
+                                      transition: 'all 0.3s ease',
+                                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                                      maxWidth: '80%',
+                                      lineHeight: 1.3,
+                                      textTransform: 'none',
+                                      borderRadius: 0,
+                                      clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)',
+                                      transform: 'translateY(-50%)',
+                                      '&:hover': {
+                                        bgcolor: 'rgba(214, 211, 209, 0.8)',
+                                        transform: 'translateY(-50%) translateY(-1px)',
+                                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                                      }
+                                    }}
+                                  >
+                                    {opt.content}
+                                  </Button>
+                                  
+                                  {/* 历史推荐的描述内容 */}
+                                  <Typography 
+                                    variant="caption" 
+                                    sx={{ 
+                                      display: 'block',
+                                      color: '#78716c',
+                                      lineHeight: 1.4,
+                                      fontSize: '0.75rem',
+                                      pt: 2.5
+                                    }}
+                                  >
+                                    {opt.describe}
+                                  </Typography>
+                                </Box>
+                              </Box>
                             </Box>
                           ))}
                         </Box>
