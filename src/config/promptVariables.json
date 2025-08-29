@@ -30,7 +30,7 @@
           "第3步推荐，type 字段的值必须是 next"
         ],
         "template": [
-          {"type": "content_complete", "message": "正文解析完成，生成推荐选项中..."},
+          {"type": "content_complete", "message": "推荐选项已生成，点击探索"},
           {"type": "deepen", "content": "章节一：核心概念解析", "describe": "深入分析作者在第一章提出的核心理念和基础概念。"},
           {"type": "deepen", "content": "关键论证：主要观点剖析", "describe": "详细拆解书中最重要的论证逻辑和支撑证据。"},
           {"type": "deepen", "content": "实例分析：典型案例解读", "describe": "通过书中的具体案例来理解作者的理论应用。"},

@@ -73,7 +73,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
               letterSpacing: '-0.03em'
             }}
           >
-            AI Reader
+            DopaRead
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>

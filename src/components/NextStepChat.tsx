@@ -185,6 +185,9 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     timestamp: number;
   }>>(new Map());
   // const [pendingOptions, setPendingOptions] = useState<Map<string, OptionItem[]>>(new Map());
+  
+  // 跟踪是否是第一次点击选项的状态
+  const [isFirstOptionClick, setIsFirstOptionClick] = useState(true);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -195,6 +198,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
       setOptions([]);
       setContentCompleteStates(new Map());
       setShowHistoricalOptions({ deepen: false, next: true });
+      setIsFirstOptionClick(true); // 重置为第一次点击状态
     }
   }, [clearSignal, setMessages, setOptions]);
 
@@ -650,6 +654,19 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     // ✅ 移除全局loading检查，允许并发点击
     // if (isLoading) return; // 删除这个阻塞逻辑
     
+    // 如果是第一次点击选项，延迟200ms后丝滑滚动到底部
+    if (isFirstOptionClick && messagesContainerRef.current) {
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTo({
+            top: messagesContainerRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      }, 200);
+      setIsFirstOptionClick(false);
+    }
+    
     try {
       // 立即提供视觉反馈
       const cardId = `${opt.type}:${opt.content.trim().toLowerCase()}`;
@@ -952,7 +969,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
           }}>
             <TextField 
               variant="outlined" 
-              placeholder="输入你的问题，获取答案与下一步探索方向..." 
+              placeholder="输入一本你一直想读的书、或一个你想研究的话题" 
               value={inputMessage} 
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)} 
               onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { 
@@ -1147,8 +1164,38 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                               </Collapse>
                             );
                           })}
+                          
+                          {/* 提示文字直接放在历史推荐区内部 */}
+                          <Box sx={{ 
+                            mt: 2, 
+                            pt: 2, 
+                            borderTop: 1, 
+                            borderColor: 'divider',
+                            textAlign: 'center'
+                          }}>
+                            <Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                              🤔 没有心动的选项？<br />
+                              告诉AI你想要的方向，或直接要求换一组推荐
+                            </Typography>
+                          </Box>
                         </Box>
                       )}
+                    </Box>
+                  )}
+                  
+                  {/* 没有历史推荐时的提示 */}
+                  {!hasHistorical && (
+                    <Box sx={{ 
+                      mt: 3, 
+                      pt: 2, 
+                      borderTop: 1, 
+                      borderColor: 'divider',
+                      textAlign: 'center'
+                    }}>
+                      <Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                        🤔 没有心动的选项？<br />
+                        告诉AI你想要的方向，或直接要求换一组推荐
+                      </Typography>
                     </Box>
                   )}
                 </>
