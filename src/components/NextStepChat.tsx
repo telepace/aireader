@@ -145,6 +145,9 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     timestamp: number;
   }>>(new Map());
   // const [pendingOptions, setPendingOptions] = useState<Map<string, OptionItem[]>>(new Map());
+  
+  // 跟踪是否是第一次点击选项的状态
+  const [isFirstOptionClick, setIsFirstOptionClick] = useState(true);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -155,6 +158,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
       setOptions([]);
       setContentCompleteStates(new Map());
       setShowHistoricalOptions({ deepen: false, next: true });
+      setIsFirstOptionClick(true); // 重置为第一次点击状态
     }
   }, [clearSignal, setMessages, setOptions]);
 
@@ -417,7 +421,21 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
    */
   const handleOptionClick = async (opt: OptionItem) => {
     if (isLoading) return;
-    // 轻微延迟后再触发退出动画（约100ms）
+    
+    // 如果是第一次点击选项，延迟200ms后丝滑滚动到底部
+    if (isFirstOptionClick && messagesContainerRef.current) {
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTo({
+            top: messagesContainerRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      }, 200);
+      setIsFirstOptionClick(false);
+    }
+    
+    // 轻微延迟后再触发退出动画（约200ms）
     setTimeout(() => {
       setExitingIds((prev: Set<string>) => {
         const next = new Set(prev);
@@ -861,7 +879,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                             textAlign: 'center'
                           }}>
                             <Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem', lineHeight: 1.5 }}>
-                              没有心动的选项？<br />
+                              🤔 没有心动的选项？<br />
                               告诉AI你想要的方向，或直接要求换一组推荐
                             </Typography>
                           </Box>
@@ -880,7 +898,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                       textAlign: 'center'
                     }}>
                       <Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem', lineHeight: 1.5 }}>
-                        没有心动的选项？<br />
+                        🤔 没有心动的选项？<br />
                         告诉AI你想要的方向，或直接要求换一组推荐
                       </Typography>
                     </Box>

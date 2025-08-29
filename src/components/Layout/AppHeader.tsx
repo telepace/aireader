@@ -97,10 +97,10 @@ const AppHeader: React.FC<AppHeaderProps> = ({
           variant="h1"
           component="h2"
           sx={{
-            fontWeight: 700,
+            fontWeight: 700,  
             color: 'text.primary',
-            fontSize: { xs: '1.375rem', md: '1.75rem' },
-            letterSpacing: '-0.03em'
+            fontSize: { xs: '1.125rem', md: '1.5rem' },
+            letterSpacing: '-0.02em'
           }}
         >
           Next Step
