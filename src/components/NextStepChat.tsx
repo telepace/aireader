@@ -647,8 +647,13 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
   const handleSend = async () => { if (!inputMessage.trim() || isLoading) return; await sendMessageInternal(inputMessage.trim()); };
   
   /**
-   * 新的并发处理版本 - 处理选项点击事件
-   * @param opt - 被点击的选项项目
+   * Handles the click event for an option item with asynchronous processing.
+   *
+   * The function first checks if it's the user's first click and scrolls the messages container smoothly after a delay.
+   * It then provides immediate visual feedback, enqueues a task, updates the click count for the option, logs the user event,
+   * and triggers an exit animation after a brief delay. Errors during processing are caught and logged.
+   *
+   * @param opt - The clicked option item containing type, content, and other properties.
    */
   const handleOptionClick = async (opt: OptionItem) => {
     // ✅ 移除全局loading检查，允许并发点击

@@ -19,22 +19,21 @@ import { PromptTest, ChatConversation } from '../../types/types';
 // Mock PromptTest and ChatConversation data
 const mockPromptTest: PromptTest = {
   id: 'test-1',
-  name: 'Test Prompt',
-  prompt: 'Write a story about a robot',
-  model: 'openai/o3-mini',
-  output: 'Once upon a time...',
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
+  promptObject: 'Write a story about a robot',
+  promptText: 'Write a story about a robot',
+  promptResult: 'Once upon a time...',
+  timestamp: Date.now(),
+  modelName: 'openai/o3-mini',
 };
 
 const mockConversation: ChatConversation = {
   id: 'conv-1',
-  name: 'Test Chat',
   messages: [
     { id: 'msg-1', role: 'user', content: 'Hello', timestamp: Date.now() },
     { id: 'msg-2', role: 'assistant', content: 'Hi there!', timestamp: Date.now() },
   ],
-  createdAt: Date.now(),
+  timestamp: Date.now(),
+  title: 'Test Chat',
   updatedAt: Date.now(),
 };
 
@@ -62,7 +61,7 @@ describe('Storage utilities', () => {
     });
 
     test('handles multiple prompt tests', () => {
-      const test2: PromptTest = { ...mockPromptTest, id: 'test-2', name: 'Test 2' };
+      const test2: PromptTest = { ...mockPromptTest, id: 'test-2' };
       
       savePromptTest(mockPromptTest);
       savePromptTest(test2);
@@ -74,7 +73,7 @@ describe('Storage utilities', () => {
     });
 
     test('deletes prompt test by id', () => {
-      const test2: PromptTest = { ...mockPromptTest, id: 'test-2', name: 'Test 2' };
+      const test2: PromptTest = { ...mockPromptTest, id: 'test-2' };
       
       savePromptTest(mockPromptTest);
       savePromptTest(test2);
@@ -124,18 +123,18 @@ describe('Storage utilities', () => {
       
       const updatedConv: ChatConversation = {
         ...mockConversation,
-        name: 'Updated Name',
+        title: 'Updated Name',
       };
       
       upsertConversation(updatedConv);
       
       const conversations = listConversations();
       expect(conversations).toHaveLength(1);
-      expect(conversations[0].name).toBe('Updated Name');
+      expect(conversations[0].title).toBe('Updated Name');
     });
 
     test('adds new conversation to beginning of list', () => {
-      const conv2: ChatConversation = { ...mockConversation, id: 'conv-2', name: 'Conv 2' };
+      const conv2: ChatConversation = { ...mockConversation, id: 'conv-2', title: 'Conv 2' };
       
       upsertConversation(mockConversation);
       upsertConversation(conv2);
@@ -159,7 +158,7 @@ describe('Storage utilities', () => {
     });
 
     test('deletes conversation by id', () => {
-      const conv2: ChatConversation = { ...mockConversation, id: 'conv-2', name: 'Conv 2' };
+      const conv2: ChatConversation = { ...mockConversation, id: 'conv-2', title: 'Conv 2' };
       
       upsertConversation(mockConversation);
       upsertConversation(conv2);

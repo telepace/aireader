@@ -137,7 +137,7 @@ describe('ErrorBoundary', () => {
 
   test('shows development details in development mode', () => {
     const originalNodeEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
+    (process.env as any).NODE_ENV = 'development';
 
     renderWithTheme(
       <ErrorBoundary>
@@ -148,12 +148,12 @@ describe('ErrorBoundary', () => {
     expect(screen.getByText('错误详情 (开发模式)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '复制错误信息' })).toBeInTheDocument();
 
-    process.env.NODE_ENV = originalNodeEnv;
+    (process.env as any).NODE_ENV = originalNodeEnv;
   });
 
   test('does not show development details in production mode', () => {
     const originalNodeEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'production';
+    (process.env as any).NODE_ENV = 'production';
 
     renderWithTheme(
       <ErrorBoundary>
@@ -164,7 +164,7 @@ describe('ErrorBoundary', () => {
     expect(screen.queryByText('错误详情 (开发模式)')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '复制错误信息' })).not.toBeInTheDocument();
 
-    process.env.NODE_ENV = originalNodeEnv;
+    (process.env as any).NODE_ENV = originalNodeEnv;
   });
 
   test('renders custom fallback component when provided', () => {

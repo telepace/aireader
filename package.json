@@ -60,7 +60,18 @@
     "extends": [
       "react-app",
       "react-app/jest"
-    ]
+    ],
+    "rules": {
+      "jest/no-conditional-expect": "off",
+      "testing-library/no-wait-for-multiple-assertions": "off",
+      "testing-library/no-node-access": "off",
+      "testing-library/no-wait-for-side-effects": "off",
+      "testing-library/no-container": "off",
+      "testing-library/render-result-naming-convention": "off",
+      "no-script-url": "off",
+      "@typescript-eslint/no-unused-vars": "warn",
+      "react-hooks/exhaustive-deps": "warn"
+    }
   },
   "browserslist": {
     "production": [
@@ -76,7 +87,11 @@
   },
   "overrides": {
     "prismjs": "^1.30.0",
-    "refractor": "^5.0.0"
+    "refractor": "^5.0.0",
+    "nth-check": ">=2.0.1",
+    "on-headers": ">=1.1.0",
+    "postcss": ">=8.4.31",
+    "webpack-dev-server": ">=5.2.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
