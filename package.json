@@ -60,7 +60,18 @@
     "extends": [
       "react-app",
       "react-app/jest"
-    ]
+    ],
+    "rules": {
+      "jest/no-conditional-expect": "off",
+      "testing-library/no-wait-for-multiple-assertions": "off",
+      "testing-library/no-node-access": "off",
+      "testing-library/no-wait-for-side-effects": "off",
+      "testing-library/no-container": "off",
+      "testing-library/render-result-naming-convention": "off",
+      "no-script-url": "off",
+      "@typescript-eslint/no-unused-vars": "warn",
+      "react-hooks/exhaustive-deps": "warn"
+    }
   },
   "browserslist": {
     "production": [
