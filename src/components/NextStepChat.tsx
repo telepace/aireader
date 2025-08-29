@@ -612,7 +612,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
             bgcolor: 'background.paper',
             alignItems: 'stretch'
           }}>
-            <TextField variant="outlined" placeholder="输入一本你一直想读的书、或一个你想研究的主题" value={inputMessage} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); handleSend(); } }} size="small" multiline maxRows={4} sx={{ mr: 1, flex: 1 }} disabled={isLoading} />
+            <TextField variant="outlined" placeholder="输入一本你一直想读的书、或一个你想研究的话题" value={inputMessage} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); handleSend(); } }} size="small" multiline maxRows={4} sx={{ mr: 1, flex: 1 }} disabled={isLoading} />
             <Button variant="contained" onClick={handleSend} disabled={isLoading || !inputMessage.trim()} sx={{ px: 2.5, fontWeight: 600, whiteSpace: 'nowrap', minWidth: 'auto', alignSelf: 'stretch' }}>发送</Button>
           </Box>
         </Box>
@@ -851,8 +851,38 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                               </Fade>
                             </Collapse>
                           ))}
+                          
+                          {/* 提示文字直接放在历史推荐区内部 */}
+                          <Box sx={{ 
+                            mt: 2, 
+                            pt: 2, 
+                            borderTop: 1, 
+                            borderColor: 'divider',
+                            textAlign: 'center'
+                          }}>
+                            <Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                              没有心动的选项？<br />
+                              告诉AI你想要的方向，或直接要求换一组推荐
+                            </Typography>
+                          </Box>
                         </Box>
                       )}
+                    </Box>
+                  )}
+                  
+                  {/* 没有历史推荐时的提示 */}
+                  {!hasHistorical && (
+                    <Box sx={{ 
+                      mt: 3, 
+                      pt: 2, 
+                      borderTop: 1, 
+                      borderColor: 'divider',
+                      textAlign: 'center'
+                    }}>
+                      <Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                        没有心动的选项？<br />
+                        告诉AI你想要的方向，或直接要求换一组推荐
+                      </Typography>
                     </Box>
                   )}
                 </>
