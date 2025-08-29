@@ -21,6 +21,15 @@ Others
 
 **Format Requirements** The recommendations for steps 2 and 3 must strictly follow {{ format.type | upper | default('JSON Lines (JSONL)') }} format{% if format.requirements %}, {{ format.requirements | join(', ') }}{% endif %}.
 
+**CRITICAL JSON OUTPUT CONSTRAINTS:**
+- Output MUST be valid JSON only - no extra quotes, comments, or line breaks around JSON
+- Each line MUST be a complete, valid JSON object
+- String values MUST properly escape quotes using backslash: \"
+- NO special characters in JSON strings (avoid: newlines, tabs, control characters)
+- NO markdown formatting, code blocks, or explanations mixed with JSON
+- If text contains quotes, use backslash escaping: "She said \"Hello\""
+- Replace problematic characters: newlines with \\n, tabs with \\t
+
 
 **JSONL Template:**
 

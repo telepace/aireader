@@ -2,7 +2,7 @@
  * Tests for content splitter utility
  */
 
-import { splitContentAndOptions, NextStepOption } from '../contentSplitter';
+import { splitContentAndOptions } from '../contentSplitter';
 
 describe('Content Splitter', () => {
   describe('splitContentAndOptions', () => {

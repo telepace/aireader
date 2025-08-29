@@ -1,4 +1,4 @@
-import { splitContentAndOptions, NextStepOption } from './contentSplitter';
+import { splitContentAndOptions } from './contentSplitter';
 
 describe('splitContentAndOptions - TDD Implementation', () => {
   describe('Basic functionality', () => {

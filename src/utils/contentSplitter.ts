@@ -58,14 +58,121 @@ function repairJsonLine(jsonLine: string): string {
 }
 
 /**
+ * Attempts to extract various JSON structures and convert them to individual options
+ * Supports multiple formats:
+ * 1. {"recommendations": [...]} - nested recommendations array
+ * 2. [{"type": "...", "content": "..."}] - direct array format  
+ * 3. {"type": "deepen", "options": [...]} - type with options array (new format)
+ */
+function extractNestedJSONOptions(text: string): NextStepOption[] {
+  const collected: NextStepOption[] = [];
+  
+  try {
+    // Look for JSON blocks in the text
+    const jsonBlockRegex = /```json\s*\n?([\s\S]*?)\n?```/g;
+    let match;
+    
+    while ((match = jsonBlockRegex.exec(text)) !== null) {
+      try {
+        const jsonContent = match[1].trim();
+        const parsed = JSON.parse(jsonContent);
+        const extracted = extractOptionsFromParsedJSON(parsed);
+        collected.push(...extracted);
+      } catch (parseError) {
+        console.warn('Failed to parse JSON block:', parseError);
+      }
+    }
+    
+    // If no JSON blocks found, try parsing the entire text as JSON
+    if (collected.length === 0) {
+      try {
+        const parsed = JSON.parse(text);
+        const extracted = extractOptionsFromParsedJSON(parsed);
+        collected.push(...extracted);
+      } catch {
+        // Not valid JSON, ignore
+      }
+    }
+  } catch (error) {
+    console.warn('Error extracting nested JSON options:', error);
+  }
+  
+  return collected;
+}
+
+/**
+ * Extract options from a parsed JSON object, handling multiple format variations
+ */
+function extractOptionsFromParsedJSON(parsed: any): NextStepOption[] {
+  const collected: NextStepOption[] = [];
+  
+  // Format 1: {"recommendations": [...]}
+  if (parsed.recommendations && Array.isArray(parsed.recommendations)) {
+    for (const item of parsed.recommendations) {
+      const option = convertToNextStepOption(item);
+      if (option) collected.push(option);
+    }
+  }
+  // Format 2: Direct array [...]
+  else if (Array.isArray(parsed)) {
+    for (const item of parsed) {
+      const option = convertToNextStepOption(item);
+      if (option) collected.push(option);
+    }
+  }
+  // Format 3: Single object with type and options array
+  else if (parsed.type && parsed.options && Array.isArray(parsed.options)) {
+    if (parsed.type === 'deepen' || parsed.type === 'next') {
+      for (const item of parsed.options) {
+        const option = convertToNextStepOption(item, parsed.type);
+        if (option) collected.push(option);
+      }
+    }
+  }
+  // Format 4: Direct single object
+  else if (parsed.type && (parsed.type === 'deepen' || parsed.type === 'next')) {
+    const option = convertToNextStepOption(parsed);
+    if (option) collected.push(option);
+  }
+  
+  return collected;
+}
+
+/**
+ * Convert various object formats to NextStepOption format
+ * Handles field name mapping and type inheritance
+ */
+function convertToNextStepOption(item: any, inheritedType?: string): NextStepOption | null {
+  if (!item || typeof item !== 'object') return null;
+  
+  // Determine type - use inherited type if item doesn't have one
+  const type = item.type || inheritedType;
+  if (!type || (type !== 'deepen' && type !== 'next')) return null;
+  
+  // Map different field names to expected format
+  const content = item.content || item.title || item.name || '';
+  const describe = item.describe || item.description || item.desc || '';
+  
+  if (!content || !describe) return null;
+  
+  return {
+    type: type as 'deepen' | 'next',
+    content: String(content),
+    describe: String(describe)
+  };
+}
+
+/**
  * Splits raw text content into main content, completion signals, and JSONL options
  * 
  * Enhanced Implementation:
  * - Scans all lines to identify valid JSONL options and completion signals  
+ * - Handles both JSONL format and nested JSON structures
  * - Removes JSONL lines from main content
  * - Handles mixed content, empty lines, and invalid JSON gracefully
  * - Supports elegant completion signaling for better UX
  * - Auto-repairs common JSON formatting errors from LLM output
+ * - Supports multiple field name mappings (title→content, description→describe)
  * 
  * @param raw - Raw text content potentially containing JSONL options and completion signals
  * @returns Object with separated main content, completion status, and parsed options
@@ -83,6 +190,13 @@ export function splitContentAndOptions(raw: string): {
   const jsonLineIndices: number[] = [];
   let isContentComplete = false;
   let completionMessage = '';
+  
+  // First try to extract options from nested JSON structures
+  const nestedOptions = extractNestedJSONOptions(raw);
+  if (nestedOptions.length > 0) {
+    collected.push(...nestedOptions);
+    console.log(`Extracted ${nestedOptions.length} options from nested JSON structure`);
+  }
   
   // Scan all lines to identify valid JSONL lines and completion signals
   for (let i = 0; i < lines.length; i++) {
@@ -113,18 +227,55 @@ export function splitContentAndOptions(raw: string): {
         completionMessage = typeof obj.message === 'string' ? obj.message : '';
         jsonLineIndices.push(i);
       }
-      // 检查推荐选项
-      else if (
-        (obj.type === 'deepen' || obj.type === 'next') &&
-        typeof obj.content === 'string' &&
-        typeof obj.describe === 'string'
-      ) {
-        collected.push({
-          type: obj.type,
-          content: obj.content,
-          describe: obj.describe
-        });
+      // 检查推荐选项 - support multiple formats
+      else if (obj.type === 'deepen' || obj.type === 'next') {
         jsonLineIndices.push(i);
+        
+        // Format 1: Standard JSONL format with direct content/describe fields
+        const directContent = obj.content || obj.title || obj.name || '';
+        const directDescribe = obj.describe || obj.description || obj.desc || '';
+        
+        if (typeof directContent === 'string' && typeof directDescribe === 'string' && directContent && directDescribe) {
+          const exists = collected.some(existing => 
+            existing.type === obj.type && 
+            existing.content === directContent && 
+            existing.describe === directDescribe
+          );
+          
+          if (!exists) {
+            collected.push({
+              type: obj.type,
+              content: directContent,
+              describe: directDescribe
+            });
+          }
+        }
+        
+        // Format 2: JSONL format with options array (new LLM format)
+        if (obj.options && Array.isArray(obj.options)) {
+          for (const optionItem of obj.options) {
+            if (optionItem && typeof optionItem === 'object') {
+              const content = optionItem.content || optionItem.title || optionItem.name || '';
+              const describe = optionItem.describe || optionItem.description || optionItem.desc || '';
+              
+              if (typeof content === 'string' && typeof describe === 'string' && content && describe) {
+                const exists = collected.some(existing => 
+                  existing.type === obj.type && 
+                  existing.content === content && 
+                  existing.describe === describe
+                );
+                
+                if (!exists) {
+                  collected.push({
+                    type: obj.type,
+                    content: content,
+                    describe: describe
+                  });
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

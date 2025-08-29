@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatMessage } from '../types/types';
 
@@ -48,7 +48,7 @@ const DEFAULT_CONFIG: TaskManagerConfig = {
 };
 
 export const useTaskManager = (config: Partial<TaskManagerConfig> = {}) => {
-  const finalConfig = { ...DEFAULT_CONFIG, ...config };
+  const finalConfig = useMemo(() => ({ ...DEFAULT_CONFIG, ...config }), [config]);
   
   const [tasks, setTasks] = useState<Map<string, Task>>(new Map());
   const [activeTaskIds, setActiveTaskIds] = useState<Set<string>>(new Set());
@@ -108,6 +108,10 @@ export const useTaskManager = (config: Partial<TaskManagerConfig> = {}) => {
     return Math.round(baseTime * typeMultiplier * contentLengthFactor);
   }, []);
 
+  // 处理下一个任务的引用，用于在声明前引用
+  const processNextTasksRef = useRef<() => void>();
+  const startTaskRef = useRef<(taskId: string) => Promise<void>>();
+
   // 添加任务到队列
   const enqueueTask = useCallback((taskConfig: {
     type: 'deepen' | 'next';
@@ -143,13 +147,18 @@ export const useTaskManager = (config: Partial<TaskManagerConfig> = {}) => {
     emitEvent('taskAdded', task);
     
     // 尝试立即开始处理
-    processNextTasks();
+    processNextTasksRef.current?.();
     
     return taskId;
   }, [calculatePriority, estimateTaskDuration, emitEvent]);
 
   // 处理下一个任务
   const processNextTasks = useCallback(async () => {
+    // 如果没有设置任务执行器，则不处理任务
+    if (!taskExecutor.current) {
+      return;
+    }
+    
     const currentTasks = Array.from(tasks.values());
     const activeTasks = currentTasks.filter(t => t.status === 'processing');
     
@@ -166,7 +175,7 @@ export const useTaskManager = (config: Partial<TaskManagerConfig> = {}) => {
     const tasksToStart = pendingTasks.slice(0, slotsAvailable);
     
     tasksToStart.forEach(task => {
-      startTask(task.id);
+      startTaskRef.current?.(task.id);
     });
   }, [tasks, finalConfig.maxConcurrent]);
 
@@ -234,7 +243,7 @@ export const useTaskManager = (config: Partial<TaskManagerConfig> = {}) => {
       emitEvent('taskCompleted', completedTask);
 
       // 处理下一批任务
-      processNextTasks();
+      processNextTasksRef.current?.();
 
     } catch (error) {
       // 任务失败处理
@@ -260,7 +269,7 @@ export const useTaskManager = (config: Partial<TaskManagerConfig> = {}) => {
             return newSet;
           });
 
-          processNextTasks();
+          processNextTasksRef.current?.();
         }, finalConfig.retryDelays[currentTask.retryCount] || 10000);
 
       } else {
@@ -293,10 +302,16 @@ export const useTaskManager = (config: Partial<TaskManagerConfig> = {}) => {
         emitEvent('taskFailed', failedTask);
 
         // 处理下一批任务
-        processNextTasks();
+        processNextTasksRef.current?.();
       }
     }
-  }, [tasks, taskExecutor, finalConfig, emitEvent, processNextTasks]);
+  }, [tasks, taskExecutor, finalConfig, emitEvent]);
+
+  // 更新函数引用
+  useEffect(() => {
+    processNextTasksRef.current = processNextTasks;
+    startTaskRef.current = startTask;
+  });
 
   // 监听tasks变化，自动处理队列
   useEffect(() => {
@@ -338,10 +353,10 @@ export const useTaskManager = (config: Partial<TaskManagerConfig> = {}) => {
     emitEvent('taskCancelled', cancelledTask);
 
     // 处理下一批任务
-    processNextTasks();
+    processNextTasksRef.current?.();
 
     return true;
-  }, [tasks, emitEvent, processNextTasks]);
+  }, [tasks, emitEvent]);
 
   // 暂停任务
   const pauseTask = useCallback((taskId: string): boolean => {
@@ -366,9 +381,9 @@ export const useTaskManager = (config: Partial<TaskManagerConfig> = {}) => {
       return newSet;
     });
 
-    processNextTasks();
+    processNextTasksRef.current?.();
     return true;
-  }, [tasks, processNextTasks]);
+  }, [tasks]);
 
   // 恢复任务
   const resumeTask = useCallback((taskId: string): boolean => {
@@ -386,9 +401,9 @@ export const useTaskManager = (config: Partial<TaskManagerConfig> = {}) => {
       return newTasks;
     });
 
-    processNextTasks();
+    processNextTasksRef.current?.();
     return true;
-  }, [tasks, processNextTasks]);
+  }, [tasks]);
 
   // 获取任务状态
   const getTaskStatus = useCallback((taskId: string): Task | undefined => {
@@ -444,7 +459,6 @@ export const useTaskManager = (config: Partial<TaskManagerConfig> = {}) => {
 
   // 重新排序任务
   const reorderTasks = useCallback((taskIds: string[]) => {
-    const now = Date.now();
     setTasks(prev => {
       const newTasks = new Map(prev);
       taskIds.forEach((taskId, index) => {
@@ -461,8 +475,8 @@ export const useTaskManager = (config: Partial<TaskManagerConfig> = {}) => {
       return newTasks;
     });
     
-    processNextTasks();
-  }, [processNextTasks]);
+    processNextTasksRef.current?.();
+  }, []);
 
   return {
     // 状态

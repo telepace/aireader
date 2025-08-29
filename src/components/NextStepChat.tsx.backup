@@ -48,7 +48,7 @@ const getNextStepJsonlPrompt = () => {
   } catch (error) {
     console.error('Failed to generate next step JSONL prompt:', error);
     // 降级到原始硬编码版本
-    return '你是一个智能推荐助手，专门负责根据内容分析结果生成精准的推荐选项。\n\n**任务说明：**\n用户刚刚获得了对某个内容（文章或书籍）的深度分析，现在需要你根据这个分析结果，生成两类推荐选项：\n\n**1. 原文深挖 (type: deepen)**\n推荐3个最有价值的原文精读选项。\n\n**推荐要求：**\n- 选项一定要围绕「原文」，原文指的是最近在讨论的书、文章、主题\n- 按逻辑或情节划分，推荐第一、第二、第n部分等\n- 选项标题开头应该是"第一部分:...","第n部分:...", "重点:..."\n- 偏向客观的呈现内容，而不是过于主观的讨论\n- 选项的描述要足够吸引，能勾起用户的兴趣\n\n**2. 主题探索 (type: next)**\n推荐3本最值得阅读的相关书籍，挑选对用户有价值、最不可错过的探索对象，要围绕当前主题。选项的描述要足够吸引，能勾起用户的兴趣\n\n**输出格式要求：**\n必须严格遵循 JSON Lines (JSONL) 格式输出。\n\n**关键 JSON 输出约束：**\n- 输出必须是纯净的有效 JSON\n- 每一行必须是完整的有效 JSON 对象\n- 字符串值必须使用反斜杠正确转义引号\n- JSON 字符串中禁止特殊字符\n- 不要在 JSON 中混合 markdown 格式、代码块或解释文本\n\n**JSONL 模板:**\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n\n**约束条件：**\n- 不要向用户解释此格式\n- 直接输出JSONL数据，每行一个JSON对象\n- 不要添加任何说明文字或代码块标记';
+    return '你是一个智能推荐助手，专门负责根据内容分析结果生成精准的推荐选项。\n\n**任务说明：**\n用户刚刚获得了对某个内容（文章或书籍）的深度分析，现在需要你根据这个分析结果，生成两类推荐选项：\n\n**1. 原文深挖 (type: deepen)**\n推荐3个最有价值的原文精读选项。\n\n**推荐要求：**\n- 选项一定要围绕「原文」，原文指的是最近在讨论的书、文章、主题\n- 按逻辑或情节划分，推荐第一、第二、第n部分等\n- 选项标题开头应该是"第一部分:...","第n部分:...", "重点:..."\n- 偏向客观的呈现内容，而不是过于主观的讨论\n- 选项的描述要足够吸引，能勾起用户的兴趣\n\n**2. 主题探索 (type: next)**\n推荐3本最值得阅读的相关书籍，挑选对用户有价值、最不可错过的探索对象，要围绕当前主题。选项的描述要足够吸引，能勾起用户的兴趣\n\n**输出格式要求：**\n必须严格遵循 JSON Lines (JSONL) 格式输出。\n\n**关键 JSON 输出约束：**\n- 输出必须是纯净的有效 JSON\n- 每一行必须是完整的有效 JSON 对象\n- 字符串值必须使用反斜杠正确转义引号：\"\n- JSON 字符串中禁止特殊字符\n- 不要在 JSON 中混合 markdown 格式、代码块或解释文本\n\n**JSONL 模板:**\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n\n**约束条件：**\n- 不要向用户解释此格式\n- 直接输出JSONL数据，每行一个JSON对象\n- 不要添加任何说明文字或代码块标记';
   }
 };
 
@@ -358,145 +358,87 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
           }
           alert(`内容生成出错: ${err.message}`);
         },
-        async () => {
+        () => {
+          // Enhanced option parsing with completion signals
           try {
-            // 第一阶段完成：内容生成完毕，设置中间状态
-            setContentCompleteStates(prev => {
-              const newMap = new Map(prev);
-              newMap.set(contentAssistantId, {
-                isComplete: true,
-                completionMessage: '内容分析完成，正在生成推荐选项...',
-                timestamp: Date.now()
+            const { main, options: incoming, isContentComplete, completionMessage } = splitContentAndOptions(assembled);
+            
+            // 更新消息内容，移除 JSON 部分，只显示主内容
+            if (main !== assembled) {
+              setMessages((prev: ChatMessage[]) => 
+                prev.map((m: ChatMessage) => 
+                  m.id === assistantId ? { ...m, content: main } : m
+                )
+              );
+            }
+            
+            // 处理完成标志
+            if (isContentComplete) {
+              setContentCompleteStates(prev => {
+                const newMap = new Map(prev);
+                newMap.set(assistantId, {
+                  isComplete: true,
+                  completionMessage: completionMessage || '推荐选项已生成，点击探索',
+                  timestamp: Date.now()
+                });
+                return newMap;
               });
-              return newMap;
-            });
-
-            // 只有手动输入的消息才自动折叠推理窗口
+              // 只有手动输入的消息才自动折叠推理窗口
             if (!isFromOption) {
               setTimeout(() => {
                 setReasoningOpen(false);
               }, 600);
             }
-
-            // 第二阶段：Next Step JSONL 生成
-            console.log('开始第二阶段：生成推荐选项');
+            }
             
-            // 构建第二阶段的消息历史
-            const jsonlUserMessage: ChatMessage = { 
-              id: uuidv4(), 
-              role: 'user', 
-              content: `请根据以下内容分析结果生成推荐选项：\n\n${contentAssembled}`, 
-              timestamp: Date.now() 
-            };
-            const jsonlMessages = ensureSystemPrompt([jsonlUserMessage], 'jsonl');
-            
-            let jsonlAssembled = '';
-            // 使用2.5 flash模型进行第二阶段JSONL生成
-            const jsonlModel = 'google/gemini-2.5-flash';
-            
-            // 第二阶段API调用 - JSONL选项生成
-            await generateChatStream(
-              jsonlMessages,
-              jsonlModel,
-              ({ content }: { content?: string; reasoning?: string }) => {
-                if (content) {
-                  jsonlAssembled += content;
-                  console.log('第二阶段内容累积:', jsonlAssembled.length, '字符');
-                }
-              },
-              (err: Error) => {
-                console.error(`第二阶段JSONL生成出错: ${err.message}`);
-                if (userSession) {
-                  logUserEvent('chat-jsonl-failed', {
-                    sessionId: userSession.sessionId,
-                    conversationId,
-                    model: jsonlModel,
-                    stage: 'jsonl',
-                    error: err.message
-                  }, userSession.userId);
-                }
-                // 即使JSONL失败，内容分析仍然可用
-              },
-              () => {
-                try {
-                  console.log('第二阶段完成，开始解析JSONL:', jsonlAssembled);
-                  
-                  // 解析JSONL选项
-                  const { options: incoming } = splitContentAndOptions(jsonlAssembled);
-                  console.log('解析出的选项数量:', incoming.length);
-                  
-                  if (incoming.length > 0) {
-                    // 更新完成状态消息
-                    setContentCompleteStates(prev => {
-                      const newMap = new Map(prev);
-                      newMap.set(contentAssistantId, {
-                        isComplete: true,
-                        completionMessage: '推荐选项已生成，点击探索',
-                        timestamp: Date.now()
-                      });
-                      return newMap;
-                    });
-
-                    // 延迟显示推荐以实现优雅过渡
-                    setTimeout(() => {
-                      mergeOptions(incoming, contentAssistantId);
-                      console.log('选项已合并到UI');
-                    }, 800);
-                  } else {
-                    console.warn('没有解析出有效的选项');
-                  }
-
-                  // Log successful completion
-                  if (userSession) {
-                    logUserEvent('chat-message-completed', {
-                      sessionId: userSession.sessionId,
-                      conversationId,
-                      model: selectedModel,
-                      jsonlModel: jsonlModel,
-                      success: true,
-                      contentLength: contentAssembled.length,
-                      optionsGenerated: incoming.length,
-                      twoStageProcess: true
-                    }, userSession.userId);
-                  }
-                  
-                } catch (parseError) {
-                  console.warn('无法解析JSONL选项内容:', parseError);
-                  if (userSession) {
-                    logUserEvent('chat-jsonl-parse-failed', {
-                      sessionId: userSession.sessionId,
-                      conversationId,
-                      model: jsonlModel,
-                      error: parseError instanceof Error ? parseError.message : String(parseError),
-                      jsonlContent: jsonlAssembled
-                    }, userSession.userId);
-                  }
-                }
+            // 处理推荐选项
+            if (incoming.length > 0) {
+              // 如果正文已完成，延迟显示推荐以实现优雅过渡
+              if (isContentComplete) {
+                setTimeout(() => {
+                  mergeOptions(incoming, assistantId);
+                }, 800); // 800ms 过渡时间
+              } else {
+                mergeOptions(incoming, assistantId);
               }
-            );
-
-          } catch (secondStageError) {
-            console.error('第二阶段处理失败:', secondStageError);
+            }
+            
+            // Log successful completion
             if (userSession) {
-              logUserEvent('chat-second-stage-failed', {
+              logUserEvent('chat-message-completed', {
                 sessionId: userSession.sessionId,
                 conversationId,
                 model: selectedModel,
-                error: secondStageError instanceof Error ? secondStageError.message : String(secondStageError)
+                success: true,
+                responseLength: assembled.length,
+                optionsGenerated: incoming.length,
+                mainContentLength: main.length,
+                hasContentComplete: isContentComplete
               }, userSession.userId);
             }
-            // 即使第二阶段失败，内容分析仍然可用
-          } finally {
-            // Clean up streaming state for option-triggered messages
-            if (isFromOption) {
-              setStreamingAssistantIds(prev => {
-                const next = new Set(prev);
-                next.delete(contentAssistantId);
-                return next;
-              });
-            } else {
-              setIsLoading(false);
+          } catch (error) {
+            console.error('Failed to parse options from response:', error);
+            // 降级处理：保持原始响应，但记录错误
+            if (userSession) {
+              logUserEvent('chat-parsing-failed', {
+                sessionId: userSession.sessionId,
+                conversationId,
+                model: selectedModel,
+                error: error instanceof Error ? error.message : String(error),
+                responseLength: assembled.length
+              }, userSession.userId);
             }
+          }
+          
+          // 清理状态
+          if (isFromOption) {
+            setStreamingAssistantIds(prev => {
+              const next = new Set(prev);
+              next.delete(assistantId);
+              return next;
+            });
+          } else {
+            setIsLoading(false);
           }
         },
         conversationId,
