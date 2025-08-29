@@ -30,7 +30,7 @@ describe('useTaskManager', () => {
   it('should enqueue tasks correctly', () => {
     const { result } = renderHook(() => useTaskManager());
     
-    let taskId: string;
+    let taskId: string = '';
     act(() => {
       taskId = result.current.enqueueTask({
         type: 'deepen',
@@ -54,7 +54,7 @@ describe('useTaskManager', () => {
     const { result } = renderHook(() => useTaskManager({ maxConcurrent: 2 }));
 
     // Setup a mock executor that never resolves
-    const mockExecutor = jest.fn(() => new Promise(() => {}));
+    const mockExecutor = jest.fn(() => new Promise<any>(() => {}));
     
     act(() => {
       result.current.setTaskExecutor(mockExecutor);
@@ -85,7 +85,7 @@ describe('useTaskManager', () => {
   it('should cancel tasks correctly', async () => {
     const { result } = renderHook(() => useTaskManager());
 
-    let taskId: string;
+    let taskId: string = '';
     act(() => {
       taskId = result.current.enqueueTask({
         type: 'deepen',
@@ -124,7 +124,7 @@ describe('useTaskManager', () => {
       result.current.addEventListener('taskCompleted', mockListener);
     });
 
-    let taskId: string;
+    let taskId: string = '';
     act(() => {
       taskId = result.current.enqueueTask({
         type: 'deepen',
@@ -250,7 +250,7 @@ describe('useTaskManager', () => {
   it('should handle task progress updates', () => {
     const { result } = renderHook(() => useTaskManager());
 
-    let taskId: string;
+    let taskId: string = '';
     act(() => {
       taskId = result.current.enqueueTask({
         type: 'deepen',
@@ -269,8 +269,8 @@ describe('useTaskManager', () => {
   it('should calculate priority correctly', () => {
     const { result } = renderHook(() => useTaskManager());
 
-    let deepenTaskId: string;
-    let nextTaskId: string;
+    let deepenTaskId: string = '';
+    let nextTaskId: string = '';
 
     act(() => {
       deepenTaskId = result.current.enqueueTask({
