@@ -145,6 +145,9 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     timestamp: number;
   }>>(new Map());
   // const [pendingOptions, setPendingOptions] = useState<Map<string, OptionItem[]>>(new Map());
+  
+  // 跟踪是否是第一次点击选项的状态
+  const [isFirstOptionClick, setIsFirstOptionClick] = useState(true);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -155,6 +158,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
       setOptions([]);
       setContentCompleteStates(new Map());
       setShowHistoricalOptions({ deepen: false, next: true });
+      setIsFirstOptionClick(true); // 重置为第一次点击状态
     }
   }, [clearSignal, setMessages, setOptions]);
 
@@ -417,7 +421,21 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
    */
   const handleOptionClick = async (opt: OptionItem) => {
     if (isLoading) return;
-    // 轻微延迟后再触发退出动画（约100ms）
+    
+    // 如果是第一次点击选项，延迟200ms后丝滑滚动到底部
+    if (isFirstOptionClick && messagesContainerRef.current) {
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTo({
+            top: messagesContainerRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      }, 200);
+      setIsFirstOptionClick(false);
+    }
+    
+    // 轻微延迟后再触发退出动画（约200ms）
     setTimeout(() => {
       setExitingIds((prev: Set<string>) => {
         const next = new Set(prev);
@@ -612,7 +630,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
             bgcolor: 'background.paper',
             alignItems: 'stretch'
           }}>
-            <TextField variant="outlined" placeholder="输入一本你一直想读的书、或一个你想研究的主题" value={inputMessage} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); handleSend(); } }} size="small" multiline maxRows={4} sx={{ mr: 1, flex: 1 }} disabled={isLoading} />
+            <TextField variant="outlined" placeholder="输入一本你一直想读的书、或一个你想研究的话题" value={inputMessage} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); handleSend(); } }} size="small" multiline maxRows={4} sx={{ mr: 1, flex: 1 }} disabled={isLoading} />
             <Button variant="contained" onClick={handleSend} disabled={isLoading || !inputMessage.trim()} sx={{ px: 2.5, fontWeight: 600, whiteSpace: 'nowrap', minWidth: 'auto', alignSelf: 'stretch' }}>发送</Button>
           </Box>
         </Box>
@@ -723,7 +741,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                                           right: 0,
                                           bottom: -2,
                                           height: 2,
-                                          backgroundColor: '#4299e1',
+                                          backgroundColor: '#6366f1',
                                           transform: 'scaleX(0)',
                                           transformOrigin: 'left',
                                           transition: 'transform 300ms ease'
@@ -795,7 +813,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                               }}
                             >
                               <Fade in={!exitingIds.has(opt.id)} timeout={300} easing={{ exit: 'cubic-bezier(0, 0, 0.2, 1)' }}>
-                                <Box sx={{ mb: 2, '&:last-child': { mb: 0 }, transition: 'transform 320ms cubic-bezier(0, 0, 0.2, 1)', transform: exitingIds.has(opt.id) ? 'translateY(4px) scale(0.98)' : 'none' }}>
+                                <Box sx={{ mb: 2, '&:last-child': { mb: 4 }, transition: 'transform 320ms cubic-bezier(0, 0, 0.2, 1)', transform: exitingIds.has(opt.id) ? 'translateY(4px) scale(0.98)' : 'none' }}>
                                   {/* 历史推荐也使用新的UI设计，但稍微简化 */}
                                   <Box 
                                     onClick={() => handleOptionClick(opt)}
@@ -831,7 +849,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                                               right: 0,
                                               bottom: -2,
                                               height: 2,
-                                              backgroundColor: '#4299e1',
+                                              backgroundColor: '#6366f1',
                                               transform: 'scaleX(0)',
                                               transformOrigin: 'left',
                                               transition: 'transform 300ms ease'
@@ -851,8 +869,38 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                               </Fade>
                             </Collapse>
                           ))}
+                          
+                          {/* 提示文字直接放在历史推荐区内部 */}
+                          <Box sx={{ 
+                            mt: 2, 
+                            pt: 2, 
+                            borderTop: 1, 
+                            borderColor: 'divider',
+                            textAlign: 'center'
+                          }}>
+                            <Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                              🤔 没有心动的选项？<br />
+                              告诉AI你想要的方向，或直接要求换一组推荐
+                            </Typography>
+                          </Box>
                         </Box>
                       )}
+                    </Box>
+                  )}
+                  
+                  {/* 没有历史推荐时的提示 */}
+                  {!hasHistorical && (
+                    <Box sx={{ 
+                      mt: 3, 
+                      pt: 2, 
+                      borderTop: 1, 
+                      borderColor: 'divider',
+                      textAlign: 'center'
+                    }}>
+                      <Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                        🤔 没有心动的选项？<br />
+                        告诉AI你想要的方向，或直接要求换一组推荐
+                      </Typography>
                     </Box>
                   )}
                 </>
