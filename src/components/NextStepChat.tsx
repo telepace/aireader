@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Box, Button, CircularProgress, Paper, TextField, Typography, Tabs, Tab, keyframes, Menu, MenuItem, Collapse, Fade } from '@mui/material';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { Box, Button, CircularProgress, Paper, TextField, Typography, Tabs, Tab, keyframes, Menu, MenuItem, Collapse, Fade, Chip, Tooltip } from '@mui/material';
+import { Memory as MemoryIcon, Speed as SpeedIcon } from '@mui/icons-material';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -13,6 +14,8 @@ import { useConversation } from '../hooks/useConversation';
 import { useTaskManager, Task } from '../hooks/useTaskManager';
 import { useCardState } from '../hooks/useCardState';
 import { useNotification } from '../hooks/useNotification';
+import { usePerformanceOptimization, useRenderOptimization } from '../hooks/usePerformanceOptimization';
+import { OptimizedMessageList } from './OptimizedChatMessage';
 import EnhancedOptionCard from './EnhancedOptionCard';
 import TaskQueuePanel from './TaskQueuePanel';
 import NotificationContainer from './NotificationContainer';
@@ -149,6 +152,10 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     cancelled: 0, 
     paused: 0 
   });
+
+  // 性能优化
+  const performanceOptimizer = usePerformanceOptimization();
+  const { renderCount } = useRenderOptimization('NextStepChat');
   
   // 历史推荐展开状态管理
   const [showHistoricalOptions, setShowHistoricalOptions] = useState<{[key: string]: boolean}>({
@@ -440,6 +447,27 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
 
   // 归一化逻辑已移入 useConversation
 
+  // 性能监控和统计更新
+  useEffect(() => {
+    performanceOptimizer.updateStats(messages.length, options.length, renderCount);
+  }, [messages.length, options.length, renderCount, performanceOptimizer]);
+
+  // 定期内存清理
+  useEffect(() => {
+    const interval = setInterval(() => {
+      performanceOptimizer.performCleanup(messages, options, setMessages, setOptions);
+    }, 30000); // 每30秒清理一次
+
+    return () => clearInterval(interval);
+  }, [messages.length, options.length, renderCount, performanceOptimizer]);
+
+  // 组件卸载时清理
+  useEffect(() => {
+    return () => {
+      performanceOptimizer.manualCleanup();
+    };
+  }, [performanceOptimizer]);
+
   /**
    * Merges incoming options with the existing options.
    *
@@ -485,7 +513,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
   const sendMessageInternal = async (userText: string) => {
     const userMessage: ChatMessage = { id: uuidv4(), role: 'user', content: userText, timestamp: Date.now() };
     const withoutSystem = [...messages, userMessage];
-    const trimmed = trimContextForApi(withoutSystem);
+    const trimmed = performanceOptimizer.trimContext(withoutSystem);
     const withSystem = ensureSystemPrompt(trimmed);
     setMessages(withoutSystem); setInputMessage(''); setIsLoading(true);
     setReasoningText(''); setReasoningOpen(true);
@@ -721,9 +749,69 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
             flexGrow: 1, 
             overflowY: 'auto', 
             py:4,
-            px:8, 
-            bgcolor: 'background.paper' 
+            px: { xs: 2, sm: 4 }
           }}>
+            {/* 性能监控显示 */}
+            {performanceOptimizer.config.enablePerformanceMonitoring && (
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 1, 
+                mb: 2, 
+                p: 1.5, 
+                borderRadius: 1, 
+                bgcolor: 'background.default',
+                border: '1px solid',
+                borderColor: 'divider',
+                fontSize: '0.75rem'
+              }}>
+                <Chip
+                  label={`消息: ${performanceOptimizer.performanceStats.messagesCount}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ height: 20 }}
+                />
+                <Chip
+                  label={`选项: ${performanceOptimizer.performanceStats.optionsCount}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ height: 20 }}
+                />
+                <Chip
+                  label={`内存: ${performanceOptimizer.performanceStats.memoryUsage.used}MB (${performanceOptimizer.performanceStats.memoryUsage.percentage}%)`}
+                  size="small"
+                  variant="outlined"
+                  color={performanceOptimizer.performanceStats.memoryUsage.percentage > 80 ? 'warning' : 'default'}
+                  sx={{ height: 20 }}
+                />
+                <Chip
+                  label={`渲染: ${performanceOptimizer.performanceStats.renderCount}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ height: 20 }}
+                />
+              </Box>
+            )}
+
+            {/* 使用优化的消息列表组件 */}
+            <OptimizedMessageList
+              messages={messages}
+              showMetadata={performanceOptimizer.config.enablePerformanceMonitoring}
+              onMarkImportant={(messageId) => {
+                // 标记消息为重要
+                setMessages(prev => prev.map(m => 
+                  m.id === messageId 
+                    ? { ...m, metadata: { ...m.metadata, important: true } }
+                    : m
+                ));
+              }}
+              isStreaming={isLoading}
+              streamingMessageId={messages[messages.length - 1]?.id}
+              maxHeight={600}
+              enableVirtualization={messages.length > 50}
+            />
+
+            {/* 保留旧的渲染逻辑作为备用（隐藏） */}
+            <Box sx={{ display: 'none' }}>
             {messages.filter((m: ChatMessage) => m.role!=='system').map((m: ChatMessage) => {
               const isUser = m.role==='user';
               const { main } = splitContentAndOptions(m.content);
@@ -843,6 +931,14 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                 <CircularProgress size={22} />
               </Box>
             )}
+            </Box>
+
+            {/* 新的加载指示器 */}
+            {isLoading && (
+              <Box sx={{ position: 'sticky', bottom: 8, display: 'flex', justifyContent: 'center', my: 2 }}>
+                <CircularProgress size={22} />
+              </Box>
+            )}
           </Box>
 
           <Box sx={{ 
@@ -854,7 +950,26 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
             bgcolor: 'background.paper',
             alignItems: 'stretch'
           }}>
-            <TextField variant="outlined" placeholder="输入你的问题，获取答案与下一步探索方向..." value={inputMessage} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)} onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); handleSend(); } }} size="small" multiline maxRows={4} sx={{ mr: 1, flex: 1 }} disabled={isLoading} />
+            <TextField 
+              variant="outlined" 
+              placeholder="输入你的问题，获取答案与下一步探索方向..." 
+              value={inputMessage} 
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)} 
+              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { 
+                if(e.key==='Enter'&&!e.shiftKey){ 
+                  e.preventDefault(); 
+                  handleSend(); 
+                } 
+              }} 
+              size="small" 
+              multiline 
+              maxRows={4} 
+              sx={{ mr: 1, flex: 1 }} 
+              disabled={isLoading}
+              helperText={performanceOptimizer.config.enablePerformanceMonitoring ? 
+                `字符数: ${inputMessage.length} | 预估Token: ${Math.ceil(inputMessage.length / 3)}` : 
+                undefined}
+            />
             <Button variant="contained" onClick={handleSend} disabled={isLoading || !inputMessage.trim()} sx={{ px: 2.5, fontWeight: 600, whiteSpace: 'nowrap', minWidth: 'auto', alignSelf: 'stretch' }}>发送</Button>
           </Box>
         </Box>

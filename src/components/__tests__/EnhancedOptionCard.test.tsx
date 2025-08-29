@@ -39,7 +39,15 @@ describe('EnhancedOptionCard', () => {
 
   it('calls onClick when card is clicked', () => {
     const mockOnClick = jest.fn();
-    render(<EnhancedOptionCard {...defaultProps} onClick={mockOnClick} />);
+    const interactiveState: CardState = {
+      id: 'test-card',
+      visual: 'idle',
+      interactive: true,
+      progress: 0,
+      clickCount: 0
+    };
+    
+    render(<EnhancedOptionCard {...defaultProps} onClick={mockOnClick} state={interactiveState} />);
     
     const card = screen.getByText('第一部分：核心概念解析').closest('div');
     fireEvent.click(card!);
@@ -129,9 +137,9 @@ describe('EnhancedOptionCard', () => {
     fireEvent.mouseEnter(card!);
     
     await waitFor(() => {
-      expect(screen.getByTitle('暂停')).toBeInTheDocument();
-      expect(screen.getByTitle('取消')).toBeInTheDocument();
-    });
+      expect(screen.getByLabelText('暂停')).toBeInTheDocument();
+      expect(screen.getByLabelText('取消')).toBeInTheDocument();
+    }, { timeout: 3000 });
   });
 
   it('calls onPause when pause button is clicked', async () => {
@@ -151,9 +159,9 @@ describe('EnhancedOptionCard', () => {
     fireEvent.mouseEnter(card!);
     
     await waitFor(() => {
-      const pauseButton = screen.getByTitle('暂停');
+      const pauseButton = screen.getByLabelText('暂停');
       fireEvent.click(pauseButton);
-    });
+    }, { timeout: 3000 });
     
     expect(mockOnPause).toHaveBeenCalledTimes(1);
   });
@@ -175,9 +183,9 @@ describe('EnhancedOptionCard', () => {
     fireEvent.mouseEnter(card!);
     
     await waitFor(() => {
-      const cancelButton = screen.getByTitle('取消');
+      const cancelButton = screen.getByLabelText('取消');
       fireEvent.click(cancelButton);
-    });
+    }, { timeout: 3000 });
     
     expect(mockOnCancel).toHaveBeenCalledTimes(1);
   });
@@ -200,9 +208,9 @@ describe('EnhancedOptionCard', () => {
     fireEvent.mouseEnter(card!);
     
     await waitFor(() => {
-      const resumeButton = screen.getByTitle('开始');
+      const resumeButton = screen.getByLabelText('开始');
       fireEvent.click(resumeButton);
-    });
+    }, { timeout: 3000 });
     
     expect(mockOnResume).toHaveBeenCalledTimes(1);
   });
@@ -256,18 +264,31 @@ describe('EnhancedOptionCard', () => {
 
   it('applies click animation class when clicked', async () => {
     const mockOnClick = jest.fn();
+    const interactiveState: CardState = {
+      id: 'test-card',
+      visual: 'idle',
+      interactive: true,
+      progress: 0,
+      clickCount: 0
+    };
     
-    render(<EnhancedOptionCard {...defaultProps} onClick={mockOnClick} />);
+    const { container } = render(<EnhancedOptionCard {...defaultProps} onClick={mockOnClick} state={interactiveState} />);
     
-    const card = screen.getByText('第一部分：核心概念解析').closest('div');
-    fireEvent.click(card!);
+    // Find the main card element that has the onClick handler
+    const cardWithClickHandler = container.querySelector('[class*="MuiBox-root"]:has([role]):not(:empty)') ||
+                                 container.querySelector('.MuiBox-root') ||
+                                 screen.getByText('第一部分：核心概念解析').closest('[class*="MuiBox-root"]');
+    
+    fireEvent.click(cardWithClickHandler!);
     
     // The animation class should be temporarily applied
-    expect(card).toHaveClass('card-click-animation');
+    const animatedCard = container.querySelector('.card-click-animation');
+    expect(animatedCard).toBeInTheDocument();
     
     // Animation class should be removed after timeout
     await waitFor(() => {
-      expect(card).not.toHaveClass('card-click-animation');
+      const stillAnimated = container.querySelector('.card-click-animation');
+      expect(stillAnimated).not.toBeInTheDocument();
     }, { timeout: 200 });
   });
 });

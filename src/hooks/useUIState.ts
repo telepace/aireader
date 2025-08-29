@@ -5,21 +5,39 @@ const LOCAL_STORAGE_KEYS = {
   RIGHT_SIDEBAR_OPEN: 'promptTester_rightSidebarOpen'
 };
 
+const getStorageValue = (key: string, defaultValue: boolean): boolean => {
+  try {
+    const value = localStorage.getItem(key);
+    return value !== 'false';
+  } catch (error) {
+    console.warn(`Failed to read localStorage key ${key}:`, error);
+    return defaultValue;
+  }
+};
+
+const setStorageValue = (key: string, value: boolean): void => {
+  try {
+    localStorage.setItem(key, String(value));
+  } catch (error) {
+    console.warn(`Failed to write to localStorage key ${key}:`, error);
+  }
+};
+
 export const useUIState = () => {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState<boolean>(() => 
-    localStorage.getItem(LOCAL_STORAGE_KEYS.LEFT_SIDEBAR_OPEN) !== 'false'
+    getStorageValue(LOCAL_STORAGE_KEYS.LEFT_SIDEBAR_OPEN, true)
   );
   const [rightSidebarOpen, setRightSidebarOpen] = useState<boolean>(() => 
-    localStorage.getItem(LOCAL_STORAGE_KEYS.RIGHT_SIDEBAR_OPEN) !== 'false'
+    getStorageValue(LOCAL_STORAGE_KEYS.RIGHT_SIDEBAR_OPEN, true)
   );
 
   // 持久化存储
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEYS.LEFT_SIDEBAR_OPEN, String(leftSidebarOpen));
+    setStorageValue(LOCAL_STORAGE_KEYS.LEFT_SIDEBAR_OPEN, leftSidebarOpen);
   }, [leftSidebarOpen]);
 
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEYS.RIGHT_SIDEBAR_OPEN, String(rightSidebarOpen));
+    setStorageValue(LOCAL_STORAGE_KEYS.RIGHT_SIDEBAR_OPEN, rightSidebarOpen);
   }, [rightSidebarOpen]);
 
   const toggleLeftSidebar = () => setLeftSidebarOpen(!leftSidebarOpen);

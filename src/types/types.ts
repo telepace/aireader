@@ -12,6 +12,12 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number;
+  metadata?: {
+    tokens?: number;
+    important?: boolean;
+    hasOptions?: boolean;
+    processingTime?: number;
+  };
 }
 
 export interface OptionItem {

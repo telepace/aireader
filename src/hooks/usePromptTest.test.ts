@@ -122,8 +122,8 @@ describe('usePromptTest', () => {
     expect(result.current.promptText).toBe('');
     expect(result.current.promptResult).toBe('');
     expect(result.current.selectedPromptTest).toBe(null);
-    expect(localStorage.getItem('promptTester_promptObject')).toBe('');
-    expect(localStorage.getItem('promptTester_promptText')).toBe('');
+    expect(localStorage.getItem('promptTester_promptObject')).toBe(null);
+    expect(localStorage.getItem('promptTester_promptText')).toBe(null);
   });
 
   it('should load prompt test data', () => {

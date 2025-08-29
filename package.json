@@ -80,6 +80,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
+    "@types/lodash": "^4.17.20",
     "serve": "^14.2.4"
   }
 }
