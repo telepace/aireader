@@ -54,7 +54,7 @@ describe('useTaskManager', () => {
     const { result } = renderHook(() => useTaskManager({ maxConcurrent: 2 }));
 
     // Setup a mock executor that never resolves
-    const mockExecutor = jest.fn(() => new Promise<any>(() => {}));
+    const mockExecutor = jest.fn(() => new Promise<void>(() => {}));
     
     act(() => {
       result.current.setTaskExecutor(mockExecutor);
