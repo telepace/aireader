@@ -417,6 +417,11 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
   const handleSend = async () => { if (!inputMessage.trim() || isLoading) return; await sendMessageInternal(inputMessage.trim()); };
   /**
    * Handles the click event for an option.
+   *
+   * This function manages the click event for an option item, ensuring that the loading state is respected.
+   * On the first click, it smoothly scrolls the messages container to the bottom after a 200ms delay.
+   * It also triggers an exit animation with a slight delay and sends the message content using the sendMessageInternal function.
+   *
    * @param opt - The option item that was clicked.
    */
   const handleOptionClick = async (opt: OptionItem) => {
