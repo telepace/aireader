@@ -83,14 +83,34 @@ function extractNestedJSONOptions(text: string): NextStepOption[] {
       }
     }
     
-    // If no JSON blocks found, try parsing the entire text as JSON
+    // If no JSON blocks found, try to extract JSON from text
     if (collected.length === 0) {
-      try {
-        const parsed = JSON.parse(text);
-        const extracted = extractOptionsFromParsedJSON(parsed);
-        collected.push(...extracted);
-      } catch {
-        // Not valid JSON, ignore
+      // Look for JSON objects in the text (not wrapped in code blocks)
+      // Try to find potential JSON objects more accurately
+      const potentialJsonMatches = [
+        // Match complete JSON objects that might span multiple lines
+        text.match(/\{[\s\S]*"recommendations"[\s\S]*\}/),
+        text.match(/\{[\s\S]*"type"[\s\S]*"options"[\s\S]*\}/),
+        // Fallback: any complete JSON object
+        text.match(/\{[\s\S]*\}/)
+      ];
+      
+      for (const jsonMatch of potentialJsonMatches) {
+        if (jsonMatch && jsonMatch[0]) {
+          try {
+            const jsonContent = jsonMatch[0].trim();
+            const parsed = JSON.parse(jsonContent);
+            const extracted = extractOptionsFromParsedJSON(parsed);
+            if (extracted.length > 0) {
+              collected.push(...extracted);
+              console.log(`✅ Extracted ${extracted.length} options from JSON object`);
+              break; // Found valid options, stop searching
+            }
+          } catch (parseError) {
+            // This JSON object couldn't be parsed or didn't contain valid options
+            console.debug('Failed to parse JSON object:', parseError);
+          }
+        }
       }
     }
   } catch (error) {
