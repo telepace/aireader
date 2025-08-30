@@ -11,6 +11,8 @@ import { splitContentAndOptions, NextStepOption } from '../utils/contentSplitter
 import { generateSystemPrompt } from '../services/promptTemplateV2';
 import { useConversation } from '../hooks/useConversation';
 import SimpleOptionCard from './SimpleOptionCard';
+import { useMindMap } from '../hooks/useMindMap';
+import SimpleMindMapPanel from './MindMap/SimpleMindMapPanel';
 
 // Markdown renderers (aligned with existing style)
 
@@ -118,6 +120,16 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
   const [exitingIds, setExitingIds] = useState<Set<string>>(new Set());
   const [processingOptions, setProcessingOptions] = useState<Set<string>>(new Set());
 
+  // 思维导图相关状态
+  const [mindMapOpen, setMindMapOpen] = useState(false);
+  const {
+    mindMapState,
+    initializeMindMap,
+    addNode,
+    navigateToNode,
+    generateMindMapContext
+  } = useMindMap(conversationId);
+
   // 历史推荐展开状态管理
   const [showHistoricalOptions, setShowHistoricalOptions] = useState<{[key: string]: boolean}>({
     deepen: false,
@@ -157,6 +169,20 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
   const [isFirstOptionClick, setIsFirstOptionClick] = useState(true);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  // 初始化思维导图（当第一条用户消息发送时）
+  useEffect(() => {
+    if (messages.length > 0 && mindMapState.stats.totalNodes === 0) {
+      // 找到第一条用户消息作为根主题
+      const firstUserMessage = messages.find(m => m.role === 'user');
+      if (firstUserMessage) {
+        const rootTitle = firstUserMessage.content.length > 50 
+          ? firstUserMessage.content.slice(0, 50) + '...'
+          : firstUserMessage.content;
+        initializeMindMap(rootTitle, '探索的起始话题');
+      }
+    }
+  }, [messages, mindMapState.stats.totalNodes, initializeMindMap]);
 
   useEffect(() => {
     if (typeof clearSignal === 'number') { 
@@ -567,6 +593,24 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     }
     
     try {
+      // 添加节点到思维导图
+      if (mindMapState.currentNodeId) {
+        const nodeId = addNode(
+          opt.content,
+          opt.type === 'deepen' ? 'deepen' : 'next',
+          mindMapState.currentNodeId,
+          {
+            summary: opt.describe,
+            keywords: [],
+            explored: false
+          }
+        );
+        // 立即导航到新节点
+        if (nodeId) {
+          navigateToNode(nodeId);
+        }
+      }
+
       // 更新选项点击计数
       setOptions(prev => prev.map(o => 
         o.id === opt.id ? { ...o, clickCount: (o.clickCount || 0) + 1 } : o
@@ -990,6 +1034,20 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
             })()}
           </Box>
         </Box>
+      </Box>
+
+      {/* 思维导图面板 */}
+      <Box sx={{ mt: 2 }}>
+        <SimpleMindMapPanel
+          mindMapState={mindMapState}
+          isOpen={mindMapOpen}
+          onToggle={() => setMindMapOpen(!mindMapOpen)}
+          onNodeClick={navigateToNode}
+          onRefresh={() => {
+            // 可以在这里添加刷新布局的逻辑
+            console.log('刷新思维导图布局');
+          }}
+        />
       </Box>
     </Box>
   );
