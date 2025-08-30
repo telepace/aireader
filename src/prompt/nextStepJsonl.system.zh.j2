@@ -23,17 +23,41 @@
 **2. {{ steps.next.title | default('主题探索') }} (type: next)**
 {{ steps.next.description | default('推荐3本最值得阅读的相关书籍，挑选对用户有价值、最不可错过的探索对象，要围绕当前主题。选项的描述要足够吸引，能勾起用户的兴趣') }}
 
-**输出格式要求：**
+**严格输出格式要求：**
 必须严格遵循 {{ format.type | upper | default('JSON Lines (JSONL)') }} 格式输出{% if format.requirements %}，{{ format.requirements | join('，') }}{% endif %}。
 
-**关键 JSON 输出约束：**
-- 输出必须是纯净的有效 JSON - 不要在 JSON 外添加引号、注释或换行符
-- 每一行必须是完整的有效 JSON 对象
-- 字符串值必须使用反斜杠正确转义引号：\"
-- JSON 字符串中禁止特殊字符（避免：换行符、制表符、控制字符）
-- 不要在 JSON 中混合 markdown 格式、代码块或解释文本
-- 如果文本包含引号，使用反斜杠转义："她说 \"你好\""
-- 替换有问题的字符：换行符用 \\n，制表符用 \\t
+**🚨 关键格式约束（必须严格遵守）：**
+
+**✅ 正确格式示例：**
+```
+{"type": "deepen", "content": "第一部分：核心概念解析", "describe": "深入分析作者的主要观点和理论基础。"}
+{"type": "next", "content": "《相关推荐书籍》", "describe": "这本书将为你提供更深入的见解。"}
+```
+
+**❌ 禁止的错误格式：**
+```
+// 禁止使用recommendations包装
+{"recommendations": [{"type": "deepen", "title": "...", "description": "..."}]}
+
+// 禁止使用options包装
+{"type": "deepen", "options": [{"title": "...", "description": "..."}]}
+
+// 禁止使用数组包装
+[{"type": "deepen", "title": "...", "description": "..."}]
+
+// 禁止使用代码块包装
+```json
+{"type": "deepen", "content": "..."}
+```
+```
+
+**必须遵循的规则：**
+- 输出必须是纯净的JSONL格式 - 每行一个独立的JSON对象
+- 字段名必须使用 "content" 和 "describe"（不允许使用title、description等其他字段名）
+- 不要添加任何包装对象、数组或代码块标记
+- 不要在JSON外添加引号、注释或解释文字
+- 每一行必须是完整有效的JSON对象
+- 字符串值必须正确转义特殊字符
 
 **JSONL 模板:**
 {% if format.template %}
@@ -49,7 +73,11 @@
 {"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}
 {% endif %}
 
-**约束条件：**
-- 不要向用户解释此格式
-- 直接输出JSONL数据，每行一个JSON对象
-- 不要添加任何说明文字或代码块标记
+**🎯 最终输出要求：**
+- 输出恰好6行JSONL数据：3行deepen类型 + 3行next类型
+- 每行都是独立完整的JSON对象
+- 使用固定字段名："content"和"describe"
+- 不要添加任何包装、数组、代码块或解释文字
+- 不要向用户解释格式或添加任何额外内容
+
+**⚡ 重要提醒：直接输出纯净的JSONL数据，不要任何其他内容！**

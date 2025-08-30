@@ -23,17 +23,41 @@ Others
 **2. {{ steps.next.title | default('Topic Exploration') }} (type: next)**
 {{ steps.next.description | default('Recommend 3 most valuable related books to read, selecting exploration targets that are valuable and unmissable for the user, centered around the current theme. Option descriptions should be attractive enough to spark user interest') }}
 
-**Output Format Requirements:**
+**Strict Output Format Requirements:**
 Must strictly follow {{ format.type | upper | default('JSON Lines (JSONL)') }} format output{% if format.requirements %}, {{ format.requirements | join(', ') }}{% endif %}.
 
-**Critical JSON Output Constraints:**
-- Output must be clean, valid JSON - no quotes, comments, or line breaks outside JSON
+**🚨 Critical Format Constraints (Must Strictly Follow):**
+
+**✅ Correct Format Examples:**
+```
+{"type": "deepen", "content": "Part 1: Core Concept Analysis", "describe": "In-depth analysis of the author's main viewpoints and theoretical foundations."}
+{"type": "next", "content": "Related Recommended Book", "describe": "This book will provide you with deeper insights."}
+```
+
+**❌ Prohibited Incorrect Formats:**
+```
+// DO NOT use recommendations wrapper
+{"recommendations": [{"type": "deepen", "title": "...", "description": "..."}]}
+
+// DO NOT use options wrapper
+{"type": "deepen", "options": [{"title": "...", "description": "..."}]}
+
+// DO NOT use array wrapper
+[{"type": "deepen", "title": "...", "description": "..."}]
+
+// DO NOT use code block wrapper
+```json
+{"type": "deepen", "content": "..."}
+```
+```
+
+**Must Follow Rules:**
+- Output must be pure JSONL format - one independent JSON object per line
+- Field names must use "content" and "describe" (DO NOT use title, description, or other field names)
+- Do not add any wrapper objects, arrays, or code block markers
+- Do not add quotes, comments, or explanatory text outside JSON
 - Each line must be a complete, valid JSON object
-- String values must use backslash to properly escape quotes: \"
-- Prohibit special characters in JSON strings (avoid: newlines, tabs, control characters)
-- Don't mix markdown formatting, code blocks, or explanatory text in JSON
-- If text contains quotes, escape with backslash: "She said \"hello\""
-- Replace problematic characters: newlines with \\n, tabs with \\t
+- String values must properly escape special characters
 
 **JSONL Template:**
 {% if format.template %}
@@ -49,7 +73,11 @@ Must strictly follow {{ format.type | upper | default('JSON Lines (JSONL)') }} f
 {"type": "next", "content": "Recommended book title", "describe": "Detailed, engaging description of this book."}
 {% endif %}
 
-**Constraints:**
-- Don't explain this format to the user
-- Output JSONL data directly, one JSON object per line
-- Don't add any explanatory text or code block markers
+**🎯 Final Output Requirements:**
+- Output exactly 6 lines of JSONL data: 3 deepen type + 3 next type
+- Each line is an independent, complete JSON object
+- Use fixed field names: "content" and "describe"
+- Do not add any wrappers, arrays, code blocks, or explanatory text
+- Do not explain the format to users or add any additional content
+
+**⚡ Important Reminder: Output pure JSONL data directly, nothing else!**
