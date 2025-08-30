@@ -3,25 +3,10 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { initializeErrorSuppression } from './utils/errorSuppression';
 
-// 全局错误处理机制
-window.addEventListener('error', (event) => {
-  console.error('🚨 Global JavaScript Error:', {
-    message: event.message,
-    filename: event.filename,
-    lineno: event.lineno,
-    colno: event.colno,
-    error: event.error,
-    stack: event.error?.stack
-  });
-});
-
-window.addEventListener('unhandledrejection', (event) => {
-  console.error('🚨 Unhandled Promise Rejection:', {
-    reason: event.reason,
-    promise: event.promise
-  });
-});
+// Initialize comprehensive error suppression before anything else
+initializeErrorSuppression();
 
 // 应用初始化错误处理
 try {

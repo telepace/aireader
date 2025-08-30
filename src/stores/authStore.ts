@@ -2,7 +2,6 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { AuthUser, AnonymousUser } from '../types/types'
 import AuthService from '../services/authService'
-import DataService from '../services/dataService'
 import { supabase } from '../services/supabase'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 

@@ -98,7 +98,7 @@ export class AuthService {
    * GitHub 登录
    */
   static async signInWithGitHub(): Promise<{ user: SupabaseUser | null, error: any }> {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
         redirectTo: `${window.location.origin}${window.location.pathname}`
@@ -112,7 +112,7 @@ export class AuthService {
    * Google 登录
    */
   static async signInWithGoogle(): Promise<{ user: SupabaseUser | null, error: any }> {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}${window.location.pathname}`

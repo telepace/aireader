@@ -4,13 +4,14 @@ import {
   CssBaseline,
   ThemeProvider,
   createTheme,
-  Box
+  Box,
 } from '@mui/material';
 import { useUIState } from './hooks/useUIState';
 import { useModelSelection } from './hooks/useModelSelection';
 import { createUserSession, flushTraces } from './services/api-with-tracing';
 import AppHeader from './components/Layout/AppHeader';
 import NextStepChat from './components/NextStepChat';
+import ConcurrentTestPanel from './components/ConcurrentTestPanel';
 import { UpgradePrompt, MigrationPrompt } from './components/Auth';
 import { useAuthStore } from './stores/authStore';
 import { UserSession } from './types/types';
@@ -33,6 +34,7 @@ const App: React.FC = () => {
   const [toggleConvMenuSignal, setToggleConvMenuSignal] = useState<number>(0);
   const [convMenuAnchorEl, setConvMenuAnchorEl] = useState<HTMLElement | null>(null);
   const [userSession, setUserSession] = useState<UserSession | null>(null);
+  const [showConcurrentTest, setShowConcurrentTest] = useState(false);
 
   const {
     leftSidebarOpen,
@@ -58,6 +60,13 @@ const App: React.FC = () => {
       setUserSession(session);
       // Removed app-loaded event - too noisy for analytics
     }
+  }, []);
+
+  // Initialize centralized error suppression
+  useEffect(() => {
+    import('./utils/errorSuppression').then(({ initializeErrorSuppression }) => {
+      initializeErrorSuppression();
+    });
   }, []);
 
   // Flush traces before page unload (without logging app-unload event)
@@ -311,6 +320,8 @@ const App: React.FC = () => {
                 setConvMenuAnchorEl(e.currentTarget as HTMLElement);
                 setToggleConvMenuSignal(Date.now());
               }}
+              showConcurrentTest={showConcurrentTest}
+              onToggleConcurrentTest={() => setShowConcurrentTest(!showConcurrentTest)}
             />
           </LocalErrorBoundary>
           
@@ -325,14 +336,13 @@ const App: React.FC = () => {
             minHeight: 0
           }}>
             <LocalErrorBoundary 
-              componentName="聊天界面"
+              componentName="主界面"
               showDetails={process.env.NODE_ENV === 'development'}
               onError={(error, componentName) => {
                 console.warn(`${componentName} error:`, error);
                 
-                // 聊天界面错误可能更严重，记录更多信息
                 if (userSession) {
-                  console.log('Chat error for user:', userSession.userId, {
+                  console.log('Main error for user:', userSession.userId, {
                     selectedModel,
                     error: error.message,
                     timestamp: new Date().toISOString()
@@ -340,12 +350,18 @@ const App: React.FC = () => {
                 }
               }}
             >
-              <NextStepChat 
-                selectedModel={selectedModel} 
-                clearSignal={nextStepClearSignal} 
-                externalToggleConversationMenuSignal={toggleConvMenuSignal} 
-                conversationMenuAnchorEl={convMenuAnchorEl} 
-              />
+              {!showConcurrentTest && (
+                <NextStepChat 
+                  selectedModel={selectedModel} 
+                  clearSignal={nextStepClearSignal} 
+                  externalToggleConversationMenuSignal={toggleConvMenuSignal} 
+                  conversationMenuAnchorEl={convMenuAnchorEl} 
+                />
+              )}
+              
+              {showConcurrentTest && (
+                <ConcurrentTestPanel selectedModel={selectedModel} />
+              )}
             </LocalErrorBoundary>
           </Box>
           

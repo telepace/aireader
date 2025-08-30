@@ -2,9 +2,6 @@ import { supabase } from './supabase'
 import { PromptTest, ChatConversation, ChatMessage, OptionItem } from '../types/types'
 import { 
   PromptTest as DatabasePromptTest, 
-  Conversation as DatabaseConversation,
-  Message as DatabaseMessage,
-  ConversationOption as DatabaseConversationOption,
   PromptTestInsert,
   ConversationInsert,
   MessageInsert,
@@ -241,7 +238,7 @@ export class DataService {
       }
 
       // 保存或更新对话
-      const { data: convData, error: convError } = await supabase
+      const { error: convError } = await supabase
         .from('conversations')
         .upsert(conversationData, { onConflict: 'id' })
         .select()

@@ -108,9 +108,8 @@ describe('useFormValidation', () => {
         result.current.updateField('optionalField', 'valid'); // Valid
       });
       
-      let isValid;
       act(() => {
-        isValid = result.current.validateForm();
+        result.current.validateForm();
       });
       
       // After validateForm is called, the field should be invalid

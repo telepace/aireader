@@ -21,6 +21,15 @@
 
 **格式要求** 第2和第3步的推荐项，必须严格遵循 {{ format.type | upper | default('JSON Lines (JSONL)') }} 格式{% if format.requirements %}，{{ format.requirements | join('，') }}{% endif %}。
 
+**关键 JSON 输出约束：**
+- 输出必须是纯净的有效 JSON - 不要在 JSON 外添加引号、注释或换行符
+- 每一行必须是完整的有效 JSON 对象
+- 字符串值必须使用反斜杠正确转义引号：\"
+- JSON 字符串中禁止特殊字符（避免：换行符、制表符、控制字符）
+- 不要在 JSON 中混合 markdown 格式、代码块或解释文本
+- 如果文本包含引号，使用反斜杠转义："她说 \"你好\""
+- 替换有问题的字符：换行符用 \\n，制表符用 \\t
+
 
 **JSONL 模板:**
 
