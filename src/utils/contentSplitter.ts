@@ -160,13 +160,19 @@ function extractOptionsFromParsedJSON(parsed: any): NextStepOption[] {
 
 /**
  * Convert various object formats to NextStepOption format
- * Handles field name mapping and type inheritance
+ * Handles field name mapping, type inheritance, and common spelling errors
  */
 function convertToNextStepOption(item: any, inheritedType?: string): NextStepOption | null {
   if (!item || typeof item !== 'object') return null;
   
   // Determine type - use inherited type if item doesn't have one
-  const type = item.type || inheritedType;
+  let type = item.type || inheritedType;
+  
+  // Handle common spelling errors
+  if (type === 'deeping') type = 'deepen';  // Fix common typo
+  if (type === 'deepening') type = 'deepen'; // Another variant
+  if (type === 'nextstep') type = 'next';    // Handle combined words
+  
   if (!type || (type !== 'deepen' && type !== 'next')) return null;
   
   // Map different field names to expected format
@@ -247,9 +253,14 @@ export function splitContentAndOptions(raw: string): {
         completionMessage = typeof obj.message === 'string' ? obj.message : '';
         jsonLineIndices.push(i);
       }
-      // 检查推荐选项 - support multiple formats
-      else if (obj.type === 'deepen' || obj.type === 'next') {
+      // 检查推荐选项 - support multiple formats and common spelling errors
+      else if (obj.type === 'deepen' || obj.type === 'next' || obj.type === 'deeping' || obj.type === 'deepening' || obj.type === 'nextstep') {
         jsonLineIndices.push(i);
+        
+        // Fix common spelling errors
+        let fixedType = obj.type;
+        if (fixedType === 'deeping' || fixedType === 'deepening') fixedType = 'deepen';
+        if (fixedType === 'nextstep') fixedType = 'next';
         
         // Format 1: Standard JSONL format with direct content/describe fields
         const directContent = obj.content || obj.title || obj.name || '';
@@ -257,14 +268,14 @@ export function splitContentAndOptions(raw: string): {
         
         if (typeof directContent === 'string' && typeof directDescribe === 'string' && directContent && directDescribe) {
           const exists = collected.some(existing => 
-            existing.type === obj.type && 
+            existing.type === fixedType && 
             existing.content === directContent && 
             existing.describe === directDescribe
           );
           
           if (!exists) {
             collected.push({
-              type: obj.type,
+              type: fixedType as 'deepen' | 'next',
               content: directContent,
               describe: directDescribe
             });
@@ -280,14 +291,14 @@ export function splitContentAndOptions(raw: string): {
               
               if (typeof content === 'string' && typeof describe === 'string' && content && describe) {
                 const exists = collected.some(existing => 
-                  existing.type === obj.type && 
+                  existing.type === fixedType && 
                   existing.content === content && 
                   existing.describe === describe
                 );
                 
                 if (!exists) {
                   collected.push({
-                    type: obj.type,
+                    type: fixedType as 'deepen' | 'next',
                     content: content,
                     describe: describe
                   });

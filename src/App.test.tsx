@@ -3,19 +3,32 @@ import { render, screen } from '@testing-library/react';
 import App from './App';
 
 // Mock the complex components to simplify testing
-jest.mock('./components/InputPanel', () => () => <div data-testid="input-panel">Input Panel</div>);
-jest.mock('./components/OutputPanel', () => () => <div data-testid="output-panel">Output Panel</div>);
-jest.mock('./components/ChatPanel', () => () => <div data-testid="chat-panel">Chat Panel</div>);
+jest.mock('./components/NextStepChat', () => () => <div data-testid="next-step-chat">Next Step Chat</div>);
+jest.mock('./components/ConcurrentTestPanel', () => () => <div data-testid="concurrent-test-panel">Concurrent Test Panel</div>);
+jest.mock('./components/Layout/AppHeader', () => () => <div data-testid="app-header">App Header</div>);
+
+// Mock auth store
+jest.mock('./stores/authStore', () => ({
+  useAuthStore: () => ({
+    initializeAuth: jest.fn(),
+    isInitialized: true
+  })
+}));
+
+// Mock API functions
+jest.mock('./services/api-with-tracing', () => ({
+  createUserSession: jest.fn(() => ({ userId: 'test-user' })),
+  flushTraces: jest.fn()
+}));
 
 test('renders app without crashing', () => {
   render(<App />);
-  const appElement = screen.getByTestId('input-panel');
-  expect(appElement).toBeInTheDocument();
+  const chatElement = screen.getByTestId('next-step-chat');
+  expect(chatElement).toBeInTheDocument();
 });
 
-test('renders main application title', () => {
+test('renders app header', () => {
   render(<App />);
-  // Check for either Chinese or English title
-  const title = screen.queryByText(/提示词测试工具|Prompt Tester/i);
-  expect(title).toBeInTheDocument();
+  const headerElement = screen.getByTestId('app-header');
+  expect(headerElement).toBeInTheDocument();
 });
