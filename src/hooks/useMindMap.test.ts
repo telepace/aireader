@@ -39,7 +39,7 @@ describe('useMindMap Hook', () => {
   test('可以添加子节点', () => {
     const { result } = renderHook(() => useMindMap('test-conversation'));
     
-    let rootNodeId: string;
+    let rootNodeId: string = '';
     
     act(() => {
       rootNodeId = result.current.initializeMindMap('测试主题');
@@ -74,8 +74,8 @@ describe('useMindMap Hook', () => {
   test('可以导航到节点', () => {
     const { result } = renderHook(() => useMindMap('test-conversation'));
     
-    let rootNodeId: string;
-    let childNodeId: string;
+    let rootNodeId: string = '';
+    let childNodeId: string = '';
     
     act(() => {
       rootNodeId = result.current.initializeMindMap('测试主题');
@@ -101,8 +101,8 @@ describe('useMindMap Hook', () => {
   test('可以生成AI上下文', () => {
     const { result } = renderHook(() => useMindMap('test-conversation'));
     
-    let rootNodeId: string;
-    let childNodeId: string;
+    let rootNodeId: string = '';
+    let childNodeId: string = '';
     
     act(() => {
       rootNodeId = result.current.initializeMindMap('测试主题', '根主题摘要');

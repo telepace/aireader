@@ -2,92 +2,116 @@
  * Prompt Template Engine V2 测试
  */
 
-import { promptTemplateV2, generateSystemPrompt } from './promptTemplateV2';
+import { promptTemplateV2, generateSystemPromptAsync } from './promptTemplateV2';
 
 describe('PromptTemplateEngineV2', () => {
-  describe('generateSystemPrompt', () => {
-    it('应该生成中文系统 prompt', () => {
-      const result = promptTemplateV2.generateSystemPrompt('nextStepChat', 'zh');
+  describe('generateSystemPromptAsync', () => {
+    it('应该生成中文系统 prompt', async () => {
+      const result = await promptTemplateV2.generateSystemPromptAsync('smartRecommendation', 'zh');
       
       expect(result).toContain('我的目标是「精读」');
       expect(result).toContain('每次交互，请严格执行以下3件事');
-      expect(result).toContain('content_complete');
-      expect(result).toContain('推荐选项已生成，点击探索');
+      expect(result).toContain('聚焦与展开');
+      expect(result).toContain('原文深挖');
+      expect(result).toContain('主题探索');
     });
 
-    it('应该生成英文系统 prompt', () => {
-      const result = promptTemplateV2.generateSystemPrompt('nextStepChat', 'en');
+    it('应该生成英文系统 prompt', async () => {
+      const result = await promptTemplateV2.generateSystemPromptAsync('smartRecommendation', 'en');
       
       expect(result).toContain('My goal is to');
-      expect(result).toContain('For each interaction');
-      expect(result).toContain('content_complete');
-      expect(result).toContain('Content analysis completed, generating recommendations...');
+      expect(result).toContain('Focus & Expand');
+      expect(result).toContain('Deep Dive');
+      expect(result).toContain('Topic Exploration');
+    });
+
+    it('应该生成内容生成 prompt', async () => {
+      const result = await promptTemplateV2.generateSystemPromptAsync('smartRecommendation', 'zh', { mode: 'content' });
+      
+      expect(result).toContain('我的目标是「精读」');
+      expect(result).toContain('聚焦与展开');
+      expect(result).toContain('不需要提供选项推荐或JSONL格式输出');
+    });
+
+    it('应该生成 JSONL 推荐 prompt', async () => {
+      const result = await promptTemplateV2.generateSystemPromptAsync('smartRecommendation', 'zh', { mode: 'recommendations' });
+      
+      expect(result).toContain('智能推荐引擎');
+      expect(result).toContain('原文深挖');
+      expect(result).toContain('主题探索');
+      expect(result).toContain('直接输出纯净的JSONL数据');
     });
   });
 
   describe('便捷函数', () => {
-    it('generateSystemPrompt 便捷函数应该工作', () => {
-      const result = generateSystemPrompt('nextStepChat', 'zh');
+    it('generateSystemPromptAsync 便捷函数应该工作', async () => {
+      const result = await generateSystemPromptAsync('smartRecommendation', 'zh');
       expect(result).toContain('我的目标是「精读」');
+    });
+
+    it('同步函数应该抛出错误引导使用异步版本', () => {
+      expect(() => {
+        promptTemplateV2.generateSystemPrompt('smartRecommendation', 'zh');
+      }).toThrow('Synchronous prompt generation is no longer supported');
     });
   });
 
-  describe('Prompt 优化验证', () => {
-    it('应该移除混淆性的 type 标记，避免JSON语法错误', () => {
-      const result = promptTemplateV2.generateSystemPrompt('nextStepChat', 'zh');
+  describe('模板变量', () => {
+    it('应该返回正确的模板变量', () => {
+      const variables = promptTemplateV2.getTemplateVariables('smartRecommendation', 'zh');
       
-      // 不应该包含混淆性的 (type: deepen) 和 (type: next) 标记
-      expect(result).not.toContain('(type: deepen)');
-      expect(result).not.toContain('(type: next)');
-      
-      // 应该包含清晰的格式分隔符
-      expect(result).toContain('═══ 格式输出要求 ═══');
-      
-      // 应该包含严格的JSON约束
-      expect(result).toContain('检查每行JSON的括号、引号、逗号是否正确匹配');
+      expect(variables.goal).toContain('我的目标是「精读」');
+      expect(variables.steps).toHaveProperty('focus');
+      expect(variables.steps).toHaveProperty('deepen');
+      expect(variables.steps).toHaveProperty('next');
+      expect(variables.format).toHaveProperty('type', 'jsonl');
     });
 
-    it('英文模板也应该移除混淆性标记', () => {
-      const result = promptTemplateV2.generateSystemPrompt('nextStepChat', 'en');
+    it('应该支持英文模板变量', () => {
+      const variables = promptTemplateV2.getTemplateVariables('smartRecommendation', 'en');
       
-      // 不应该包含混淆性的 type 标记
-      expect(result).not.toContain('(type: deepen)');
-      expect(result).not.toContain('(type: next)');
-      
-      // 应该包含清晰的格式分隔符
-      expect(result).toContain('═══ Format Output Requirements ═══');
-      
-      // 应该包含严格的约束
-      expect(result).toContain('Check that brackets, quotes, commas in each JSON line match correctly');
+      expect(variables.goal).toContain('My goal is to');
+      expect(variables.steps.focus.title).toBe('Focus & Expand');
+      expect(variables.steps.deepen.title).toBe('Deep Dive');
+      expect(variables.steps.next.title).toBe('Topic Exploration');
+    });
+  });
+
+  describe('配置验证', () => {
+    it('应该验证有效的配置', () => {
+      expect(promptTemplateV2.validateConfig('smartRecommendation', 'zh')).toBe(true);
+      expect(promptTemplateV2.validateConfig('knowledgeGraph', 'zh')).toBe(true);
     });
 
-    it('应该包含清晰的输出流程说明', () => {
-      const result = promptTemplateV2.generateSystemPrompt('nextStepChat', 'zh');
+    it('应该返回详细的验证结果', () => {
+      const result = promptTemplateV2.validateConfigDetailed('smartRecommendation', 'zh');
       
-      expect(result).toContain('**输出流程**：');
-      expect(result).toContain('1. 首先完成第1步的文本内容');
-      expect(result).toContain('2. 空一行');
-      expect(result).toContain('3. 输出完整的JSONL数据，每行一个JSON对象');
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+  });
+
+  describe('Prompt 质量验证', () => {
+    it('smartRecommendation full 模式应该包含正确的 JSON 约束', async () => {
+      const result = await promptTemplateV2.generateSystemPromptAsync('smartRecommendation', 'zh');
+      
+      expect(result).toContain('JSONL 模板');
     });
 
-    it('应该包含严格的JSON语法要求来防止语法错误', () => {
-      const result = promptTemplateV2.generateSystemPrompt('nextStepChat', 'zh');
+    it('smartRecommendation recommendations 模式应该包含更严格的格式约束', async () => {
+      const result = await promptTemplateV2.generateSystemPromptAsync('smartRecommendation', 'zh', { mode: 'recommendations' });
       
-      // 应该包含明确的正确和错误示例
-      expect(result).toContain('{"type": "deepen"} ✅');
-      expect(result).toContain('{"type("deepen" ❌');
-      
-      // 应该强调JSON格式要求
-      expect(result).toContain('所有字段名必须用双引号包围');
-      expect(result).toContain('检查每行JSON的括号、引号、逗号是否正确匹配');
+      expect(result).toContain('🚨 关键格式约束');
+      expect(result).toContain('必须严格遵守');
+      expect(result).toContain('直接输出纯净的JSONL数据');
     });
 
-    it('英文模板应该包含相同的JSON语法约束', () => {
-      const result = promptTemplateV2.generateSystemPrompt('nextStepChat', 'en');
+    it('smartRecommendation content 模式不应该包含 JSONL 格式要求', async () => {
+      const result = await promptTemplateV2.generateSystemPromptAsync('smartRecommendation', 'zh', { mode: 'content' });
       
-      expect(result).toContain('{"type": "deepen"} ✅');
-      expect(result).toContain('{"type("deepen" ❌');
-      expect(result).toContain('All field names must be wrapped in double quotes');
+      expect(result).not.toContain('JSONL');
+      expect(result).not.toContain('JSON');
+      expect(result).toContain('不需要提供选项推荐或JSONL格式输出');
     });
   });
 });

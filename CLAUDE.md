@@ -170,3 +170,13 @@ npm test
 - NEVER create files unless absolutely necessary
 - ALWAYS prefer editing existing files over creating new ones
 - NEVER proactively create documentation files unless explicitly requested
+
+### System Prompt Management Guidelines
+- **No hard-coded system prompts**: All system prompts must be stored as Jinja2 template files in the `src/prompt/` directory
+- **Use template system**: Load templates dynamically via the `generateSystemPromptAsync()` function with parameter injection support
+- **Avoid code duplication**: Use the same template structure across different language versions, controlled via template variables
+- **Template file naming conventions**:
+  - `*.system.zh.j2` - Chinese system prompts
+  - `*.system.en.j2` - English system prompts  
+  - `_shared.j2` - Shared template fragments
+- **Parameterization**: All configurable items in templates should be passed via template variables to avoid hard-coding

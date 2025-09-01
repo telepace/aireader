@@ -6,13 +6,16 @@ import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatMessage, ChatConversation, OptionItem, UserSession } from '../types/types';
-import { generateChatStream, logUserEvent, createUserSession } from '../services/api-with-tracing';
+import { generateChatStream, generateChat, logUserEvent, createUserSession } from '../services/api-with-tracing';
 import { splitContentAndOptions, NextStepOption } from '../utils/contentSplitter';
-import { generateSystemPrompt } from '../services/promptTemplateV2';
+import { generateSystemPromptAsync } from '../services/promptTemplateV2';
 import { useConversation } from '../hooks/useConversation';
 import SimpleOptionCard from './SimpleOptionCard';
 import { useMindMap } from '../hooks/useMindMap';
-import SimpleMindMapPanel from './MindMap/SimpleMindMapPanel';
+import { useConceptMap } from '../hooks/useConceptMap';
+import { ConceptRecommendationContext, ConceptTree, ConceptTreeNode } from '../types/concept';
+import ConceptMapPanel from './ConceptMap/ConceptMapPanel';
+import ConceptTreeRenderer from './ConceptMap/ConceptTreeRenderer';
 
 // Markdown renderers (aligned with existing style)
 
@@ -31,26 +34,36 @@ interface NextStepChatProps {
 /**
  * Generates a system prompt for content generation (first stage).
  */
-const getContentGenerationPrompt = () => {
+const getContentGenerationPrompt = async () => {
   try {
-    return generateSystemPrompt('contentGeneration', 'zh');
+    return await generateSystemPromptAsync('smartRecommendation', 'zh', { mode: 'content' });
   } catch (error) {
     console.error('Failed to generate content generation prompt:', error);
-    // 降级到原始硬编码版本
-    return '我的目标是「精读」当前讨论的内容（文章或书籍），并不断切换对象。\n\n你的任务是对当前讨论的内容进行**聚焦与展开**：\n\n**聚焦与展开**\n先讲透内容的一个核心关键；全面并深度地展开讲全文内容，目标是看了你的内容，我就吸收了一本书绝大多数的精华内容，感觉只看你的内容就够了，不用再亲自看这本书了。全文能讲的越具体详实越好，但不要废话。\n\n**输出要求：**\n- 专注于内容的核心要点分析和全面展开\n- 语言风格清晰易懂，具体详实\n- 不需要提供选项推荐或JSONL格式输出\n- 目标是让读者通过你的分析就能深度理解原文精华\n\n**风格要求：**\n- 避免过于严肃，保持清楚易懂\n- 重点突出，逻辑清晰\n- 内容充实，有深度有广度';
+    // 简单的降级版本
+    return '我的目标是「精读」当前讨论的内容（文章或书籍），并不断切换对象。\n\n你的任务是对当前讨论的内容进行**聚焦与展开**：\n\n先讲透内容的一个核心关键；全面并深度地展开讲全文内容，目标是看了你的内容，我就吸收了一本书绝大多数的精华内容。';
   }
 };
 
 /**
  * Generates a system prompt for next step JSONL generation (second stage).
  */
-const getNextStepJsonlPrompt = () => {
+const getNextStepJsonlPrompt = async (conceptContext?: ConceptRecommendationContext) => {
   try {
-    return generateSystemPrompt('nextStepJsonl', 'zh');
+    return await generateSystemPromptAsync('smartRecommendation', 'zh', { 
+      mode: 'recommendations',
+      concept_context: conceptContext 
+    });
   } catch (error) {
     console.error('Failed to generate next step JSONL prompt:', error);
-    // 降级到原始硬编码版本
-    return '你是一个智能推荐助手，专门负责根据内容分析结果生成精准的推荐选项。\n\n**任务说明：**\n用户刚刚获得了对某个内容（文章或书籍）的深度分析，现在需要你根据这个分析结果，生成两类推荐选项：\n\n**1. 原文深挖 (type: deepen)**\n推荐3个最有价值的原文精读选项。\n\n**推荐要求：**\n- 选项一定要围绕「原文」，原文指的是最近在讨论的书、文章、主题\n- 按逻辑或情节划分，推荐第一、第二、第n部分等\n- 选项标题开头应该是"第一部分:...","第n部分:...", "重点:..."\n- 偏向客观的呈现内容，而不是过于主观的讨论\n- 选项的描述要足够吸引，能勾起用户的兴趣\n\n**2. 主题探索 (type: next)**\n推荐3本最值得阅读的相关书籍，挑选对用户有价值、最不可错过的探索对象，要围绕当前主题。选项的描述要足够吸引，能勾起用户的兴趣\n\n**输出格式要求：**\n必须严格遵循 JSON Lines (JSONL) 格式输出。\n\n**关键 JSON 输出约束：**\n- 输出必须是纯净的有效 JSON\n- 每一行必须是完整的有效 JSON 对象\n- 字符串值必须使用反斜杠正确转义引号\n- JSON 字符串中禁止特殊字符\n- 不要在 JSON 中混合 markdown 格式、代码块或解释文本\n\n**JSONL 模板:**\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n\n**约束条件：**\n- 不要向用户解释此格式\n- 直接输出JSONL数据，每行一个JSON对象\n- 不要添加任何说明文字或代码块标记';
+    // 简单的降级版本
+    let fallbackPrompt = '你是一个智能推荐助手，专门负责根据内容分析结果生成精准的推荐选项。\n\n生成两类推荐选项：\n1. 原文深挖 (type: deepen) - 推荐3个最有价值的原文精读选项\n2. 主题探索 (type: next) - 推荐3本最值得阅读的相关书籍\n\n输出格式：JSONL格式，每行一个JSON对象，使用"content"和"describe"字段。';
+    
+    // 如果有概念上下文，添加去重提示
+    if (conceptContext && conceptContext.avoidanceList.length > 0) {
+      fallbackPrompt += `\n\n⚠️ 避免推荐以下已掌握的概念：${conceptContext.avoidanceList.join(', ')}\n请确保推荐内容的新颖性和多样性。`;
+    }
+    
+    return fallbackPrompt;
   }
 };
 
@@ -120,14 +133,17 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
   const [exitingIds, setExitingIds] = useState<Set<string>>(new Set());
   const [processingOptions, setProcessingOptions] = useState<Set<string>>(new Set());
 
-  // 思维导图相关状态
-  const [mindMapOpen, setMindMapOpen] = useState(false);
+  // 思维导图相关状态 (保留状态变量以维持功能)
+  
+  // 概念管理
+  const conceptMap = useConceptMap(conversationId);
+  
+  
   const {
     mindMapState,
     initializeMindMap,
     addNode,
-    navigateToNode,
-    generateMindMapContext
+    navigateToNode
   } = useMindMap(conversationId);
 
   // 历史推荐展开状态管理
@@ -167,8 +183,182 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
   
   // 跟踪是否是第一次点击选项的状态
   const [isFirstOptionClick, setIsFirstOptionClick] = useState(true);
+  
+  // 概念树状态
+  const [conceptTree, setConceptTree] = useState<ConceptTree | null>(null);
+  const [conceptTreeLoading, setConceptTreeLoading] = useState(false);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * 使用 LLM 更新思维导图（带监控追踪）
+   */
+  const updateMindMapWithLLM = async (
+    content: string, 
+    model: string, 
+    conversationId: string, 
+    userId?: string
+  ) => {
+    console.log('🚀 开始思维导图LLM更新流程');
+    setConceptTreeLoading(true);
+    
+    try {
+      const currentNodes = Array.from(mindMapState.nodes.values());
+      const currentFocusNode = mindMapState.nodes.get(mindMapState.currentNodeId || '');
+      
+      console.log('📝 当前节点数量:', currentNodes.length);
+      console.log('🎯 当前焦点节点:', currentFocusNode?.title || '无');
+      
+      // 构建简化的 previous_map 结构
+      const rootNode = currentNodes.find(node => node.type === 'root');
+      const previous_map = currentNodes.length > 0 ? {
+        id: rootNode?.id || 'root',
+        name: rootNode?.title || conversations.find(c => c.id === conversationId)?.title || 'root',
+        children: currentNodes
+          .filter(node => node.type !== 'root')
+          .map(node => ({
+            id: node.id,
+            name: node.title,
+            children: []
+          }))
+      } : null;
+      
+      // 获取书名
+      const book_title = conversations.find(c => c.id === conversationId)?.title || '';
+      
+      console.log('⏳ 生成思维导图prompt...');
+      const mindMapPrompt = await generateSystemPromptAsync('knowledgeGraph', 'zh');
+      
+      if (!mindMapPrompt) {
+        throw new Error('思维导图prompt生成失败');
+      }
+      
+      console.log('📄 思维导图prompt生成成功，长度:', mindMapPrompt.length);
+      
+      // 构建结构化的用户消息
+      const structuredInput = JSON.stringify({
+        previous_map,
+        book_title,
+        latest_reply: content
+      }, null, 2);
+      
+      const mindMapMessages = [
+        { id: `system-${Date.now()}`, role: 'system' as const, content: mindMapPrompt, timestamp: Date.now() },
+        { id: `user-${Date.now()}`, role: 'user' as const, content: structuredInput, timestamp: Date.now() }
+      ];
+      
+      console.log('🤖 调用带监控的 LLM API 进行思维导图更新...');
+      
+      // 使用带 tracing 的 API，这样会在 LLM 监控中显示
+      const response = await generateChat(
+        mindMapMessages, 
+        model,
+        conversationId,
+        userId
+      );
+      
+      console.log('🧠 思维导图 LLM 响应长度:', response?.length || 0);
+      
+      if (!response) {
+        console.warn('⚠️ 思维导图 LLM 响应为空，跳过更新');
+        return;
+      }
+      
+      // 尝试解析JSON响应并更新思维导图
+      try {
+        const cleanResponse = response.replace(/```json\n?|\n?```/g, '').trim();
+        const mindMapUpdate = JSON.parse(cleanResponse);
+        console.log('📊 解析的思维导图更新:', mindMapUpdate);
+        
+        // 检查是否是预期的树状结构
+        if (mindMapUpdate && typeof mindMapUpdate === 'object' && 
+            mindMapUpdate.id && mindMapUpdate.name && Array.isArray(mindMapUpdate.children)) {
+          
+          // 计算节点总数的递归函数
+          const countNodes = (node: any): number => {
+            let count = 1;
+            if (node.children && Array.isArray(node.children)) {
+              count += node.children.reduce((sum: number, child: any) => sum + countNodes(child), 0);
+            }
+            return count;
+          };
+          
+          // 更新概念树状态
+          const newConceptTree: ConceptTree = {
+            id: mindMapUpdate.id,
+            name: mindMapUpdate.name,
+            children: mindMapUpdate.children,
+            metadata: {
+              conversationId,
+              totalNodes: countNodes(mindMapUpdate),
+              createdAt: Date.now(),
+              updatedAt: Date.now()
+            }
+          };
+          
+          setConceptTree(newConceptTree);
+          console.log('🌳 概念树已更新:', newConceptTree);
+          
+          // 记录成功事件
+          if (userSession) {
+            logUserEvent('concept-tree-updated', {
+              sessionId: userSession.sessionId,
+              conversationId,
+              model: model,
+              success: true,
+              totalNodes: newConceptTree.metadata?.totalNodes || 0,
+              rootName: newConceptTree.name
+            }, userId);
+          }
+        } else {
+          console.warn('⚠️ 响应格式不符合概念树结构:', mindMapUpdate);
+        }
+        
+        // 保持向后兼容 - 记录传统的mind-map事件
+        if (userSession) {
+          logUserEvent('mind-map-updated', {
+            sessionId: userSession.sessionId,
+            conversationId,
+            model: model,
+            success: true,
+            nodeCount: mindMapUpdate.children?.length || 0,
+            bookTitle: book_title
+          }, userId);
+        }
+        
+      } catch (parseError) {
+        console.warn('📝 思维导图更新解析失败:', parseError);
+        
+        // 记录解析失败事件
+        if (userSession) {
+          logUserEvent('mind-map-parse-failed', {
+            sessionId: userSession.sessionId,
+            conversationId,
+            model: model,
+            error: parseError instanceof Error ? parseError.message : String(parseError),
+            response: response.substring(0, 500) // 截断响应避免过长
+          }, userId);
+        }
+      }
+      
+    } catch (error) {
+      console.error('💭 思维导图更新异常:', error);
+      
+      // 记录失败事件
+      if (userSession) {
+        logUserEvent('mind-map-failed', {
+          sessionId: userSession.sessionId,
+          conversationId,
+          model: model,
+          error: error instanceof Error ? error.message : String(error)
+        }, userId);
+      }
+      
+      throw error; // 重新抛出，让调用者处理
+    } finally {
+      setConceptTreeLoading(false);
+    }
+  };
 
   // 初始化思维导图（当第一条用户消息发送时）
   useEffect(() => {
@@ -214,10 +404,10 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
 
   // 持久化逻辑已移入 useConversation
 
-  const ensureSystemPrompt = (current: ChatMessage[], promptType: 'content' | 'jsonl' = 'content'): ChatMessage[] => {
+  const ensureSystemPrompt = async (current: ChatMessage[], promptType: 'content' | 'jsonl' = 'content'): Promise<ChatMessage[]> => {
     const hasSystem = current.some(m => m.role === 'system');
     if (hasSystem) return current;
-    const prompt = promptType === 'content' ? getContentGenerationPrompt() : getNextStepJsonlPrompt();
+    const prompt = promptType === 'content' ? await getContentGenerationPrompt() : await getNextStepJsonlPrompt();
     return [{ id: uuidv4(), role: 'system', content: prompt, timestamp: Date.now() }, ...current];
   };
 
@@ -343,7 +533,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
 
     try {
       // 第一阶段：内容生成
-      const contentSystemMessages = ensureSystemPrompt(withoutSystem, 'content');
+      const contentSystemMessages = await ensureSystemPrompt(withoutSystem, 'content');
       const contentAssistantId = uuidv4();
       setMessages((prev: ChatMessage[]) => [...prev, { id: contentAssistantId, role: 'assistant', content: '', timestamp: Date.now() }]);
       let contentAssembled = '';
@@ -404,17 +594,39 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
               }, 600);
             }
 
-            // 第二阶段：Next Step JSONL 生成
+            // 第二阶段前：概念图谱自动更新
+            console.log('🧠 开始概念图谱自动更新...');
+            try {
+              await updateMindMapWithLLM(contentAssembled, selectedModel, conversationId, userSession?.userId);
+            } catch (mindMapError) {
+              console.warn('概念图谱更新失败，不影响主流程:', mindMapError);
+            }
+            
+            // 第二阶段：Next Step JSONL 生成（使用概念上下文）
             console.log('开始第二阶段：生成推荐选项');
             
-            // 构建第二阶段的消息历史
+            // 获取概念推荐上下文
+            const conceptContext = conceptMap.getRecommendationContext();
+            console.log('概念去重上下文:', {
+              避免概念: conceptContext.avoidanceList.slice(0, 5),
+              最近概念: conceptContext.recentConcepts.slice(0, 5),
+              偏好类型: conceptContext.preferredCategories
+            });
+            
+            // 构建第二阶段的消息历史（带概念上下文的系统prompt）
             const jsonlUserMessage: ChatMessage = { 
               id: uuidv4(), 
               role: 'user', 
               content: `请根据以下内容分析结果生成推荐选项：\n\n${contentAssembled}`, 
               timestamp: Date.now() 
             };
-            const jsonlMessages = ensureSystemPrompt([jsonlUserMessage], 'jsonl');
+            
+            // 使用带概念上下文的系统prompt
+            const conceptAwareSystemPrompt = await getNextStepJsonlPrompt(conceptContext);
+            const jsonlMessages: ChatMessage[] = [
+              { id: uuidv4(), role: 'system', content: conceptAwareSystemPrompt, timestamp: Date.now() },
+              jsonlUserMessage
+            ];
             
             let jsonlAssembled = '';
             // 使用2.5 flash模型进行第二阶段JSONL生成
@@ -563,6 +775,8 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
    * 支持并发执行的选项点击处理函数
    */
   const handleOptionClick = async (opt: OptionItem) => {
+    console.log('🎯 handleOptionClick 被调用，选项:', opt.content);
+    
     // 检查该选项是否正在处理中
     if (processingOptions.has(opt.id)) return;
     
@@ -610,6 +824,9 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
           navigateToNode(nodeId);
         }
       }
+
+      // 注意：思维导图更新现在在主 LLM 生成完成后自动执行，这里不再重复调用
+      console.log('💭 思维导图更新已在主流程中完成，跳过重复调用');
 
       // 更新选项点击计数
       setOptions(prev => prev.map(o => 
@@ -1032,23 +1249,53 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                 </>
               );
             })()}
+
+            {/* 概念图谱嵌入式面板 - 紧贴在选项区域下方 */}
+            <Box sx={{ 
+              mt: 3,
+              borderTop: 1, 
+              borderColor: 'divider',
+              pt: 2,
+              opacity: conceptMap.conceptMap ? 1 : 0.7,
+              transition: 'opacity 0.3s ease-in-out',
+              '&:hover': {
+                '& .concept-header': {
+                  bgcolor: 'rgba(0, 0, 0, 0.025)'
+                }
+              }
+            }}>
+              <ConceptMapPanel
+                conceptMap={conceptMap.conceptMap}
+                isLoading={conceptMap.isLoading}
+                onConceptAbsorptionToggle={conceptMap.updateConceptAbsorption}
+                onClearConcepts={conceptMap.clearConcepts}
+              />
+              
+              {/* 递归概念树渲染组件 */}
+              <Box sx={{
+                mt: 2,
+                borderTop: 1,
+                borderColor: 'divider',
+                pt: 2,
+                opacity: conceptTree ? 1 : 0.7,
+                transition: 'opacity 0.3s ease-in-out'
+              }}>
+                <ConceptTreeRenderer
+                  conceptTree={conceptTree}
+                  isLoading={conceptTreeLoading}
+                  maxDepth={5}
+                  onNodeClick={(node) => {
+                    console.log('🎯 点击概念节点:', node);
+                    // 这里可以添加节点点击的处理逻辑
+                    // 例如：展开详情、添加到对话、设置焦点等
+                  }}
+                />
+              </Box>
+            </Box>
           </Box>
         </Box>
       </Box>
 
-      {/* 思维导图面板 */}
-      <Box sx={{ mt: 2 }}>
-        <SimpleMindMapPanel
-          mindMapState={mindMapState}
-          isOpen={mindMapOpen}
-          onToggle={() => setMindMapOpen(!mindMapOpen)}
-          onNodeClick={navigateToNode}
-          onRefresh={() => {
-            // 可以在这里添加刷新布局的逻辑
-            console.log('刷新思维导图布局');
-          }}
-        />
-      </Box>
     </Box>
   );
 };

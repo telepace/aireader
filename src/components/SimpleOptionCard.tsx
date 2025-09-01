@@ -25,6 +25,7 @@ const SimpleOptionCard: React.FC<SimpleOptionCardProps> = ({
         cursor: disabled ? 'default' : 'pointer',
         borderRadius: 2,
         border: isProcessing ? '1px solid #3b82f6' : '1px solid #e2e8f0',
+        borderLeft: isProcessing ? '3px solid #3b82f6' : '3px solid transparent',
         bgcolor: isProcessing ? '#f0f9ff' : '#ffffff',
         transition: 'all 0.2s ease',
         opacity: disabled ? 0.6 : 1,
@@ -32,7 +33,8 @@ const SimpleOptionCard: React.FC<SimpleOptionCardProps> = ({
         '&:hover': disabled ? {} : {
           transform: 'translateY(-1px)',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-          borderColor: isProcessing ? '#3b82f6' : '#cbd5e1'
+          borderColor: isProcessing ? '#3b82f6' : '#cbd5e1',
+          borderLeft: isProcessing ? '4px solid #3b82f6' : '4px solid #6366f1'
         }
       }}
     >

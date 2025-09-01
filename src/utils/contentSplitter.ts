@@ -57,15 +57,40 @@ function repairJsonLine(jsonLine: string): string {
   return repaired;
 }
 
+
 /**
- * Attempts to extract various JSON structures and convert them to individual options
- * Supports multiple formats:
- * 1. {"recommendations": [...]} - nested recommendations array
- * 2. [{"type": "...", "content": "..."}] - direct array format  
- * 3. {"type": "deepen", "options": [...]} - type with options array (new format)
+ * Extract JSON objects using bracket counting (handles deep nesting)
  */
-function extractNestedJSONOptions(text: string): NextStepOption[] {
+function extractJsonByBrackets(text: string): string[] {
+  const results: string[] = [];
+  let depth = 0;
+  let start = -1;
+  
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '{') {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (text[i] === '}') {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        results.push(text.substring(start, i + 1));
+        start = -1;
+      }
+    }
+  }
+  
+  return results;
+}
+
+/**
+ * Enhanced version that also removes processed JSON blocks from the text
+ */
+function extractNestedJSONOptionsWithCleanup(text: string): { 
+  options: NextStepOption[]; 
+  processedText: string; 
+} {
   const collected: NextStepOption[] = [];
+  let processedText = text;
   
   try {
     // Look for JSON blocks in the text
@@ -77,7 +102,11 @@ function extractNestedJSONOptions(text: string): NextStepOption[] {
         const jsonContent = match[1].trim();
         const parsed = JSON.parse(jsonContent);
         const extracted = extractOptionsFromParsedJSON(parsed);
-        collected.push(...extracted);
+        if (extracted.length > 0) {
+          collected.push(...extracted);
+          // Remove the processed JSON block, preserving structure
+          processedText = processedText.replace(match[0], '');
+        }
       } catch (parseError) {
         console.warn('Failed to parse JSON block:', parseError);
       }
@@ -85,31 +114,37 @@ function extractNestedJSONOptions(text: string): NextStepOption[] {
     
     // If no JSON blocks found, try to extract JSON from text
     if (collected.length === 0) {
-      // Look for JSON objects in the text (not wrapped in code blocks)
-      // Try to find potential JSON objects more accurately
-      const potentialJsonMatches = [
-        // Match complete JSON objects that might span multiple lines
-        text.match(/\{[\s\S]*"recommendations"[\s\S]*\}/),
-        text.match(/\{[\s\S]*"type"[\s\S]*"options"[\s\S]*\}/),
-        // Fallback: any complete JSON object
-        text.match(/\{[\s\S]*\}/)
-      ];
+      // Use bracket counting to find complete JSON objects (handles deep nesting)
+      const jsonObjects = extractJsonByBrackets(text);
       
-      for (const jsonMatch of potentialJsonMatches) {
-        if (jsonMatch && jsonMatch[0]) {
-          try {
-            const jsonContent = jsonMatch[0].trim();
-            const parsed = JSON.parse(jsonContent);
+      const processedJsons = new Set(); // Track processed JSON to avoid duplicates
+      
+      for (const jsonContent of jsonObjects) {
+        try {
+          // Skip if already processed
+          if (processedJsons.has(jsonContent)) continue;
+          
+          const parsed = JSON.parse(jsonContent);
+          
+          // Only process if it's a multi-line structure or has specific patterns
+          const isNestedStructure = jsonContent.includes('\n') || 
+                                   (parsed.recommendations && Array.isArray(parsed.recommendations)) ||
+                                   (parsed.type && parsed.options && Array.isArray(parsed.options)) ||
+                                   (parsed.type && parsed.recommendations && Array.isArray(parsed.recommendations));
+          
+          if (isNestedStructure) {
             const extracted = extractOptionsFromParsedJSON(parsed);
             if (extracted.length > 0) {
               collected.push(...extracted);
-              console.log(`✅ Extracted ${extracted.length} options from JSON object`);
-              break; // Found valid options, stop searching
+              
+              // Remove the processed JSON object from text
+              processedText = processedText.replace(jsonContent, '').replace(/\n\s*\n\s*\n/g, '\n\n');
+              processedJsons.add(jsonContent);
             }
-          } catch (parseError) {
-            // This JSON object couldn't be parsed or didn't contain valid options
-            console.debug('Failed to parse JSON object:', parseError);
           }
+        } catch (parseError) {
+          // Skip invalid JSON objects
+          console.debug('Failed to parse JSON object:', parseError instanceof Error ? parseError.message : String(parseError));
         }
       }
     }
@@ -117,7 +152,7 @@ function extractNestedJSONOptions(text: string): NextStepOption[] {
     console.warn('Error extracting nested JSON options:', error);
   }
   
-  return collected;
+  return { options: collected, processedText };
 }
 
 /**
@@ -126,11 +161,22 @@ function extractNestedJSONOptions(text: string): NextStepOption[] {
 function extractOptionsFromParsedJSON(parsed: any): NextStepOption[] {
   const collected: NextStepOption[] = [];
   
-  // Format 1: {"recommendations": [...]}
-  if (parsed.recommendations && Array.isArray(parsed.recommendations)) {
+  // Format 1: {"recommendations": [...]} - Legacy nested format
+  if (parsed.recommendations && Array.isArray(parsed.recommendations) && !parsed.type) {
     for (const item of parsed.recommendations) {
-      const option = convertToNextStepOption(item);
-      if (option) collected.push(option);
+      // Handle nested structure: {type: "deepen", options: [...]}
+      if (item.type && item.options && Array.isArray(item.options)) {
+        if (item.type === 'deepen' || item.type === 'next') {
+          for (const optionItem of item.options) {
+            const option = convertToNextStepOption(optionItem, item.type);
+            if (option) collected.push(option);
+          }
+        }
+      } else {
+        // Handle flat structure: direct recommendation objects
+        const option = convertToNextStepOption(item);
+        if (option) collected.push(option);
+      }
     }
   }
   // Format 2: Direct array [...]
@@ -149,7 +195,16 @@ function extractOptionsFromParsedJSON(parsed: any): NextStepOption[] {
       }
     }
   }
-  // Format 4: Direct single object
+  // Format 4: Single object with type and recommendations array (new LLM format)
+  else if (parsed.type && parsed.recommendations && Array.isArray(parsed.recommendations)) {
+    if (parsed.type === 'deepen' || parsed.type === 'next') {
+      for (const item of parsed.recommendations) {
+        const option = convertToNextStepOption(item, parsed.type);
+        if (option) collected.push(option);
+      }
+    }
+  }
+  // Format 5: Direct single object
   else if (parsed.type && (parsed.type === 'deepen' || parsed.type === 'next')) {
     const option = convertToNextStepOption(parsed);
     if (option) collected.push(option);
@@ -211,22 +266,24 @@ export function splitContentAndOptions(raw: string): {
 } {
   if (!raw) return { main: '', options: [] };
   
-  const lines = raw.split('\n');
   const collected: NextStepOption[] = [];
   const jsonLineIndices: number[] = [];
   let isContentComplete = false;
   let completionMessage = '';
   
   // First try to extract options from nested JSON structures
-  const nestedOptions = extractNestedJSONOptions(raw);
+  const { options: nestedOptions, processedText } = extractNestedJSONOptionsWithCleanup(raw);
+  let workingText = processedText || raw;
   if (nestedOptions.length > 0) {
     collected.push(...nestedOptions);
-    console.log(`Extracted ${nestedOptions.length} options from nested JSON structure`);
   }
   
+  // Use processed text for further JSONL scanning
+  const workingLines = workingText.split('\n');
+  
   // Scan all lines to identify valid JSONL lines and completion signals
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
+  for (let i = 0; i < workingLines.length; i++) {
+    const line = workingLines[i].trim();
     if (!line) continue; // Skip empty lines but continue scanning
     
     let obj: any;
@@ -312,7 +369,7 @@ export function splitContentAndOptions(raw: string): {
   }
   
   // Remove identified JSON lines, keep main content
-  const mainLines = lines.filter((_, index) => !jsonLineIndices.includes(index));
+  const mainLines = workingLines.filter((_, index) => !jsonLineIndices.includes(index));
   let main = mainLines.join('\n');
   
   // Only trim trailing whitespace to preserve internal formatting

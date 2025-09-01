@@ -13,10 +13,22 @@ export const initializeErrorSuppression = () => {
   // Helper function to check if error is ResizeObserver related
   const isResizeObserverError = (message: string): boolean => {
     if (!message || typeof message !== 'string') return false;
-    return message.includes('ResizeObserver loop completed with undelivered notifications') ||
-           message.includes('ResizeObserver loop limit exceeded') ||
-           message.includes('ResizeObserver loop') ||
-           message.includes('ResizeObserver');
+    
+    // More comprehensive ResizeObserver error patterns
+    const resizeObserverPatterns = [
+      'ResizeObserver loop completed with undelivered notifications',
+      'ResizeObserver loop limit exceeded',
+      'ResizeObserver loop',
+      'ResizeObserver',
+      'Resize observer loop',
+      'Loop limit exceeded',
+      'undelivered notifications'
+    ];
+    
+    const lowerMessage = message.toLowerCase();
+    return resizeObserverPatterns.some(pattern => 
+      lowerMessage.includes(pattern.toLowerCase())
+    );
   };
 
   const logSuppression = () => {
@@ -25,6 +37,38 @@ export const initializeErrorSuppression = () => {
       console.log(`🛡️ Suppressed ResizeObserver error #${suppressedErrorCount}`);
     }
   };
+
+  // Proactive ResizeObserver wrapper to prevent loops
+  if (typeof window !== 'undefined' && window.ResizeObserver) {
+    const OriginalResizeObserver = window.ResizeObserver;
+    window.ResizeObserver = class extends OriginalResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        const wrappedCallback: ResizeObserverCallback = (entries, observer) => {
+          try {
+            // Use requestAnimationFrame to break the synchronous loop
+            requestAnimationFrame(() => {
+              try {
+                callback(entries, observer);
+              } catch (error: any) {
+                const message = error?.message || error?.toString() || '';
+                if (!isResizeObserverError(message)) {
+                  throw error; // Re-throw non-ResizeObserver errors
+                }
+                logSuppression();
+              }
+            });
+          } catch (error: any) {
+            const message = error?.message || error?.toString() || '';
+            if (!isResizeObserverError(message)) {
+              throw error; // Re-throw non-ResizeObserver errors
+            }
+            logSuppression();
+          }
+        };
+        super(wrappedCallback);
+      }
+    };
+  }
 
   // Store and override original handlers
   const originalConsoleError = console.error;
@@ -79,11 +123,54 @@ export const initializeErrorSuppression = () => {
     }
   }, { capture: true, passive: false });
 
-  // Try to hook into React's error handling if available
-  if (typeof window !== 'undefined' && (window as any).__REACT_ERROR_OVERLAY__) {
-    const overlay = (window as any).__REACT_ERROR_OVERLAY__;
-    if (overlay && overlay.setReportErrors) {
-      overlay.setReportErrors(false);
+  // Enhanced React error overlay handling
+  if (typeof window !== 'undefined') {
+    // Handle React Error Overlay specifically
+    const suppressReactOverlayError = () => {
+      const overlay = (window as any).__REACT_ERROR_OVERLAY__;
+      if (overlay) {
+        if (overlay.setReportErrors) {
+          overlay.setReportErrors(false);
+        }
+        if (overlay.reportRuntimeError) {
+          const originalReportRuntimeError = overlay.reportRuntimeError;
+          overlay.reportRuntimeError = (error: any) => {
+            const message = error?.message || error?.toString() || '';
+            if (isResizeObserverError(message)) {
+              logSuppression();
+              return;
+            }
+            return originalReportRuntimeError(error);
+          };
+        }
+      }
+    };
+
+    // Try immediately
+    suppressReactOverlayError();
+    
+    // Also try after a short delay to catch dynamically loaded overlay
+    setTimeout(suppressReactOverlayError, 100);
+    setTimeout(suppressReactOverlayError, 1000);
+
+    // Handle React DevTools and error boundary integration
+    if ((window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__) {
+      const devtools = (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+      if (devtools.onCommitFiberRoot) {
+        const originalOnCommitFiberRoot = devtools.onCommitFiberRoot;
+        devtools.onCommitFiberRoot = (...args: any[]) => {
+          try {
+            return originalOnCommitFiberRoot.apply(devtools, args);
+          } catch (error: any) {
+            const message = error?.message || error?.toString() || '';
+            if (isResizeObserverError(message)) {
+              logSuppression();
+              return;
+            }
+            throw error;
+          }
+        };
+      }
     }
   }
 

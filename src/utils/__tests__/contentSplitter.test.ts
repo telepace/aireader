@@ -246,6 +246,111 @@ describe('Content Splitter', () => {
         describe: '完整描述'
       });
     });
+
+    test('handles nested recommendations format with options arrays', () => {
+      const input = `分析内容
+
+{
+  "recommendations": [
+    {
+      "type": "deepen",
+      "options": [
+        {
+          "title": "第一部分: 核心概念",
+          "description": "深入分析核心概念和理论基础。",
+          "value": "core_concept"
+        },
+        {
+          "title": "第二部分: 实践应用",
+          "description": "学习如何在实践中应用这些概念。",
+          "value": "practical_application"
+        }
+      ]
+    },
+    {
+      "type": "next",
+      "options": [
+        {
+          "title": "《深入理解》",
+          "description": "这本书将带你深入理解相关概念。",
+          "value": "deep_understanding"
+        },
+        {
+          "title": "《实践指南》",
+          "description": "实用的指南书籍，帮助你应用所学知识。",
+          "value": "practical_guide"
+        }
+      ]
+    }
+  ]
+}`;
+
+      const result = splitContentAndOptions(input);
+
+      expect(result.main).toBe('分析内容');
+      expect(result.options).toHaveLength(4);
+      
+      // Check deepen options
+      expect(result.options[0]).toEqual({
+        type: 'deepen',
+        content: '第一部分: 核心概念',
+        describe: '深入分析核心概念和理论基础。'
+      });
+      expect(result.options[1]).toEqual({
+        type: 'deepen',
+        content: '第二部分: 实践应用',
+        describe: '学习如何在实践中应用这些概念。'
+      });
+
+      // Check next options
+      expect(result.options[2]).toEqual({
+        type: 'next',
+        content: '《深入理解》',
+        describe: '这本书将带你深入理解相关概念。'
+      });
+      expect(result.options[3]).toEqual({
+        type: 'next',
+        content: '《实践指南》',
+        describe: '实用的指南书籍，帮助你应用所学知识。'
+      });
+    });
+
+    test('handles type-first recommendations format (new LLM format)', () => {
+      const input = `内容分析
+
+{"type": "deepen", "recommendations": [{"title": "第一部分: 核心理念", "description": "深入探讨核心理念和基本原理。"}, {"title": "第二部分: 实际应用", "description": "学习如何将理论应用到实践中。"}]}
+
+{"type": "next", "recommendations": [{"title": "《相关著作》", "description": "这本书提供了更深入的见解和分析。"}, {"title": "《进阶指南》", "description": "帮助你进一步提高理解和应用能力。"}]}`;
+
+      const result = splitContentAndOptions(input);
+
+      expect(result.main).toBe('内容分析');
+      expect(result.options).toHaveLength(4);
+
+      // Check deepen options
+      expect(result.options[0]).toEqual({
+        type: 'deepen',
+        content: '第一部分: 核心理念',
+        describe: '深入探讨核心理念和基本原理。'
+      });
+      expect(result.options[1]).toEqual({
+        type: 'deepen',
+        content: '第二部分: 实际应用',
+        describe: '学习如何将理论应用到实践中。'
+      });
+
+      // Check next options  
+      expect(result.options[2]).toEqual({
+        type: 'next',
+        content: '《相关著作》',
+        describe: '这本书提供了更深入的见解和分析。'
+      });
+      expect(result.options[3]).toEqual({
+        type: 'next',
+        content: '《进阶指南》',
+        describe: '帮助你进一步提高理解和应用能力。'
+      });
+    });
   });
 
   describe('Performance', () => {
