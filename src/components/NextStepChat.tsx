@@ -11,8 +11,9 @@ import { splitContentAndOptions, NextStepOption } from '../utils/contentSplitter
 import { generateSystemPromptAsync } from '../services/promptTemplateV2';
 import { useConversation } from '../hooks/useConversation';
 import SimpleOptionCard from './SimpleOptionCard';
-import { useMindMap } from '../hooks/useMindMap';
+import { useMindMap, MindMapNode } from '../hooks/useMindMap';
 import { useConceptMap } from '../hooks/useConceptMap';
+import { renderTemplate as renderTemplateSystem } from '../services/templateSystem';
 import { ConceptRecommendationContext, ConceptTree, ConceptTreeNode } from '../types/concept';
 import ConceptMapPanel from './ConceptMap/ConceptMapPanel';
 import ConceptTreeRenderer from './ConceptMap/ConceptTreeRenderer';
@@ -203,7 +204,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     setConceptTreeLoading(true);
     
     try {
-      const currentNodes = Array.from(mindMapState.nodes.values());
+      const currentNodes: MindMapNode[] = Array.from(mindMapState.nodes.values());
       const currentFocusNode = mindMapState.nodes.get(mindMapState.currentNodeId || '');
       
       console.log('📝 当前节点数量:', currentNodes.length);

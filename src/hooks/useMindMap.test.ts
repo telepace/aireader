@@ -3,7 +3,7 @@
  */
 
 import { renderHook, act } from '@testing-library/react';
-import { useMindMap } from './useMindMap';
+import { useMindMap, MindMapNode } from './useMindMap';
 
 describe('useMindMap Hook', () => {
   test('初始化状态正确', () => {
@@ -95,7 +95,7 @@ describe('useMindMap Hook', () => {
     // 检查节点是否被标记为已探索
     const childNode = result.current.mindMapState.nodes.get(childNodeId);
     expect(childNode?.metadata.explored).toBe(true);
-    expect(childNode?.interactions.clickCount).toBe(1);
+    expect(childNode?.metadata.interactions.clickCount).toBe(1);
   });
 
   test('可以生成AI上下文', () => {

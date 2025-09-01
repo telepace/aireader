@@ -91,6 +91,7 @@ export interface ConceptRecommendationContext {
   existingConcepts: string[];           // 已存在概念列表
   recentConcepts: string[];            // 近期概念列表
   avoidanceList: string[];             // 避免列表
+  mindMapConcepts: string[];           // 思维导图已覆盖概念列表
   preferredCategories: ('core' | 'method' | 'application' | 'support')[]; // 偏好类型
   diversityWeight: number;             // 多样性权重
 }

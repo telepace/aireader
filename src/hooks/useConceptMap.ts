@@ -240,6 +240,7 @@ export function useConceptMap(conversationId: string): UseConceptMapResult {
         existingConcepts: [],
         recentConcepts: [],
         avoidanceList: [],
+        mindMapConcepts: [],
         preferredCategories: ['core', 'method'],
         diversityWeight: 0.5
       };
@@ -262,10 +263,16 @@ export function useConceptMap(conversationId: string): UseConceptMapResult {
     if (categoryStats.byCategory.method.total < 3) preferredCategories.push('method');
     if (categoryStats.byCategory.application.total < 2) preferredCategories.push('application');
     
+    // 获取思维导图已覆盖的概念
+    const mindMapConcepts = allConcepts
+      .filter(concept => concept.absorbed)
+      .map(concept => concept.name);
+
     return {
       existingConcepts: allConcepts.map(c => c.name),
       recentConcepts,
       avoidanceList: conceptMap.avoidanceList,
+      mindMapConcepts,
       preferredCategories: preferredCategories.length > 0 ? preferredCategories : ['core', 'method'],
       diversityWeight: 0.6 // 较高的多样性权重
     };

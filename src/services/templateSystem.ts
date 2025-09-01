@@ -100,20 +100,32 @@ class TemplateSystem {
       return template;
     }
 
-    // 智能去重机制
-    if (concept_context && concept_context.avoidanceList.length > 0) {
-      template += '## 🧠 智能去重机制\n\n';
-      template += '**⚠️ 概念避免列表** - 以下概念已被用户充分掌握，请避免推荐类似内容：\n';
-      for (const concept of concept_context.avoidanceList) {
-        template += `- ${concept}\n`;
+    // 已读内容避免机制
+    if (concept_context) {
+      template += '## 🧠 已读内容避免机制\n\n';
+      
+      // 思维导图已读节点
+      if (concept_context.mindMapConcepts && concept_context.mindMapConcepts.length > 0) {
+        template += '**🗺️ 思维导图已读节点** - 用户已在思维导图中探索过这些主题，请避免推荐相关内容：\n';
+        for (const concept of concept_context.mindMapConcepts) {
+          template += `- ${concept}\n`;
+        }
+        template += '\n';
       }
-      template += '\n';
 
-      template += '**智能去重策略**：\n';
-      template += '- 检查推荐内容是否与避免列表中的概念高度重叠\n';
-      template += '- 优先推荐新颖、未探索的概念和角度\n';
-      template += '- 如果某个重要概念在避免列表中，可以从更深层或不同角度切入\n';
-      template += '- 确保推荐的多样性和互补性\n\n';
+      // 已掌握概念列表
+      if (concept_context.avoidanceList && concept_context.avoidanceList.length > 0) {
+        template += '**⚠️ 已掌握概念** - 用户已充分掌握这些概念，请避免重复：\n';
+        for (const concept of concept_context.avoidanceList) {
+          template += `- ${concept}\n`;
+        }
+        template += '\n';
+      }
+
+      template += '**🎯 推荐策略**：\n';
+      template += '- 优先推荐全新的、未被探索的概念和角度\n';
+      template += '- 避免与已读节点主题重叠\n';
+      template += '- 确保推荐的6个选项都是新鲜内容\n\n';
     }
 
     if (concept_context && concept_context.recentConcepts.length > 0) {
@@ -149,17 +161,15 @@ class TemplateSystem {
     template += '- 选项标题开头应该是"第一部分:...","第n部分:...", "重点:..."\n';
     template += '- 偏向客观的呈现内容，而不是过于主观的讨论\n';
     template += '- 选项的描述要足够吸引，能勾起用户的兴趣\n';
-    if (concept_context && concept_context.avoidanceList.length > 0) {
-      template += '- 避免重复已掌握的核心概念\n';
-      template += '- 从新的维度或更深层次探讨熟悉话题\n';
+    if (concept_context && concept_context.mindMapConcepts.length > 0) {
+      template += '- **避免推荐思维导图已读节点相关的主题**\n';
     }
     template += '\n';
 
     template += '### 主题探索要求\n';
     template += '- 选择与当前主题相关但角度不同的优质书籍\n';
-    if (concept_context && concept_context.avoidanceList.length > 0) {
-      template += '- 避免推荐概念重叠度高的书籍\n';
-      template += '- 优先推荐填补知识盲区的内容\n';
+    if (concept_context && concept_context.mindMapConcepts.length > 0) {
+      template += '- **避免推荐与思维导图已读节点主题重叠的书籍**\n';
     }
     template += '- 确保推荐具有递进性和互补性\n';
     template += '- 挑选对用户有价值、最不可错过的探索对象\n\n';
