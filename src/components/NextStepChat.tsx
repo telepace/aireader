@@ -1288,8 +1288,30 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                   maxDepth={5}
                   onNodeClick={(node) => {
                     console.log('🎯 点击概念节点:', node);
-                    // 这里可以添加节点点击的处理逻辑
-                    // 例如：展开详情、添加到对话、设置焦点等
+                    // 自动输入概念内容到聊天中以展开讨论
+                    const expandPrompt = `请详细解释"${node.name}"这个概念，包括：
+1. 核心定义和特点
+2. 实际应用场景
+3. 相关的重要知识点
+4. 如何深入学习这个概念
+
+请结合上下文提供全面而深入的分析。`;
+                    
+                    // 自动发送消息展开概念
+                    sendMessageInternal(expandPrompt, false);
+                    
+                    // 滚动到底部以显示新内容
+                    if (messagesContainerRef.current) {
+                      setTimeout(() => {
+                        const container = messagesContainerRef.current;
+                        if (container && container.scrollTo) {
+                          container.scrollTo({
+                            top: container.scrollHeight,
+                            behavior: 'smooth'
+                          });
+                        }
+                      }, 100);
+                    }
                   }}
                 />
               </Box>

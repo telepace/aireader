@@ -325,6 +325,8 @@ export const generateChat = async (
         throw new Error(`Rate limit exceeded: ${message}`);
       } else if (status === 401) {
         throw new Error(`Authentication failed: ${message}`);
+      } else if (status === 402) {
+        throw new Error('API账户余额不足，请前往 https://openrouter.ai/credits 充值');
       } else if (status === 404) {
         throw new Error(`Model not found: ${message}`);
       } else {
@@ -395,6 +397,8 @@ export const generateChatStream = async (
       
       if (response.status === 401) {
         friendlyMessage = 'API密钥无效或过期，请检查配置';
+      } else if (response.status === 402) {
+        friendlyMessage = 'API账户余额不足，请前往 https://openrouter.ai/credits 充值';
       } else if (response.status === 429) {
         friendlyMessage = '请求过于频繁，请稍后再试';
       } else if (response.status === 500) {

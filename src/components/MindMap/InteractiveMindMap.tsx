@@ -13,6 +13,7 @@ interface InteractiveMindMapProps {
   zoomLevel: number;
   onEvent: (event: MindMapEvent) => void;
   onError: (error: Error) => void;
+  onNodeExpand?: (nodeId: string, nodeTitle: string) => void; // 新增：节点展开回调
 }
 
 interface NodePosition {
@@ -25,7 +26,8 @@ const InteractiveMindMap: React.FC<InteractiveMindMapProps> = ({
   config,
   zoomLevel,
   onEvent,
-  onError
+  onError,
+  onNodeExpand
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dragState, setDragState] = useState<{
@@ -127,10 +129,15 @@ const InteractiveMindMap: React.FC<InteractiveMindMapProps> = ({
         position: { x: event.clientX, y: event.clientY },
         timestamp: Date.now()
       });
+      
+      // 如果提供了节点展开回调，则调用它
+      if (onNodeExpand && node.type !== 'root') {
+        onNodeExpand(node.id, node.title);
+      }
     } catch (error) {
       onError(error as Error);
     }
-  }, [onEvent, onError]);
+  }, [onEvent, onError, onNodeExpand]);
 
   // 处理节点悬停
   const handleNodeHover = useCallback((node: MindMapNode, isEntering: boolean) => {
