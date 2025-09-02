@@ -10,18 +10,14 @@ import {
   Typography,
   IconButton,
   Tooltip,
-  Collapse,
   Fade,
   Switch,
   FormControlLabel
 } from '@mui/material';
 import {
   Timeline,
-  ExpandMore,
-  ExpandLess,
   Refresh,
-  Visibility,
-  VisibilityOff
+  ExpandLess
 } from '@mui/icons-material';
 
 import { MindMapState } from '../../types/mindMap';

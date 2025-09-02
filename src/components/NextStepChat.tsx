@@ -13,10 +13,10 @@ import { useConversation } from '../hooks/useConversation';
 import SimpleOptionCard from './SimpleOptionCard';
 import { useMindMap, MindMapNode } from '../hooks/useMindMap';
 import { useConceptMap } from '../hooks/useConceptMap';
-import { renderTemplate as renderTemplateSystem } from '../services/templateSystem';
-import { ConceptRecommendationContext, ConceptTree, ConceptTreeNode } from '../types/concept';
+import { ConceptRecommendationContext, ConceptTree } from '../types/concept';
 import ConceptMapPanel from './ConceptMap/ConceptMapPanel';
 import ConceptTreeRenderer from './ConceptMap/ConceptTreeRenderer';
+import { logDiagnosticInfo } from '../utils/apiKeyDiagnostic';
 
 // Markdown renderers (aligned with existing style)
 
@@ -574,7 +574,24 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
               error: err.message
             }, userSession.userId);
           }
-          alert(`内容生成出错: ${err.message}`);
+          
+          // 在Railway部署环境中进行API密钥诊断
+          console.error('🚨 AI内容生成失败:', err.message);
+          const diagnostic = logDiagnosticInfo();
+          
+          if (!diagnostic.isValid) {
+            const suggestionText = diagnostic.suggestions.join('\n• ');
+            alert(`AI功能配置异常，点击概念节点无反应的解决方案：
+
+${diagnostic.message}
+
+建议修复步骤：
+• ${suggestionText}
+
+请按照上述步骤配置后重新部署应用。`);
+          } else {
+            alert(`内容生成出错: ${err.message}`);
+          }
         },
         async () => {
           try {

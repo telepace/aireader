@@ -8,20 +8,13 @@ import {
   Box,
   Typography,
   Paper,
-  Chip,
   IconButton,
-  Collapse,
-  Tooltip,
-  Badge
+  Collapse
 } from '@mui/material';
 import {
   ExpandMore,
   ExpandLess,
-  Circle,
-  CheckCircle,
-  RadioButtonUnchecked,
-  Timeline,
-  Home
+  Timeline
 } from '@mui/icons-material';
 import { MindMapState, MindMapNode } from '../../types/mindMap';
 
@@ -366,17 +359,6 @@ const MarkdownTreeMap: React.FC<MarkdownTreeMapProps> = ({
     );
   };
 
-  // 生成当前路径的Markdown表示
-  const getMarkdownPath = () => {
-    const pathNodes = mindMapState.explorationPath
-      .map(id => mindMapState.nodes.get(id))
-      .filter(Boolean) as MindMapNode[];
-
-    return pathNodes.map((node, index) => {
-      const prefix = '  '.repeat(index); // 每级两个空格缩进
-      return `${prefix}- ${node.title}`;
-    }).join('\n');
-  };
 
   if (!treeStructure) {
     return (

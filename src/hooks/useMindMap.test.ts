@@ -3,7 +3,7 @@
  */
 
 import { renderHook, act } from '@testing-library/react';
-import { useMindMap, MindMapNode } from './useMindMap';
+import { useMindMap } from './useMindMap';
 
 describe('useMindMap Hook', () => {
   test('初始化状态正确', () => {

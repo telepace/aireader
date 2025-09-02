@@ -8,7 +8,6 @@ import {
   Box,
   Paper,
   Typography,
-  Divider,
   IconButton,
   Tooltip,
   Fade,

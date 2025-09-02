@@ -43,6 +43,18 @@ const InteractiveMindMap: React.FC<InteractiveMindMapProps> = ({
   const [hoverNodeId, setHoverNodeId] = useState<string | null>(null);
   const [tooltipContent, setTooltipContent] = useState<string>('');
 
+  // 获取节点半径
+  const getNodeRadius = useCallback((node: MindMapNode) => {
+    const baseRadius = config.appearance.nodeStyles[node.type].size;
+    return node.style.size === 'large' ? baseRadius * 1.2 : 
+           node.style.size === 'small' ? baseRadius * 0.8 : baseRadius;
+  }, [config.appearance.nodeStyles]);
+
+  // 获取节点字体大小
+  const getNodeFontSize = useCallback((node: MindMapNode) => {
+    return node.level === 0 ? 16 : node.level === 1 ? 14 : 12;
+  }, []);
+
   // 获取节点样式（支持推荐状态）
   const getNodeStyle = useCallback((node: MindMapNode) => {
     const baseStyle = config.appearance.nodeStyles[node.type];
@@ -104,19 +116,7 @@ const InteractiveMindMap: React.FC<InteractiveMindMapProps> = ({
       // 悬停状态覆盖
       ...(isHovered ? { strokeWidth: ((statusStyle as any).strokeWidth || 1) + 1 } : {})
     };
-  }, [config.appearance.nodeStyles, mindMapState.currentNodeId, hoverNodeId]);
-
-  // 获取节点半径
-  const getNodeRadius = useCallback((node: MindMapNode) => {
-    const baseRadius = config.appearance.nodeStyles[node.type].size;
-    return node.style.size === 'large' ? baseRadius * 1.2 : 
-           node.style.size === 'small' ? baseRadius * 0.8 : baseRadius;
-  }, [config.appearance.nodeStyles]);
-
-  // 获取节点字体大小
-  const getNodeFontSize = useCallback((node: MindMapNode) => {
-    return node.level === 0 ? 16 : node.level === 1 ? 14 : 12;
-  }, []);
+  }, [config.appearance.nodeStyles, mindMapState.currentNodeId, hoverNodeId, getNodeRadius, getNodeFontSize]);
 
   // 处理节点点击
   const handleNodeClick = useCallback((node: MindMapNode, event: React.MouseEvent) => {
@@ -251,6 +251,94 @@ const InteractiveMindMap: React.FC<InteractiveMindMapProps> = ({
     }
   }, [config.appearance.connectionStyles, getNodeRadius]);
 
+  // 获取节点图标（根据状态和类型）
+  const getNodeIcon = useCallback((node: MindMapNode) => {
+    if (node.style.icon) return node.style.icon;
+    
+    // 根据节点类型提供默认图标
+    switch (node.type) {
+      case 'person': return '👤';
+      case 'concept': return '💡';
+      case 'method': return '🔧';
+      case 'case': return '📝';
+      case 'root': return '🌟';
+      default: return '●';
+    }
+  }, []);
+
+  // 渲染状态指示器
+  const renderStatusIndicator = useCallback((node: MindMapNode, position: { x: number, y: number }, radius: number) => {
+    const indicatorX = position.x + radius * 0.7;
+    const indicatorY = position.y - radius * 0.7;
+    
+    switch (node.status) {
+      case 'explored':
+        return (
+          <circle
+            cx={indicatorX}
+            cy={indicatorY}
+            r={4}
+            fill="#9ca3af"
+            stroke="white"
+            strokeWidth={1}
+          >
+            <title>已探索</title>
+          </circle>
+        );
+      case 'current':
+        return (
+          <circle
+            cx={indicatorX}
+            cy={indicatorY}
+            r={5}
+            fill="#10b981"
+            stroke="white"
+            strokeWidth={2}
+          >
+            <title>当前节点</title>
+          </circle>
+        );
+      case 'recommended':
+        return (
+          <circle
+            cx={indicatorX}
+            cy={indicatorY}
+            r={4}
+            fill="#f59e0b"
+            stroke="white"
+            strokeWidth={1}
+          >
+            <title>推荐探索</title>
+          </circle>
+        );
+      case 'potential':
+        return (
+          <circle
+            cx={indicatorX}
+            cy={indicatorY}
+            r={3}
+            fill="transparent"
+            stroke="#d1d5db"
+            strokeWidth={1}
+          >
+            <title>潜在节点</title>
+          </circle>
+        );
+      default:
+        // 兼容原有的探索状态指示器
+        return node.metadata.explored ? (
+          <circle
+            cx={indicatorX}
+            cy={indicatorY}
+            r={4}
+            fill="#10b981"
+            stroke="white"
+            strokeWidth={1}
+          />
+        ) : null;
+    }
+  }, []);
+
   // 渲染节点（支持推荐状态）
   const renderNode = useCallback((node: MindMapNode) => {
     const style = getNodeStyle(node);
@@ -362,96 +450,10 @@ const InteractiveMindMap: React.FC<InteractiveMindMapProps> = ({
     config.appearance.theme,
     handleNodeClick,
     handleMouseDown,
-    handleNodeHover
+    handleNodeHover,
+    getNodeIcon,
+    renderStatusIndicator
   ]);
-
-  // 获取节点图标（根据状态和类型）
-  const getNodeIcon = useCallback((node: MindMapNode) => {
-    if (node.style.icon) return node.style.icon;
-    
-    // 根据节点类型提供默认图标
-    switch (node.type) {
-      case 'person': return '👤';
-      case 'concept': return '💡';
-      case 'method': return '🔧';
-      case 'case': return '📝';
-      case 'root': return '🌟';
-      default: return '●';
-    }
-  }, []);
-
-  // 渲染状态指示器
-  const renderStatusIndicator = useCallback((node: MindMapNode, position: { x: number, y: number }, radius: number) => {
-    const indicatorX = position.x + radius * 0.7;
-    const indicatorY = position.y - radius * 0.7;
-    
-    switch (node.status) {
-      case 'explored':
-        return (
-          <circle
-            cx={indicatorX}
-            cy={indicatorY}
-            r={4}
-            fill="#9ca3af"
-            stroke="white"
-            strokeWidth={1}
-          >
-            <title>已探索</title>
-          </circle>
-        );
-      case 'current':
-        return (
-          <circle
-            cx={indicatorX}
-            cy={indicatorY}
-            r={5}
-            fill="#10b981"
-            stroke="white"
-            strokeWidth={2}
-          >
-            <title>当前节点</title>
-          </circle>
-        );
-      case 'recommended':
-        return (
-          <circle
-            cx={indicatorX}
-            cy={indicatorY}
-            r={4}
-            fill="#f59e0b"
-            stroke="white"
-            strokeWidth={1}
-          >
-            <title>推荐探索</title>
-          </circle>
-        );
-      case 'potential':
-        return (
-          <circle
-            cx={indicatorX}
-            cy={indicatorY}
-            r={3}
-            fill="transparent"
-            stroke="#d1d5db"
-            strokeWidth={1}
-          >
-            <title>潜在节点</title>
-          </circle>
-        );
-      default:
-        // 兼容原有的探索状态指示器
-        return node.metadata.explored ? (
-          <circle
-            cx={indicatorX}
-            cy={indicatorY}
-            r={4}
-            fill="#10b981"
-            stroke="white"
-            strokeWidth={1}
-          />
-        ) : null;
-    }
-  }, []);
 
   // 计算SVG视图盒
   const getViewBox = useCallback(() => {

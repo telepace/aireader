@@ -5,11 +5,9 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { ChatMessage } from '../types/types';
 import {
   ConceptMap,
   ConceptNode,
-  ConceptExtractionResult,
   ConceptRecommendationContext,
   UseConceptMapResult,
   CONCEPT_STORAGE_KEYS,
@@ -19,15 +17,12 @@ import {
   calculateConceptSimilarity,
   deduplicateConcepts,
   generateAvoidanceList,
-  analyzeConceptProgress,
-  checkRecommendationDiversity
+  analyzeConceptProgress
 } from '../utils/conceptUtils';
-import { generateChatStream } from '../services/api-with-tracing';
-import { generateSystemPromptAsync } from '../services/promptTemplateV2';
 
 export function useConceptMap(conversationId: string): UseConceptMapResult {
   const [conceptMap, setConceptMap] = useState<ConceptMap | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // 初始化概念图
@@ -365,32 +360,3 @@ export function useConceptMap(conversationId: string): UseConceptMapResult {
   };
 }
 
-/**
- * 解析概念提取结果
- */
-function parseConceptExtractionResult(result: string): ConceptExtractionResult | null {
-  try {
-    // 尝试从文本中提取JSON
-    const jsonMatch = result.match(/```json\s*([\s\S]*?)\s*```/) || 
-                     result.match(/\{[\s\S]*\}/);
-    
-    if (!jsonMatch) {
-      console.error('No JSON found in concept extraction result');
-      return null;
-    }
-    
-    const jsonStr = jsonMatch[1] || jsonMatch[0];
-    const parsed = JSON.parse(jsonStr);
-    
-    // 验证结果格式
-    if (!parsed.concepts || !Array.isArray(parsed.concepts)) {
-      console.error('Invalid concept extraction result format');
-      return null;
-    }
-    
-    return parsed as ConceptExtractionResult;
-  } catch (error) {
-    console.error('Failed to parse concept extraction result:', error);
-    return null;
-  }
-}

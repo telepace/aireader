@@ -12,7 +12,6 @@ import {
   Chip,
   Paper,
   Divider,
-  Tooltip,
   useTheme,
   alpha
 } from '@mui/material';
@@ -20,9 +19,7 @@ import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   AccountTree as TreeIcon,
-  Psychology as ConceptIcon,
-  Circle as CircleIcon,
-  Remove as LineIcon
+  Psychology as ConceptIcon
 } from '@mui/icons-material';
 import { ConceptTree, ConceptTreeNode } from '../../types/concept';
 

@@ -14,31 +14,22 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  IconButton,
   Badge,
-  Tooltip,
   LinearProgress,
   Alert
 } from '@mui/material';
 import {
   ExpandMore,
   Lightbulb,
-  TrendingUp,
   Warning,
-  CheckCircle,
   Psychology,
-  Timeline,
   AutoFixHigh,
   Insights,
   QuestionMark,
   NavigateNext
 } from '@mui/icons-material';
 
-import { MindMapState, MindMapNode } from '../../types/mindMap';
+import { MindMapState } from '../../types/mindMap';
 
 interface AIInsightPanelProps {
   mindMapState: MindMapState;

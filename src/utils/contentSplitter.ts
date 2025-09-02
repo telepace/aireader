@@ -1,5 +1,5 @@
 // Extracted and refactored content splitting logic for better testability
-import { analyzeRecommendationQuality, type RecommendationOption, type QualityMetrics } from './recommendationQuality';
+import { analyzeRecommendationQuality, type RecommendationOption } from './recommendationQuality';
 
 export interface NextStepOption {
   type: 'deepen' | 'next';
@@ -394,7 +394,6 @@ export function splitContentAndOptions(raw: string): {
     }));
     
     // Perform batch quality analysis
-    const qualityResults = analyzeRecommendationQuality(recommendationOptions[0], main);
     const allQualityResults = recommendationOptions.map(option => 
       analyzeRecommendationQuality(option, main)
     );
