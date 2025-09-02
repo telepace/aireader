@@ -32,6 +32,7 @@ interface MarkdownTreeMapProps {
   showPath?: boolean;
   compact?: boolean;
   className?: string;
+  onNodeExpand?: (nodeId: string, nodeTitle: string) => void; // 新增：节点展开回调
 }
 
 interface TreeItem {
@@ -47,7 +48,8 @@ const MarkdownTreeMap: React.FC<MarkdownTreeMapProps> = ({
   currentNodeId,
   showPath = true,
   compact = false,
-  className
+  className,
+  onNodeExpand
 }) => {
   const [expandedNodes, setExpandedNodes] = React.useState<Set<string>>(new Set());
 
@@ -78,38 +80,75 @@ const MarkdownTreeMap: React.FC<MarkdownTreeMapProps> = ({
     return buildTree(rootNode);
   }, [mindMapState.nodes, expandedNodes]);
 
-  // 获取节点样式
+  // Jobs-inspired节点样式系统
   const getNodeStyle = (node: MindMapNode, level: number) => {
     const isActive = node.id === currentNodeId;
     const isExplored = node.metadata.explored;
     const hasChildren = node.children.length > 0;
 
-    // 根据类型和状态设置样式（支持推荐型图谱的新类型）
-    const typeStyles = {
-      // 原有类型
-      root: { color: '#6366f1', icon: '📚', bgColor: '#f0f9ff' },
-      topic: { color: '#8b5cf6', icon: '💭', bgColor: '#f3e8ff' },
-      deepen: { color: '#10b981', icon: '🌿', bgColor: '#ecfdf5' },
-      next: { color: '#f59e0b', icon: '🔗', bgColor: '#fffbeb' },
-      current: { color: '#ef4444', icon: '🎯', bgColor: '#fef2f2' },
-      
-      // 推荐型图谱新增类型
-      person: { color: '#ec4899', icon: '👤', bgColor: '#fdf2f8' },
-      concept: { color: '#06b6d4', icon: '💡', bgColor: '#f0fdfa' },
-      method: { color: '#84cc16', icon: '🔧', bgColor: '#f7fee7' },
-      case: { color: '#f97316', icon: '📝', bgColor: '#fff7ed' }
+    // 语义化色彩系统 - 基于重要性而非类型
+    const getSemanticColor = (level: number, type: string) => {
+      // 根节点：深蓝色，权威感
+      if (level === 0) return { primary: '#1a365d', bg: '#f7fafc', accent: '#2b77cb' };
+      // 主要分支：翠绿色，成长感
+      if (level === 1) return { primary: '#047857', bg: '#f0fdf4', accent: '#10b981' };
+      // 子概念：琥珀色，学习感  
+      if (level === 2) return { primary: '#92400e', bg: '#fffbeb', accent: '#f59e0b' };
+      // 细节节点：石板色，稳重感
+      return { primary: '#475569', bg: '#f8fafc', accent: '#64748b' };
     };
 
-    const baseStyle = typeStyles[node.type as keyof typeof typeStyles] || typeStyles.topic;
+    const colors = getSemanticColor(level, node.type);
     
+    // Jobs风格的视觉层次
+    const visualHierarchy = {
+      fontSize: level === 0 ? '1.25rem' : level === 1 ? '1.1rem' : level === 2 ? '1rem' : '0.9rem',
+      fontWeight: level === 0 ? 700 : level === 1 ? 600 : level === 2 ? 500 : 400,
+      lineHeight: level === 0 ? 1.4 : 1.3,
+      opacity: isExplored ? 1 : 0.75, // 更优雅的未探索状态
+    };
+
+    // 优雅的间距系统
+    const spacing = {
+      padding: compact ? '8px 12px' : level === 0 ? '16px 20px' : level === 1 ? '12px 16px' : '10px 14px',
+      marginBottom: compact ? 4 : level === 0 ? 12 : level === 1 ? 8 : 6,
+      borderRadius: level === 0 ? 16 : level === 1 ? 12 : 8,
+    };
+
+    // 精致的交互状态
+    const interactionStyles = {
+      backgroundColor: isActive ? colors.accent + '15' : colors.bg,
+      borderColor: isActive ? colors.accent : 'transparent',
+      borderWidth: isActive ? 2 : 1,
+      boxShadow: isActive 
+        ? `0 4px 20px ${colors.accent}25`
+        : hasChildren && level < 2 
+          ? `0 2px 8px ${colors.primary}10` 
+          : 'none',
+    };
+
+    // 类型图标映射（更精致的选择）
+    const getTypeIcon = (type: string, level: number) => {
+      const iconMap: Record<string, string> = {
+        root: '🌟',
+        person: '👤', 
+        concept: '💡',
+        method: '⚙️',
+        case: '📋',
+        topic: '💭',
+        deepen: '🌿',
+        next: '→',
+        current: '📍'
+      };
+      return iconMap[type] || (level === 0 ? '◉' : level === 1 ? '○' : '·');
+    };
+
     return {
-      ...baseStyle,
-      opacity: isExplored ? 1 : 0.6,
-      fontWeight: isActive ? 600 : level === 0 ? 600 : 400,
-      fontSize: level === 0 ? '1.1rem' : level === 1 ? '1rem' : '0.9rem',
-      padding: compact ? '4px 8px' : '8px 12px',
-      borderColor: isActive ? baseStyle.color : 'transparent',
-      borderWidth: isActive ? 2 : 1
+      colors,
+      ...visualHierarchy,
+      ...spacing,
+      ...interactionStyles,
+      icon: getTypeIcon(node.type, level)
     };
   };
 
@@ -124,39 +163,85 @@ const MarkdownTreeMap: React.FC<MarkdownTreeMapProps> = ({
     setExpandedNodes(newExpanded);
   };
 
-  // 渲染树节点
+  // 渲染优雅的树节点
   const renderTreeItem = (item: TreeItem): React.ReactNode => {
     const { node, level, children } = item;
     const style = getNodeStyle(node, level);
     const hasChildren = children.length > 0;
     const isExpanded = expandedNodes.has(node.id) || level < 2;
-    const indent = level * (compact ? 16 : 24);
+    
+    // Jobs风格的缩进系统 - 基于16px网格
+    const elegantIndent = level * 20; // 更宽松的缩进
+    
+    // 深度连接线（类似Xcode导航器）
+    const depthIndicator = level > 0 ? (
+      <Box
+        sx={{
+          position: 'absolute',
+          left: elegantIndent - 10,
+          top: 0,
+          bottom: 0,
+          width: 1,
+          bgcolor: `${style.colors.primary}20`,
+        }}
+      />
+    ) : null;
 
     return (
-      <Box key={node.id}>
-        {/* 节点本身 */}
+      <Box key={node.id} sx={{ position: 'relative' }}>
+        {depthIndicator}
+        
+        {/* 优雅的节点容器 */}
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
-            ml: `${indent}px`,
-            mb: compact ? 0.5 : 1,
+            ml: `${elegantIndent}px`,
+            mb: style.marginBottom / 8, // 转换为rem
             cursor: 'pointer',
-            borderRadius: 1,
-            border: 1,
+            borderRadius: style.borderRadius / 8, // 转换为rem
+            border: style.borderWidth,
             borderColor: style.borderColor,
-            bgcolor: style.bgColor,
+            bgcolor: style.backgroundColor,
             p: style.padding,
+            boxShadow: style.boxShadow,
+            position: 'relative',
+            overflow: 'hidden',
+            
+            // Jobs级别的微交互
             '&:hover': {
-              bgcolor: `${style.color}20`,
-              transform: 'translateX(2px)',
-              transition: 'all 0.2s ease'
+              transform: 'translateY(-1px) translateX(2px)',
+              boxShadow: `0 8px 25px ${style.colors.primary}20`,
+              bgcolor: `${style.colors.accent}08`,
+              '&::before': {
+                opacity: 1,
+              }
             },
-            transition: 'all 0.2s ease'
+            
+            // 精致的hover指示线
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 3,
+              bgcolor: style.colors.accent,
+              opacity: node.id === currentNodeId ? 1 : 0,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            },
+            
+            // 丝滑过渡动画
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
-          onClick={() => onNodeClick(node.id)}
+          onClick={() => {
+            onNodeClick(node.id);
+            if (onNodeExpand && node.type !== 'root') {
+              onNodeExpand(node.id, node.title);
+            }
+          }}
         >
-          {/* 展开/收起按钮 */}
+          {/* 精致的展开/收起按钮 */}
           {hasChildren && (
             <IconButton
               size="small"
@@ -164,7 +249,17 @@ const MarkdownTreeMap: React.FC<MarkdownTreeMapProps> = ({
                 e.stopPropagation();
                 toggleNodeExpanded(node.id);
               }}
-              sx={{ mr: 0.5, p: 0.25 }}
+              sx={{ 
+                mr: 1,
+                p: 0.5,
+                color: style.colors.primary,
+                opacity: 0.7,
+                '&:hover': {
+                  opacity: 1,
+                  bgcolor: `${style.colors.accent}10`,
+                  transform: 'scale(1.1)',
+                }
+              }}
             >
               {isExpanded ? (
                 <ExpandMore fontSize="small" />
@@ -174,80 +269,87 @@ const MarkdownTreeMap: React.FC<MarkdownTreeMapProps> = ({
             </IconButton>
           )}
 
-          {/* Markdown风格的层级指示符 */}
-          <Typography
-            variant="body2"
+          {/* 移除技术性的markdown指示符，用视觉缩进代替 */}
+
+          {/* 语义化的节点图标 */}
+          <Box 
             sx={{ 
-              color: style.color,
-              mr: 0.5,
-              fontWeight: 'bold',
-              fontSize: '0.8rem'
+              mr: 1.5, 
+              fontSize: level === 0 ? '1.4rem' : level === 1 ? '1.2rem' : '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              color: style.colors.primary,
+              opacity: style.opacity
             }}
           >
-            {'- '.repeat(Math.min(level + 1, 3))}
-          </Typography>
-
-          {/* 节点图标 */}
-          <Box sx={{ mr: 1, fontSize: '1.2rem' }}>
             {style.icon}
           </Box>
 
-          {/* 节点标题 */}
+          {/* 优雅的节点标题 */}
           <Typography
-            variant="body2"
             sx={{
               flex: 1,
               fontSize: style.fontSize,
               fontWeight: style.fontWeight,
-              color: style.color,
-              opacity: style.opacity
+              lineHeight: style.lineHeight,
+              color: style.colors.primary,
+              opacity: style.opacity,
+              letterSpacing: level === 0 ? '0.5px' : '0.25px', // 增强可读性
             }}
           >
             {node.title}
           </Typography>
 
-          {/* 状态指示器 */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 1 }}>
-            {/* 探索状态 */}
-            {node.metadata.explored ? (
-              <Tooltip title="已探索">
-                <CheckCircle sx={{ fontSize: '1rem', color: 'success.main' }} />
-              </Tooltip>
-            ) : (
-              <Tooltip title="未探索">
-                <RadioButtonUnchecked sx={{ fontSize: '1rem', color: 'grey.400' }} />
-              </Tooltip>
-            )}
-
-            {/* 子节点数量 */}
+          {/* 优雅的状态指示器 - 渐进式披露 */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
+            
+            {/* 子节点数量 - 更优雅的展示 */}
             {hasChildren && (
-              <Badge
-                badgeContent={children.length}
-                color="primary"
+              <Box
                 sx={{
-                  '& .MuiBadge-badge': {
-                    fontSize: '0.6rem',
-                    minWidth: 16,
-                    height: 16
-                  }
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  color: style.colors.primary,
+                  opacity: 0.6,
+                  fontSize: '0.8rem',
+                  fontWeight: 500,
                 }}
               >
-                <Circle sx={{ fontSize: '0.5rem', color: style.color }} />
-              </Badge>
+                <span>{children.length}</span>
+                <Box sx={{ fontSize: '0.7rem' }}>→</Box>
+              </Box>
             )}
 
-            {/* 点击次数（如果大于0） */}
-            {node.interactions.clickCount > 0 && (
-              <Chip
-                label={`${node.interactions.clickCount}次`}
-                size="small"
-                variant="outlined"
+            {/* 探索状态 - 微妙的视觉提示 */}
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                bgcolor: node.metadata.explored 
+                  ? style.colors.accent 
+                  : `${style.colors.primary}30`,
+                transition: 'all 0.3s ease',
+              }}
+            />
+
+            {/* 交互统计 - 仅在有意义时显示 */}
+            {node.interactions.clickCount > 2 && (
+              <Box
                 sx={{
-                  height: 16,
-                  fontSize: '0.6rem',
-                  '& .MuiChip-label': { px: 0.5 }
+                  fontSize: '0.7rem',
+                  color: style.colors.primary,
+                  opacity: 0.5,
+                  fontWeight: 500,
+                  px: 0.5,
+                  py: 0.25,
+                  borderRadius: 0.5,
+                  bgcolor: `${style.colors.accent}08`,
                 }}
-              />
+              >
+                {node.interactions.clickCount}
+              </Box>
             )}
           </Box>
         </Box>
@@ -305,49 +407,126 @@ const MarkdownTreeMap: React.FC<MarkdownTreeMapProps> = ({
         overflow: 'hidden'
       }}
     >
-      {/* 头部 */}
+      {/* 精致的头部设计 */}
       <Box
         sx={{
-          p: 2,
+          p: 3,
           borderBottom: 1,
           borderColor: 'divider',
-          bgcolor: 'background.default'
+          bgcolor: 'background.default',
+          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-          <Timeline color="primary" />
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            思维导图
-          </Typography>
-          <Chip
-            label={`${mindMapState.stats.exploredNodes}/${mindMapState.stats.totalNodes}`}
-            size="small"
-            color="primary"
-            variant="outlined"
-          />
-        </Box>
-
-        {/* 当前路径显示 */}
-        {showPath && mindMapState.explorationPath.length > 0 && (
-          <Box sx={{ mt: 1 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-              📍 当前路径:
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                fontFamily: 'monospace',
-                bgcolor: 'grey.50',
-                p: 1,
-                borderRadius: 1,
-                border: 1,
-                borderColor: 'grey.200',
-                fontSize: '0.8rem',
-                whiteSpace: 'pre-line'
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Box 
+            sx={{
+              p: 1,
+              borderRadius: 2,
+              bgcolor: 'rgba(59, 130, 246, 0.1)',
+              color: '#1a365d',
+            }}
+          >
+            <Timeline sx={{ fontSize: '1.5rem' }} />
+          </Box>
+          
+          <Box sx={{ flex: 1 }}>
+            <Typography 
+              variant="h5" 
+              sx={{ 
+                fontWeight: 700, 
+                color: '#1a365d',
+                letterSpacing: '0.5px',
+                mb: 0.5,
               }}
             >
-              {getMarkdownPath()}
+              概念图谱
             </Typography>
+            
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box
+                sx={{
+                  px: 1.5,
+                  py: 0.5,
+                  borderRadius: 2,
+                  bgcolor: '#10b981',
+                  color: 'white',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                }}
+              >
+                {mindMapState.stats.exploredNodes}/{mindMapState.stats.totalNodes} 已探索
+              </Box>
+              
+              <Box
+                sx={{
+                  fontSize: '0.8rem',
+                  color: 'text.secondary',
+                  fontWeight: 500,
+                }}
+              >
+                完成度 {mindMapState.stats.totalNodes > 0 
+                  ? Math.round((mindMapState.stats.exploredNodes / mindMapState.stats.totalNodes) * 100) 
+                  : 0}%
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+
+        {/* 优雅的路径指示 - 去掉技术性的markdown格式 */}
+        {showPath && mindMapState.explorationPath.length > 0 && (
+          <Box 
+            sx={{ 
+              p: 2,
+              borderRadius: 2,
+              bgcolor: 'rgba(255, 255, 255, 0.7)',
+              border: 1,
+              borderColor: 'rgba(59, 130, 246, 0.2)',
+            }}
+          >
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: '#475569', 
+                fontWeight: 600,
+                mb: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+              }}
+            >
+              <Box sx={{ fontSize: '1.1em' }}>🧭</Box>
+              当前探索路径
+            </Typography>
+            
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              {mindMapState.explorationPath
+                .map(id => mindMapState.nodes.get(id))
+                .filter(Boolean)
+                .map((node, index) => (
+                <React.Fragment key={node!.id}>
+                  <Box
+                    sx={{
+                      px: 1.5,
+                      py: 0.5,
+                      borderRadius: 1.5,
+                      bgcolor: index === mindMapState.explorationPath.length - 1 
+                        ? '#1a365d' 
+                        : 'rgba(71, 85, 105, 0.1)',
+                      color: index === mindMapState.explorationPath.length - 1 
+                        ? 'white' 
+                        : '#475569',
+                      fontSize: '0.85rem',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {node!.title}
+                  </Box>
+                  {index < mindMapState.explorationPath.length - 1 && (
+                    <Box sx={{ color: '#94a3b8', fontSize: '0.8rem' }}>→</Box>
+                  )}
+                </React.Fragment>
+              ))}
+            </Box>
           </Box>
         )}
       </Box>
@@ -364,28 +543,91 @@ const MarkdownTreeMap: React.FC<MarkdownTreeMapProps> = ({
         {renderTreeItem(treeStructure)}
       </Box>
 
-      {/* 底部统计 */}
+      {/* 精致的底部统计 */}
       <Box
         sx={{
-          p: 1,
+          p: 2,
           borderTop: 1,
           borderColor: 'divider',
-          bgcolor: 'background.default',
+          bgcolor: 'rgba(248, 250, 252, 0.8)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          fontSize: '0.75rem',
-          color: 'text.secondary'
         }}
       >
-        <Box>
-          深度: {mindMapState.stats.maxDepth} | 
-          节点: {mindMapState.stats.totalNodes}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              color: '#475569',
+              fontSize: '0.8rem',
+              fontWeight: 500,
+            }}
+          >
+            <Box sx={{ fontSize: '1em' }}>📊</Box>
+            <span>{mindMapState.stats.totalNodes} 个概念</span>
+          </Box>
+          
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              color: '#475569',
+              fontSize: '0.8rem',
+              fontWeight: 500,
+            }}
+          >
+            <Box sx={{ fontSize: '1em' }}>🌳</Box>
+            <span>{mindMapState.stats.maxDepth} 层深度</span>
+          </Box>
         </Box>
-        <Box>
-          探索率: {mindMapState.stats.totalNodes > 0 
-            ? Math.round((mindMapState.stats.exploredNodes / mindMapState.stats.totalNodes) * 100) 
-            : 0}%
+        
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            px: 2,
+            py: 0.5,
+            borderRadius: 2,
+            bgcolor: 'rgba(16, 185, 129, 0.1)',
+            color: '#047857',
+          }}
+        >
+          <Box 
+            sx={{
+              width: 32,
+              height: 4,
+              borderRadius: 2,
+              bgcolor: 'rgba(16, 185, 129, 0.2)',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            <Box
+              sx={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                height: '100%',
+                width: `${mindMapState.stats.totalNodes > 0 
+                  ? (mindMapState.stats.exploredNodes / mindMapState.stats.totalNodes) * 100 
+                  : 0}%`,
+                bgcolor: '#10b981',
+                borderRadius: 2,
+                transition: 'width 0.5s ease',
+              }}
+            />
+          </Box>
+          
+          <Box sx={{ fontSize: '0.8rem', fontWeight: 600 }}>
+            {mindMapState.stats.totalNodes > 0 
+              ? Math.round((mindMapState.stats.exploredNodes / mindMapState.stats.totalNodes) * 100) 
+              : 0}%
+          </Box>
         </Box>
       </Box>
     </Paper>
