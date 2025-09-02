@@ -90,7 +90,10 @@ const createMockMindMapState = (): MindMapState => {
     stats: {
       totalNodes: 2,
       exploredNodes: 1,
+      recommendedNodes: 0,
+      potentialNodes: 0,
       maxDepth: 1,
+      averageExplorationDepth: 0.5,
       lastUpdateTime: Date.now(),
       sessionStartTime: Date.now()
     },
@@ -98,7 +101,9 @@ const createMockMindMapState = (): MindMapState => {
       autoLayout: true,
       showLabels: true,
       animationEnabled: true,
-      compactMode: false
+      compactMode: false,
+      showRecommendations: true,
+      recommendationThreshold: 0.7
     }
   };
 };
@@ -131,7 +136,10 @@ describe('MarkdownTreeMap Component', () => {
       stats: {
         totalNodes: 0,
         exploredNodes: 0,
+        recommendedNodes: 0,
+        potentialNodes: 0,
         maxDepth: 0,
+        averageExplorationDepth: 0,
         lastUpdateTime: Date.now(),
         sessionStartTime: Date.now()
       }

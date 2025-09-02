@@ -251,9 +251,10 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
       console.log('🤖 调用带监控的 LLM API 进行思维导图更新...');
       
       // 使用带 tracing 的 API，这样会在 LLM 监控中显示
+      // 概念图谱更新使用 Flash 模型以提升性能
       const response = await generateChat(
         mindMapMessages, 
-        model,
+        'google/gemini-2.5-flash',
         conversationId,
         userId
       );
@@ -305,7 +306,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
             logUserEvent('concept-tree-updated', {
               sessionId: userSession.sessionId,
               conversationId,
-              model: model,
+              model: 'google/gemini-2.5-flash',
               success: true,
               totalNodes: newConceptTree.metadata?.totalNodes || 0,
               rootName: newConceptTree.name
@@ -320,7 +321,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
           logUserEvent('mind-map-updated', {
             sessionId: userSession.sessionId,
             conversationId,
-            model: model,
+            model: 'google/gemini-2.5-flash',
             success: true,
             nodeCount: mindMapUpdate.children?.length || 0,
             bookTitle: book_title
@@ -335,7 +336,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
           logUserEvent('mind-map-parse-failed', {
             sessionId: userSession.sessionId,
             conversationId,
-            model: model,
+            model: 'google/gemini-2.5-flash',
             error: parseError instanceof Error ? parseError.message : String(parseError),
             response: response.substring(0, 500) // 截断响应避免过长
           }, userId);
@@ -350,7 +351,7 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
         logUserEvent('mind-map-failed', {
           sessionId: userSession.sessionId,
           conversationId,
-          model: model,
+          model: 'google/gemini-2.5-flash',
           error: error instanceof Error ? error.message : String(error)
         }, userId);
       }

@@ -3,10 +3,28 @@
  * 用于NextStep推荐系统的思维导图功能
  */
 
+// 推荐节点信息
+export interface RecommendationNode {
+  id: string;                           // 推荐节点ID
+  name: string;                         // 推荐节点名称
+  reason: string;                       // 推荐理由
+  confidence: number;                   // 推荐置信度 (0.0-1.0)
+  trigger_condition: string;            // 触发条件描述
+  type?: 'concept' | 'person' | 'method' | 'case'; // 推荐节点类型
+}
+
+// 语义关联节点
+export interface RelatedNode {
+  node_id: string;                      // 关联节点ID
+  relation_type: 'contrast' | 'supplement' | 'example' | 'application'; // 关联类型
+  strength: number;                     // 关联强度 (0.0-1.0)
+}
+
 export interface MindMapNode {
   id: string;                           // 唯一标识
   title: string;                        // 节点标题
-  type: 'root' | 'topic' | 'deepen' | 'next' | 'current';
+  name?: string;                        // 推荐型图谱中的精准名词（兼容字段）
+  type: 'root' | 'topic' | 'deepen' | 'next' | 'current' | 'concept' | 'person' | 'method' | 'case';
   level: number;                        // 层级深度 (0=根, 1=主题, 2+子主题)
   parentId?: string;                    // 父节点ID
   children: string[];                   // 子节点ID列表
@@ -14,6 +32,25 @@ export interface MindMapNode {
     x: number;
     y: number;
   };
+  
+  // === 推荐型图谱新增字段 ===
+  status?: 'explored' | 'current' | 'recommended' | 'potential'; // 节点状态
+  exploration_depth?: number;           // 探索深度 (0.0-1.0)
+  last_visited?: string;                // 最后访问时间戳
+  
+  // 推荐引擎数据
+  relevance_score?: number;             // 与当前话题相关度 (0.0-1.0)
+  importance_weight?: number;           // 在整体知识图谱中的重要性 (0.0-1.0)
+  user_interest?: number;               // 基于用户行为的兴趣预测 (0.0-1.0)
+  
+  // 语义关联
+  semantic_tags?: string[];             // 语义标签
+  dependencies?: string[];              // 理解此节点需要先理解的节点
+  related_nodes?: RelatedNode[];        // 跨层级的语义关联
+  
+  // 推荐系统
+  recommendations?: RecommendationNode[]; // 基于此节点生成的推荐
+  
   metadata: {
     messageId: string;                  // 关联的聊天消息ID
     timestamp: number;                  // 创建时间戳
@@ -22,6 +59,7 @@ export interface MindMapNode {
     keywords: string[];                 // 关键词标签
     explorationDepth: number;           // 该分支的探索深度
     aiInsight?: string;                 // AI生成的洞察
+    updatedAt?: number;                 // 最后更新时间戳
   };
   style: {
     color: string;                      // 节点颜色
@@ -43,6 +81,19 @@ export interface MindMapState {
   currentNodeId: string;                // 当前活跃节点
   rootNodeId: string;                   // 根节点ID
   explorationPath: string[];            // 当前探索路径
+  
+  // === 推荐系统状态 ===
+  recommendationState?: {
+    activeRecommendations: string[];    // 当前激活的推荐节点ID列表
+    hiddenRecommendations: string[];    // 用户隐藏的推荐节点ID列表  
+    recommendationHistory: Array<{      // 推荐历史记录
+      nodeId: string;
+      timestamp: number;
+      action: 'shown' | 'clicked' | 'dismissed';
+    }>;
+    lastRecommendationUpdate: number;   // 最后推荐更新时间
+  };
+  
   layout: {
     centerX: number;                    // 布局中心X坐标
     centerY: number;                    // 布局中心Y坐标
@@ -57,7 +108,10 @@ export interface MindMapState {
   stats: {
     totalNodes: number;                 // 总节点数
     exploredNodes: number;              // 已探索节点数
+    recommendedNodes: number;           // 推荐节点数
+    potentialNodes: number;             // 潜在节点数
     maxDepth: number;                   // 最大探索深度
+    averageExplorationDepth: number;    // 平均探索深度
     lastUpdateTime: number;             // 最后更新时间
     sessionStartTime: number;           // 会话开始时间
   };
@@ -66,6 +120,8 @@ export interface MindMapState {
     showLabels: boolean;                // 是否显示标签
     animationEnabled: boolean;          // 是否启用动画
     compactMode: boolean;               // 紧凑模式
+    showRecommendations: boolean;       // 是否显示推荐节点
+    recommendationThreshold: number;    // 推荐显示的置信度阈值
   };
 }
 

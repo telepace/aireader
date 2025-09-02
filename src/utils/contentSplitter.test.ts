@@ -1,5 +1,14 @@
 import { splitContentAndOptions } from './contentSplitter';
 
+// Helper function to create expected options with quality analysis
+const expectedOption = (type: 'deepen' | 'next', content: string, describe: string) => ({
+  type,
+  content,
+  describe,
+  qualityScore: expect.any(Number),
+  qualityIssues: expect.any(Array)
+});
+
 describe('splitContentAndOptions - TDD Implementation', () => {
   
   describe('LLM Format Compatibility and Spelling Error Fixes', () => {
@@ -34,8 +43,7 @@ describe('splitContentAndOptions - TDD Implementation', () => {
       expect(result.options[0].type).toBe('deepen'); // Fixed from 'deeping'
       expect(result.options[1].type).toBe('deepen'); // Fixed from 'deeping'
       expect(result.options[2].type).toBe('next');
-      expect(result.options[0].content).toBe('第一部分: 核心概念解析');
-      expect(result.options[0].describe).toBe('深入解析核心概念的精髓和要点。');
+      expect(result.options[0]).toEqual(expectedOption('deepen', '第一部分: 核心概念解析', '深入解析核心概念的精髓和要点。'));
     });
 
     test('should handle multiple spelling variations in JSONL format', () => {
@@ -113,16 +121,8 @@ Just regular paragraphs.`;
       
       expect(result.main).toBe('');
       expect(result.options).toHaveLength(2);
-      expect(result.options[0]).toEqual({
-        type: 'deepen',
-        content: 'Option 1',
-        describe: 'Description 1'
-      });
-      expect(result.options[1]).toEqual({
-        type: 'next',
-        content: 'Option 2',
-        describe: 'Description 2'
-      });
+      expect(result.options[0]).toEqual(expectedOption('deepen', 'Option 1', 'Description 1'));
+      expect(result.options[1]).toEqual(expectedOption('next', 'Option 2', 'Description 2'));
     });
   });
 
@@ -232,11 +232,7 @@ More content.`;
       const result = splitContentAndOptions(input);
       
       expect(result.options).toHaveLength(1);
-      expect(result.options[0]).toEqual({
-        type: 'deepen',
-        content: 'Valid',
-        describe: 'Valid'
-      });
+      expect(result.options[0]).toEqual(expectedOption('deepen', 'Valid', 'Valid'));
     });
 
     test('should limit options to maximum of 6', () => {

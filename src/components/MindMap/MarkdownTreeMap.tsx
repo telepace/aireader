@@ -84,16 +84,23 @@ const MarkdownTreeMap: React.FC<MarkdownTreeMapProps> = ({
     const isExplored = node.metadata.explored;
     const hasChildren = node.children.length > 0;
 
-    // 根据类型和状态设置样式
+    // 根据类型和状态设置样式（支持推荐型图谱的新类型）
     const typeStyles = {
+      // 原有类型
       root: { color: '#6366f1', icon: '📚', bgColor: '#f0f9ff' },
       topic: { color: '#8b5cf6', icon: '💭', bgColor: '#f3e8ff' },
       deepen: { color: '#10b981', icon: '🌿', bgColor: '#ecfdf5' },
       next: { color: '#f59e0b', icon: '🔗', bgColor: '#fffbeb' },
-      current: { color: '#ef4444', icon: '🎯', bgColor: '#fef2f2' }
+      current: { color: '#ef4444', icon: '🎯', bgColor: '#fef2f2' },
+      
+      // 推荐型图谱新增类型
+      person: { color: '#ec4899', icon: '👤', bgColor: '#fdf2f8' },
+      concept: { color: '#06b6d4', icon: '💡', bgColor: '#f0fdfa' },
+      method: { color: '#84cc16', icon: '🔧', bgColor: '#f7fee7' },
+      case: { color: '#f97316', icon: '📝', bgColor: '#fff7ed' }
     };
 
-    const baseStyle = typeStyles[node.type] || typeStyles.topic;
+    const baseStyle = typeStyles[node.type as keyof typeof typeStyles] || typeStyles.topic;
     
     return {
       ...baseStyle,

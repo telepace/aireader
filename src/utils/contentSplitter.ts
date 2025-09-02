@@ -1,8 +1,12 @@
 // Extracted and refactored content splitting logic for better testability
+import { analyzeRecommendationQuality, type RecommendationOption, type QualityMetrics } from './recommendationQuality';
+
 export interface NextStepOption {
   type: 'deepen' | 'next';
   content: string;
   describe: string;
+  qualityScore?: number;
+  qualityIssues?: string[];
 }
 
 // 完成标志接口
@@ -263,6 +267,11 @@ export function splitContentAndOptions(raw: string): {
   options: NextStepOption[]; 
   isContentComplete?: boolean;
   completionMessage?: string;
+  qualityAnalysis?: {
+    averageScore: number;
+    majorIssues: string[];
+    totalIssueCount: number;
+  };
 } {
   if (!raw) return { main: '', options: [] };
   
@@ -375,10 +384,56 @@ export function splitContentAndOptions(raw: string): {
   // Only trim trailing whitespace to preserve internal formatting
   main = main.replace(/\s+$/, '');
   
+  // Quality analysis for collected options
+  let qualityAnalysis;
+  if (collected.length > 0) {
+    const recommendationOptions: RecommendationOption[] = collected.map(option => ({
+      type: option.type,
+      content: option.content,
+      describe: option.describe
+    }));
+    
+    // Perform batch quality analysis
+    const qualityResults = analyzeRecommendationQuality(recommendationOptions[0], main);
+    const allQualityResults = recommendationOptions.map(option => 
+      analyzeRecommendationQuality(option, main)
+    );
+    
+    // Add quality scores to options
+    collected.forEach((option, index) => {
+      if (allQualityResults[index]) {
+        option.qualityScore = Math.round(allQualityResults[index].overallScore * 100) / 100;
+        option.qualityIssues = allQualityResults[index].issues;
+      }
+    });
+    
+    // Calculate overall quality metrics
+    const avgScore = allQualityResults.reduce((sum, result) => sum + result.overallScore, 0) / allQualityResults.length;
+    const allIssues = allQualityResults.flatMap(result => result.issues);
+    const uniqueIssues = Array.from(new Set(allIssues));
+    const majorIssues = uniqueIssues
+      .map(issue => ({ issue, count: allIssues.filter(i => i === issue).length }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3)
+      .map(item => item.issue);
+    
+    qualityAnalysis = {
+      averageScore: Math.round(avgScore * 100) / 100,
+      majorIssues,
+      totalIssueCount: allIssues.length
+    };
+    
+    // Log quality issues for debugging
+    if (qualityAnalysis.totalIssueCount > 0) {
+      console.warn(`发现 ${qualityAnalysis.totalIssueCount} 个推荐质量问题:`, majorIssues);
+    }
+  }
+  
   return { 
     main, 
     options: collected.slice(0, 6),
     isContentComplete,
-    completionMessage
+    completionMessage,
+    qualityAnalysis
   };
 }

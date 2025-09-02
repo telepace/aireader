@@ -5,40 +5,14 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { recommendationEngine, RecommendationContext } from '../utils/recommendationEngine';
 
-// 思维导图节点类型
-export interface MindMapNode {
-  id: string;
-  title: string;
-  type: 'root' | 'deepen' | 'next' | 'explore';
-  parentId?: string;
-  children: string[];
-  level: number;
-  metadata: {
-    summary?: string;
-    keywords?: string[];
-    explored: boolean;
-    createdAt: number;
-    updatedAt: number;
-    interactions: {
-      clickCount: number;
-      lastInteraction?: number;
-    };
-  };
-}
+// 导入统一的类型定义
+import { MindMapNode as ImportedMindMapNode, MindMapState as ImportedMindMapState } from '../types/mindMap';
 
-// 思维导图状态
-export interface MindMapState {
-  nodes: Map<string, MindMapNode>;
-  currentNodeId: string;
-  explorationPath: string[];
-  stats: {
-    totalNodes: number;
-    maxDepth: number;
-    exploredNodes: number;
-    lastUpdated: number;
-  };
-}
+// 为了兼容性，重新导出类型（逐步迁移）
+export type MindMapNode = ImportedMindMapNode;
+export type MindMapState = ImportedMindMapState;
 
 // Hook 返回类型
 export interface UseMindMapReturn {
@@ -56,6 +30,13 @@ export interface UseMindMapReturn {
   getNode: (nodeId: string) => MindMapNode | undefined;
   getChildren: (nodeId: string) => MindMapNode[];
   getPath: (nodeId: string) => string[];
+  
+  // === 推荐系统方法 ===
+  updateNodeStatus: (nodeId: string, status: MindMapNode['status']) => void;
+  generateRecommendations: (nodeId: string) => void;
+  triggerRecommendationUpdate: () => void;
+  getRecommendationContext: () => RecommendationContext;
+  
   generateMindMapContext: () => {
     currentTopic: {
       id: string;
@@ -89,13 +70,33 @@ const MIND_MAP_STORAGE_KEY = 'prompt_tester_mind_maps';
 export function useMindMap(conversationId: string): UseMindMapReturn {
   const [mindMapState, setMindMapState] = useState<MindMapState>({
     nodes: new Map(),
+    edges: new Map(),
     currentNodeId: '',
+    rootNodeId: '',
     explorationPath: [],
+    layout: {
+      centerX: 400,
+      centerY: 300,
+      scale: 1.0,
+      viewBox: { x: 0, y: 0, width: 800, height: 600 }
+    },
     stats: {
       totalNodes: 0,
-      maxDepth: 0,
       exploredNodes: 0,
-      lastUpdated: Date.now()
+      recommendedNodes: 0,
+      potentialNodes: 0,
+      maxDepth: 0,
+      averageExplorationDepth: 0,
+      lastUpdateTime: Date.now(),
+      sessionStartTime: Date.now()
+    },
+    preferences: {
+      autoLayout: true,
+      showLabels: true,
+      animationEnabled: true,
+      compactMode: false,
+      showRecommendations: true,
+      recommendationThreshold: 0.7
     }
   });
 
@@ -116,13 +117,33 @@ export function useMindMap(conversationId: string): UseMindMapReturn {
           
           setMindMapState({
             nodes,
+            edges: new Map(),
             currentNodeId: conversationMap.currentNodeId || '',
+            rootNodeId: conversationMap.rootNodeId || '',
             explorationPath: conversationMap.explorationPath || [],
+            layout: {
+              centerX: 400,
+              centerY: 300,
+              scale: 1.0,
+              viewBox: { x: 0, y: 0, width: 800, height: 600 }
+            },
             stats: {
               totalNodes: nodes.size,
-              maxDepth: calculateMaxDepth(nodes),
               exploredNodes: Array.from(nodes.values()).filter(n => n.metadata.explored).length,
-              lastUpdated: Date.now()
+              recommendedNodes: Array.from(nodes.values()).filter(n => n.status === 'recommended').length,
+              potentialNodes: Array.from(nodes.values()).filter(n => n.status === 'potential').length,
+              maxDepth: calculateMaxDepth(nodes),
+              averageExplorationDepth: Array.from(nodes.values()).reduce((sum, n) => sum + (n.exploration_depth || 0), 0) / nodes.size || 0,
+              lastUpdateTime: Date.now(),
+              sessionStartTime: Date.now()
+            },
+            preferences: {
+              autoLayout: true,
+              showLabels: true,
+              animationEnabled: true,
+              compactMode: false,
+              showRecommendations: true,
+              recommendationThreshold: 0.7
             }
           });
         }
@@ -167,15 +188,29 @@ export function useMindMap(conversationId: string): UseMindMapReturn {
       children: [],
       level: 0,
       metadata: {
-        summary,
-        keywords: [],
+        messageId: '',
+        timestamp: Date.now(),
         explored: true,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        interactions: {
-          clickCount: 1,
-          lastInteraction: Date.now()
-        }
+        summary: summary || '',
+        keywords: [],
+        explorationDepth: 1.0,
+        aiInsight: undefined
+      },
+      interactions: {
+        clickCount: 1,
+        lastVisited: Date.now(),
+        userRating: undefined
+      },
+      style: {
+        color: '#6366f1',
+        size: 'medium' as const,
+        icon: '🌟',
+        emphasis: true,
+        opacity: 1.0
+      },
+      position: {
+        x: 400,
+        y: 300
       }
     };
 
@@ -184,13 +219,33 @@ export function useMindMap(conversationId: string): UseMindMapReturn {
 
     setMindMapState({
       nodes: newNodes,
+      edges: new Map(),
       currentNodeId: rootId,
+      rootNodeId: rootId,
       explorationPath: [rootId],
+      layout: {
+        centerX: 400,
+        centerY: 300,
+        scale: 1.0,
+        viewBox: { x: 0, y: 0, width: 800, height: 600 }
+      },
       stats: {
         totalNodes: 1,
-        maxDepth: 0,
         exploredNodes: 1,
-        lastUpdated: Date.now()
+        recommendedNodes: 0,
+        potentialNodes: 0,
+        maxDepth: 0,
+        averageExplorationDepth: 1.0,
+        lastUpdateTime: Date.now(),
+        sessionStartTime: Date.now()
+      },
+      preferences: {
+        autoLayout: true,
+        showLabels: true,
+        animationEnabled: true,
+        compactMode: false,
+        showRecommendations: true,
+        recommendationThreshold: 0.7
       }
     });
 
@@ -218,15 +273,30 @@ export function useMindMap(conversationId: string): UseMindMapReturn {
       children: [],
       level: parent.level + 1,
       metadata: {
-        keywords: [],
+        messageId: '',
+        timestamp: Date.now(),
         explored: false,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        interactions: {
-          clickCount: 0,
-          ...metadata.interactions
-        },
+        summary: '',
+        keywords: [],
+        explorationDepth: 0,
+        aiInsight: undefined,
         ...metadata
+      },
+      interactions: {
+        clickCount: 0,
+        lastVisited: Date.now(),
+        userRating: undefined
+      },
+      style: {
+        color: '#8b5cf6',
+        size: 'medium' as const,
+        icon: '💭',
+        emphasis: false,
+        opacity: 0.8
+      },
+      position: {
+        x: 0,
+        y: 0
       }
     };
 
@@ -236,16 +306,20 @@ export function useMindMap(conversationId: string): UseMindMapReturn {
     // 更新父节点的 children
     const parentNode = newNodes.get(parentId)!;
     parentNode.children.push(nodeId);
-    parentNode.metadata.updatedAt = Date.now();
+    parentNode.metadata.timestamp = Date.now();
 
     setMindMapState(prev => ({
       ...prev,
       nodes: newNodes,
       stats: {
         totalNodes: newNodes.size,
-        maxDepth: Math.max(prev.stats.maxDepth, newNode.level),
         exploredNodes: prev.stats.exploredNodes,
-        lastUpdated: Date.now()
+        recommendedNodes: Array.from(newNodes.values()).filter(n => n.status === 'recommended').length,
+        potentialNodes: Array.from(newNodes.values()).filter(n => n.status === 'potential').length,
+        maxDepth: Math.max(prev.stats.maxDepth, newNode.level),
+        averageExplorationDepth: Array.from(newNodes.values()).reduce((sum, n) => sum + (n.exploration_depth || 0), 0) / newNodes.size || 0,
+        lastUpdateTime: Date.now(),
+        sessionStartTime: prev.stats.sessionStartTime
       }
     }));
 
@@ -273,9 +347,9 @@ export function useMindMap(conversationId: string): UseMindMapReturn {
     const newNodes = new Map(mindMapState.nodes);
     const targetNode = newNodes.get(nodeId)!;
     targetNode.metadata.explored = true;
-    targetNode.metadata.interactions.clickCount++;
-    targetNode.metadata.interactions.lastInteraction = Date.now();
-    targetNode.metadata.updatedAt = Date.now();
+    targetNode.interactions.clickCount++;
+    targetNode.interactions.lastVisited = Date.now();
+    targetNode.metadata.timestamp = Date.now();
 
     setMindMapState(prev => ({
       ...prev,
@@ -285,7 +359,7 @@ export function useMindMap(conversationId: string): UseMindMapReturn {
       stats: {
         ...prev.stats,
         exploredNodes: Array.from(newNodes.values()).filter(n => n.metadata.explored).length,
-        lastUpdated: Date.now()
+        lastUpdateTime: Date.now()
       }
     }));
   }, [mindMapState.nodes]);
@@ -302,7 +376,7 @@ export function useMindMap(conversationId: string): UseMindMapReturn {
         nodes: newNodes,
         stats: {
           ...prev.stats,
-          lastUpdated: Date.now()
+          lastUpdateTime: Date.now()
         }
       }));
     }
@@ -339,10 +413,16 @@ export function useMindMap(conversationId: string): UseMindMapReturn {
       ...prev,
       nodes: newNodes,
       stats: {
+        ...prev.stats,
         totalNodes: newNodes.size,
         maxDepth: calculateMaxDepth(newNodes),
         exploredNodes: Array.from(newNodes.values()).filter(n => n.metadata.explored).length,
-        lastUpdated: Date.now()
+        recommendedNodes: Array.from(newNodes.values()).filter(n => n.status === 'recommended').length,
+        potentialNodes: Array.from(newNodes.values()).filter(n => n.status === 'potential').length,
+        averageExplorationDepth: newNodes.size > 0 
+          ? Array.from(newNodes.values()).reduce((sum, node) => sum + (node.exploration_depth || 0), 0) / newNodes.size 
+          : 0,
+        lastUpdateTime: Date.now()
       }
     }));
   }, [mindMapState.nodes, mindMapState.currentNodeId]);
@@ -414,16 +494,95 @@ export function useMindMap(conversationId: string): UseMindMapReturn {
   const clearMindMap = useCallback(() => {
     setMindMapState({
       nodes: new Map(),
+      edges: new Map(),
       currentNodeId: '',
+      rootNodeId: '',
       explorationPath: [],
+      layout: {
+        centerX: 400,
+        centerY: 300,
+        scale: 1.0,
+        viewBox: { x: 0, y: 0, width: 800, height: 600 }
+      },
       stats: {
         totalNodes: 0,
-        maxDepth: 0,
         exploredNodes: 0,
-        lastUpdated: Date.now()
+        recommendedNodes: 0,
+        potentialNodes: 0,
+        maxDepth: 0,
+        averageExplorationDepth: 0,
+        lastUpdateTime: Date.now(),
+        sessionStartTime: Date.now()
+      },
+      preferences: {
+        autoLayout: true,
+        showLabels: true,
+        animationEnabled: true,
+        compactMode: false,
+        showRecommendations: true,
+        recommendationThreshold: 0.7
       }
     });
   }, []);
+
+  // === 推荐系统方法 ===
+  
+  // 更新节点状态
+  const updateNodeStatus = useCallback((nodeId: string, status: MindMapNode['status']) => {
+    const newMindMapState = recommendationEngine.updateNodeStatus(nodeId, status, mindMapState);
+    setMindMapState(newMindMapState);
+  }, [mindMapState]);
+
+  // 获取推荐上下文
+  const getRecommendationContext = useCallback((): RecommendationContext => {
+    const exploredNodes = Array.from(mindMapState.nodes.values())
+      .filter(node => node.metadata.explored || node.status === 'explored');
+    
+    // 模拟用户行为数据（实际应该从用户交互中收集）
+    const clickHistory = mindMapState.explorationPath;
+    
+    // 从探索路径提取语义上下文
+    const semanticContext = exploredNodes
+      .flatMap(node => node.semantic_tags || [])
+      .filter((tag, index, array) => array.indexOf(tag) === index); // 去重
+
+    return {
+      currentNodeId: mindMapState.currentNodeId,
+      exploredNodes,
+      userBehavior: {
+        clickHistory,
+        dwellTimes: {}, // 应该从实际用户交互中收集
+        interests: semanticContext
+      },
+      semanticContext
+    };
+  }, [mindMapState]);
+
+  // 为特定节点生成推荐
+  const generateRecommendations = useCallback((nodeId: string) => {
+    const node = mindMapState.nodes.get(nodeId);
+    if (!node) return;
+
+    const context = getRecommendationContext();
+    const allNodes = Array.from(mindMapState.nodes.values());
+    const recommendations = recommendationEngine.generateRecommendations(node, allNodes, context);
+
+    const updatedNode = { ...node, recommendations };
+    const newNodes = new Map(mindMapState.nodes);
+    newNodes.set(nodeId, updatedNode);
+
+    setMindMapState(prev => ({
+      ...prev,
+      nodes: newNodes
+    }));
+  }, [mindMapState.nodes, getRecommendationContext]);
+
+  // 触发全局推荐更新
+  const triggerRecommendationUpdate = useCallback(() => {
+    const context = getRecommendationContext();
+    const newMindMapState = recommendationEngine.triggerRecommendationUpdate(mindMapState, context);
+    setMindMapState(newMindMapState);
+  }, [mindMapState, getRecommendationContext]);
 
   // 计算最大深度
   function calculateMaxDepth(nodes: Map<string, MindMapNode>): number {
@@ -451,6 +610,13 @@ export function useMindMap(conversationId: string): UseMindMapReturn {
     getNode,
     getChildren,
     getPath,
+    
+    // 推荐系统方法
+    updateNodeStatus,
+    generateRecommendations,
+    triggerRecommendationUpdate,
+    getRecommendationContext,
+    
     generateMindMapContext,
     clearMindMap
   };

@@ -37,9 +37,12 @@ describe('TemplateSystem', () => {
 
     it('should include concept avoidance when provided', async () => {
       const conceptContext = {
+        existingConcepts: ['概念D'],
         avoidanceList: ['概念A', '概念B'],
         recentConcepts: ['概念C'],
-        preferredCategories: ['core', 'method']
+        mindMapConcepts: ['概念E'],
+        preferredCategories: ['core', 'method'],
+        diversityWeight: 0.5
       };
       
       const result = await templateSystem.renderTemplate('smartRecommendation', 'zh', {
@@ -47,7 +50,7 @@ describe('TemplateSystem', () => {
         concept_context: conceptContext
       });
       
-      expect(result).toContain('智能去重机制');
+      expect(result).toContain('已读内容避免机制');
       expect(result).toContain('概念A');
       expect(result).toContain('概念B');
       expect(result).toContain('最近讨论的概念');
@@ -60,7 +63,7 @@ describe('TemplateSystem', () => {
     it('should render knowledge graph template', async () => {
       const result = await templateSystem.renderTemplate('knowledgeGraph', 'zh');
       
-      expect(result).toContain('简化思维导图');
+      expect(result).toContain('推荐型思维导图');
       expect(result).toContain('previous_map');
       expect(result).toContain('book_title');
       expect(result).toContain('latest_reply');
@@ -70,18 +73,18 @@ describe('TemplateSystem', () => {
     it('should include detailed rules and example', async () => {
       const result = await templateSystem.renderTemplate('knowledgeGraph', 'zh');
       
-      // 检查规则部分
-      expect(result).toContain('如果 previous_map 为空');
-      expect(result).toContain('唯一一个核心抽象概念');
-      expect(result).toContain('语言的界限 = 思维的界限');
+      // 检查增量更新规则部分
+      expect(result).toContain('增量更新原则');
+      expect(result).toContain('保持原有结构');
+      expect(result).toContain('渐进式建构');
       
       // 检查示例部分
-      expect(result).toContain('🌰 示例');
-      expect(result).toContain('维特根斯坦');
-      expect(result).toContain('语言的界限 = 思维与世界的界限');
+      expect(result).toContain('🌰 推荐型示例');
+      expect(result).toContain('变革者');
+      expect(result).toContain('示例2 - 增量更新');
       
       // 检查输出要求
-      expect(result).toContain('仅输出最终 JSON');
+      expect(result).toContain('仅输出JSON对象');
     });
   });
 

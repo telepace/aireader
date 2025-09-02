@@ -46,17 +46,24 @@ const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
       .filter(Boolean) as MindMapNode[];
   }, [currentPath, nodes]);
 
-  // 获取节点图标和颜色
+  // 获取节点图标和颜色（支持推荐型图谱的新类型）
   const getNodeStyle = (node: MindMapNode) => {
     const typeStyles = {
+      // 原有类型
       root: { icon: '📚', color: '#6366f1' },
       topic: { icon: '💭', color: '#8b5cf6' },
       deepen: { icon: '🌿', color: '#10b981' },
       next: { icon: '🔗', color: '#f59e0b' },
-      current: { icon: '🎯', color: '#ef4444' }
+      current: { icon: '🎯', color: '#ef4444' },
+      
+      // 推荐型图谱新增类型
+      person: { icon: '👤', color: '#ec4899' },
+      concept: { icon: '💡', color: '#06b6d4' },
+      method: { icon: '🔧', color: '#84cc16' },
+      case: { icon: '📝', color: '#f97316' }
     };
     
-    return typeStyles[node.type] || { icon: '📄', color: '#6b7280' };
+    return typeStyles[node.type as keyof typeof typeStyles] || { icon: '📄', color: '#6b7280' };
   };
 
   // 计算路径统计

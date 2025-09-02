@@ -41,20 +41,66 @@ const InteractiveMindMap: React.FC<InteractiveMindMapProps> = ({
   const [hoverNodeId, setHoverNodeId] = useState<string | null>(null);
   const [tooltipContent, setTooltipContent] = useState<string>('');
 
-  // 获取节点样式
+  // 获取节点样式（支持推荐状态）
   const getNodeStyle = useCallback((node: MindMapNode) => {
     const baseStyle = config.appearance.nodeStyles[node.type];
     const isActive = node.id === mindMapState.currentNodeId;
     const isHovered = node.id === hoverNodeId;
     
+    // 根据推荐状态确定样式
+    let statusStyle: any = {};
+    switch (node.status) {
+      case 'explored':
+        statusStyle = {
+          fill: '#e5e7eb', // 灰色填充
+          stroke: '#9ca3af',
+          strokeWidth: 1,
+          opacity: 0.8
+        };
+        break;
+      case 'current':
+        statusStyle = {
+          fill: '#10b981', // 绿色填充
+          stroke: '#059669',
+          strokeWidth: 3,
+          opacity: 1.0
+        };
+        break;
+      case 'recommended':
+        statusStyle = {
+          fill: '#f59e0b', // 橙色填充
+          stroke: '#d97706',
+          strokeWidth: 2,
+          opacity: 0.9,
+          strokeDasharray: '5,3' // 虚线边框
+        };
+        break;
+      case 'potential':
+        statusStyle = {
+          fill: 'transparent',
+          stroke: '#d1d5db',
+          strokeWidth: 1,
+          strokeDasharray: '3,3', // 更短的虚线
+          opacity: 0.6
+        };
+        break;
+      default:
+        // 使用原有的颜色逻辑
+        statusStyle = {
+          fill: node.style.color,
+          stroke: isActive ? '#000' : isHovered ? node.style.color : '#ddd',
+          strokeWidth: isActive ? 3 : isHovered ? 2 : 1,
+          opacity: node.style.opacity
+        };
+    }
+    
     return {
-      fill: node.style.color,
-      stroke: isActive ? '#000' : isHovered ? node.style.color : '#ddd',
-      strokeWidth: isActive ? 3 : isHovered ? 2 : 1,
-      opacity: node.style.opacity,
+      ...baseStyle,
+      ...statusStyle,
       radius: getNodeRadius(node),
       fontSize: getNodeFontSize(node),
-      ...baseStyle
+      // 悬停状态覆盖
+      ...(isHovered ? { strokeWidth: ((statusStyle as any).strokeWidth || 1) + 1 } : {})
     };
   }, [config.appearance.nodeStyles, mindMapState.currentNodeId, hoverNodeId]);
 
@@ -198,7 +244,7 @@ const InteractiveMindMap: React.FC<InteractiveMindMapProps> = ({
     }
   }, [config.appearance.connectionStyles, getNodeRadius]);
 
-  // 渲染节点
+  // 渲染节点（支持推荐状态）
   const renderNode = useCallback((node: MindMapNode) => {
     const style = getNodeStyle(node);
     const radius = getNodeRadius(node);
@@ -210,6 +256,9 @@ const InteractiveMindMap: React.FC<InteractiveMindMapProps> = ({
       y: node.position.y + dragState.offset.y / zoomLevel
     } : node.position;
 
+    // 获取节点显示的标题（优先使用name，回退到title）
+    const displayTitle = node.name || node.title;
+    
     return (
       <g key={node.id} className="mind-map-node">
         {/* 节点背景 */}
@@ -220,6 +269,7 @@ const InteractiveMindMap: React.FC<InteractiveMindMapProps> = ({
           fill={style.fill}
           stroke={style.stroke}
           strokeWidth={style.strokeWidth}
+          strokeDasharray={style.strokeDasharray}
           opacity={style.opacity}
           style={{
             cursor: 'pointer',
@@ -238,10 +288,10 @@ const InteractiveMindMap: React.FC<InteractiveMindMapProps> = ({
           textAnchor="middle"
           dominantBaseline="middle"
           fontSize={fontSize * 0.8}
-          fill="white"
+          fill={node.status === 'potential' ? '#9ca3af' : 'white'}
           style={{ pointerEvents: 'none', userSelect: 'none' }}
         >
-          {node.style.icon}
+          {getNodeIcon(node)}
         </text>
         
         {/* 节点标题 */}
@@ -252,22 +302,32 @@ const InteractiveMindMap: React.FC<InteractiveMindMapProps> = ({
             textAnchor="middle"
             fontSize={fontSize}
             fill={config.appearance.theme === 'dark' ? 'white' : 'black'}
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
+            style={{ 
+              pointerEvents: 'none', 
+              userSelect: 'none',
+              opacity: node.status === 'potential' ? 0.6 : 1.0
+            }}
           >
-            {node.title.length > 15 ? `${node.title.slice(0, 15)}...` : node.title}
+            {displayTitle.length > 15 ? `${displayTitle.slice(0, 15)}...` : displayTitle}
           </text>
         )}
         
-        {/* 探索状态指示器 */}
-        {node.metadata.explored && (
-          <circle
-            cx={position.x + radius * 0.7}
-            cy={position.y - radius * 0.7}
-            r={4}
-            fill="#10b981"
-            stroke="white"
-            strokeWidth={1}
-          />
+        {/* 状态指示器 */}
+        {renderStatusIndicator(node, position, radius)}
+        
+        {/* 推荐置信度指示器 */}
+        {node.status === 'recommended' && node.recommendations && node.recommendations.length > 0 && (
+          <text
+            x={position.x}
+            y={position.y + radius * 0.3}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize={fontSize * 0.6}
+            fill="white"
+            style={{ pointerEvents: 'none', userSelect: 'none' }}
+          >
+            {Math.round((node.recommendations[0].confidence || 0) * 100)}%
+          </text>
         )}
         
         {/* 子节点数量指示器 */}
@@ -297,6 +357,94 @@ const InteractiveMindMap: React.FC<InteractiveMindMapProps> = ({
     handleMouseDown,
     handleNodeHover
   ]);
+
+  // 获取节点图标（根据状态和类型）
+  const getNodeIcon = useCallback((node: MindMapNode) => {
+    if (node.style.icon) return node.style.icon;
+    
+    // 根据节点类型提供默认图标
+    switch (node.type) {
+      case 'person': return '👤';
+      case 'concept': return '💡';
+      case 'method': return '🔧';
+      case 'case': return '📝';
+      case 'root': return '🌟';
+      default: return '●';
+    }
+  }, []);
+
+  // 渲染状态指示器
+  const renderStatusIndicator = useCallback((node: MindMapNode, position: { x: number, y: number }, radius: number) => {
+    const indicatorX = position.x + radius * 0.7;
+    const indicatorY = position.y - radius * 0.7;
+    
+    switch (node.status) {
+      case 'explored':
+        return (
+          <circle
+            cx={indicatorX}
+            cy={indicatorY}
+            r={4}
+            fill="#9ca3af"
+            stroke="white"
+            strokeWidth={1}
+          >
+            <title>已探索</title>
+          </circle>
+        );
+      case 'current':
+        return (
+          <circle
+            cx={indicatorX}
+            cy={indicatorY}
+            r={5}
+            fill="#10b981"
+            stroke="white"
+            strokeWidth={2}
+          >
+            <title>当前节点</title>
+          </circle>
+        );
+      case 'recommended':
+        return (
+          <circle
+            cx={indicatorX}
+            cy={indicatorY}
+            r={4}
+            fill="#f59e0b"
+            stroke="white"
+            strokeWidth={1}
+          >
+            <title>推荐探索</title>
+          </circle>
+        );
+      case 'potential':
+        return (
+          <circle
+            cx={indicatorX}
+            cy={indicatorY}
+            r={3}
+            fill="transparent"
+            stroke="#d1d5db"
+            strokeWidth={1}
+          >
+            <title>潜在节点</title>
+          </circle>
+        );
+      default:
+        // 兼容原有的探索状态指示器
+        return node.metadata.explored ? (
+          <circle
+            cx={indicatorX}
+            cy={indicatorY}
+            r={4}
+            fill="#10b981"
+            stroke="white"
+            strokeWidth={1}
+          />
+        ) : null;
+    }
+  }, []);
 
   // 计算SVG视图盒
   const getViewBox = useCallback(() => {
