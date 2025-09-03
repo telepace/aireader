@@ -325,6 +325,8 @@ export const generateChat = async (
         throw new Error(`Rate limit exceeded: ${message}`);
       } else if (status === 401) {
         throw new Error(`Authentication failed: ${message}`);
+      } else if (status === 402) {
+        throw new Error('API账户余额不足，请前往 https://openrouter.ai/credits 充值');
       } else if (status === 404) {
         throw new Error(`Model not found: ${message}`);
       } else {
@@ -391,8 +393,25 @@ export const generateChatStream = async (
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+      let friendlyMessage = '';
+      
+      if (response.status === 401) {
+        friendlyMessage = 'API密钥无效或过期，请检查配置';
+      } else if (response.status === 402) {
+        friendlyMessage = 'API账户余额不足，请前往 https://openrouter.ai/credits 充值';
+      } else if (response.status === 429) {
+        friendlyMessage = '请求过于频繁，请稍后再试';
+      } else if (response.status === 500) {
+        friendlyMessage = 'AI服务暂时不可用，请稍后重试';
+      } else if (response.status >= 500) {
+        friendlyMessage = 'AI服务器错误，请稍后重试';
+      } else if (!navigator.onLine) {
+        friendlyMessage = '网络连接断开，请检查网络';
+      } else {
+        friendlyMessage = `连接失败 (${response.status})`;
+      }
+      
+      throw new Error(friendlyMessage);
     }
 
     if (!response.body) throw new Error('Response body is null');

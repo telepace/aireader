@@ -6,7 +6,7 @@
 
 // 基础类型定义
 export type Language = 'zh' | 'en';
-export type PromptContext = 'nextStepChat';
+export type PromptContext = 'smartRecommendation' | 'knowledgeGraph' | 'contentGeneration';
 export type StepType = 'deepen' | 'next';
 
 // 变量类型定义

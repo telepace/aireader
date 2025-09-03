@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 export type NotificationType = 'success' | 'error' | 'info' | 'warning';
@@ -32,9 +32,14 @@ const DEFAULT_CONFIG: NotificationConfig = {
 };
 
 export const useNotification = (config: Partial<NotificationConfig> = {}) => {
-  const finalConfig = { ...DEFAULT_CONFIG, ...config };
+  const finalConfig = useMemo(() => ({ ...DEFAULT_CONFIG, ...config }), [config]);
   
   const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  // 移除通知
+  const removeNotification = useCallback((id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
 
   // 添加通知
   const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp'>) => {
@@ -60,12 +65,7 @@ export const useNotification = (config: Partial<NotificationConfig> = {}) => {
     }
 
     return id;
-  }, [finalConfig]);
-
-  // 移除通知
-  const removeNotification = useCallback((id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  }, []);
+  }, [finalConfig, removeNotification]);
 
   // 清除所有通知
   const clearAll = useCallback(() => {

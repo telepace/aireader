@@ -22,6 +22,7 @@
     "axios": "^1.8.4",
     "dompurify": "^3.2.6",
     "langfuse": "^3.38.4",
+    "lodash": "^4.17.21",
     "lucide-react": "^0.525.0",
     "prismjs": "^1.30.0",
     "react": "^18.2.0",
@@ -29,7 +30,7 @@
     "react-markdown": "^10.1.0",
     "react-query": "^3.39.3",
     "react-resizable-panels": "^2.1.7",
-    "react-scripts": "^5.0.1",
+    "react-scripts": "5.0.1",
     "react-syntax-highlighter": "^15.6.3",
     "refractor": "^5.0.0",
     "rehype-raw": "^7.0.0",
@@ -41,13 +42,13 @@
     "zustand": "^5.0.8"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build && npm run inject-runtime-config",
-    "build:prod": "GENERATE_SOURCEMAP=false react-scripts build && npm run inject-runtime-config",
-    "build:optimized": "CI=false GENERATE_SOURCEMAP=false INLINE_RUNTIME_CHUNK=false IMAGE_INLINE_SIZE_LIMIT=0 react-scripts build && npm run inject-runtime-config",
-    "build:railway": "CI=false GENERATE_SOURCEMAP=false react-scripts build && npm run inject-runtime-config",
+    "start": "craco start",
+    "build": "craco build && npm run inject-runtime-config",
+    "build:prod": "GENERATE_SOURCEMAP=false craco build && npm run inject-runtime-config",
+    "build:optimized": "CI=false GENERATE_SOURCEMAP=false INLINE_RUNTIME_CHUNK=false IMAGE_INLINE_SIZE_LIMIT=0 craco build && npm run inject-runtime-config",
+    "build:railway": "CI=false GENERATE_SOURCEMAP=false craco build && npm run inject-runtime-config",
     "inject-runtime-config": "node scripts/inject-runtime-config.js",
-    "test": "react-scripts test",
+    "test": "craco test",
     "test:ci": "react-scripts test --watchAll=false --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
@@ -91,11 +92,13 @@
     "nth-check": ">=2.0.1",
     "on-headers": ">=1.1.0",
     "postcss": ">=8.4.31",
-    "webpack-dev-server": ">=5.2.1"
+    "webpack-dev-server": "4.15.1"
   },
   "devDependencies": {
+    "@craco/craco": "^7.1.0",
     "@playwright/test": "^1.55.0",
     "@types/lodash": "^4.17.20",
+    "raw-loader": "^4.0.2",
     "serve": "^14.2.4"
   }
 }

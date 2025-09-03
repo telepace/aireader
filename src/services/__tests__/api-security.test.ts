@@ -128,7 +128,7 @@ describe('API Security Tests', () => {
     global.fetch = mockFetch;
 
     // The getApiKey function should not log warnings when key is valid
-    const apiModule = require('../api');
+    require('../api');
     
     // This should not trigger any console warnings
     // Note: We can't easily test the private getApiKey function directly,

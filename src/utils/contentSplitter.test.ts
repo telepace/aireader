@@ -1,6 +1,95 @@
-import { splitContentAndOptions, NextStepOption } from './contentSplitter';
+import { splitContentAndOptions } from './contentSplitter';
+
+// Helper function to create expected options with quality analysis
+const expectedOption = (type: 'deepen' | 'next', content: string, describe: string) => ({
+  type,
+  content,
+  describe,
+  qualityScore: expect.any(Number),
+  qualityIssues: expect.any(Array)
+});
 
 describe('splitContentAndOptions - TDD Implementation', () => {
+  
+  describe('LLM Format Compatibility and Spelling Error Fixes', () => {
+    test('should handle "deeping" spelling error and nested JSON format', () => {
+      const input = `Content analysis complete.
+
+\`\`\`json
+{
+  "recommendations": [
+    {
+      "type": "deeping",
+      "title": "第一部分: 核心概念解析",
+      "description": "深入解析核心概念的精髓和要点。"
+    },
+    {
+      "type": "deeping", 
+      "title": "第二部分: 实践应用指南",
+      "description": "将理论转化为实际可操作的方法。"
+    },
+    {
+      "type": "next",
+      "title": "《相关书籍推荐》",
+      "description": "进一步深入学习的优质资源。"
+    }
+  ]
+}
+\`\`\``;
+
+      const result = splitContentAndOptions(input);
+      
+      expect(result.options).toHaveLength(3);
+      expect(result.options[0].type).toBe('deepen'); // Fixed from 'deeping'
+      expect(result.options[1].type).toBe('deepen'); // Fixed from 'deeping'
+      expect(result.options[2].type).toBe('next');
+      expect(result.options[0]).toEqual(expectedOption('deepen', '第一部分: 核心概念解析', '深入解析核心概念的精髓和要点。'));
+    });
+
+    test('should handle multiple spelling variations in JSONL format', () => {
+      const input = `Main content here.
+
+{"type": "deeping", "content": "Option 1", "describe": "Description 1"}
+{"type": "deepening", "content": "Option 2", "describe": "Description 2"}  
+{"type": "nextstep", "content": "Option 3", "describe": "Description 3"}
+{"type": "next", "content": "Option 4", "describe": "Description 4"}`;
+
+      const result = splitContentAndOptions(input);
+      
+      expect(result.options).toHaveLength(4);
+      expect(result.options[0].type).toBe('deepen'); // Fixed from 'deeping'
+      expect(result.options[1].type).toBe('deepen'); // Fixed from 'deepening'
+      expect(result.options[2].type).toBe('next');   // Fixed from 'nextstep'
+      expect(result.options[3].type).toBe('next');
+    });
+
+    test('should handle title/description field mapping', () => {
+      const input = `\`\`\`json
+{
+  "recommendations": [
+    {
+      "type": "deepen",
+      "title": "Using title field",
+      "description": "Using description field"
+    },
+    {
+      "type": "next", 
+      "content": "Using content field",
+      "describe": "Using describe field"
+    }
+  ]
+}
+\`\`\``;
+
+      const result = splitContentAndOptions(input);
+      
+      expect(result.options).toHaveLength(2);
+      expect(result.options[0].content).toBe('Using title field');    // Mapped from title
+      expect(result.options[0].describe).toBe('Using description field'); // Mapped from description
+      expect(result.options[1].content).toBe('Using content field');
+      expect(result.options[1].describe).toBe('Using describe field');
+    });
+  });
   describe('Basic functionality', () => {
     test('should return empty result for empty input', () => {
       const result = splitContentAndOptions('');
@@ -32,16 +121,8 @@ Just regular paragraphs.`;
       
       expect(result.main).toBe('');
       expect(result.options).toHaveLength(2);
-      expect(result.options[0]).toEqual({
-        type: 'deepen',
-        content: 'Option 1',
-        describe: 'Description 1'
-      });
-      expect(result.options[1]).toEqual({
-        type: 'next',
-        content: 'Option 2',
-        describe: 'Description 2'
-      });
+      expect(result.options[0]).toEqual(expectedOption('deepen', 'Option 1', 'Description 1'));
+      expect(result.options[1]).toEqual(expectedOption('next', 'Option 2', 'Description 2'));
     });
   });
 
@@ -151,11 +232,7 @@ More content.`;
       const result = splitContentAndOptions(input);
       
       expect(result.options).toHaveLength(1);
-      expect(result.options[0]).toEqual({
-        type: 'deepen',
-        content: 'Valid',
-        describe: 'Valid'
-      });
+      expect(result.options[0]).toEqual(expectedOption('deepen', 'Valid', 'Valid'));
     });
 
     test('should limit options to maximum of 6', () => {

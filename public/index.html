@@ -30,6 +30,64 @@
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
+    
+    <!-- Comprehensive early error suppression -->
+    <script>
+      // Comprehensive ResizeObserver error suppression - must run before React loads
+      (function() {
+        var suppressedCount = 0;
+        var maxLogCount = 3;
+
+        function isResizeObserverError(message) {
+          if (!message || typeof message !== 'string') return false;
+          return message.includes('ResizeObserver loop completed with undelivered notifications') ||
+                 message.includes('ResizeObserver loop limit exceeded') ||
+                 message.includes('ResizeObserver loop') ||
+                 message.includes('ResizeObserver');
+        }
+
+        function logSuppression() {
+          suppressedCount++;
+          if (suppressedCount <= maxLogCount) {
+            console.log('🛡️ HTML: Suppressed ResizeObserver error #' + suppressedCount);
+          }
+        }
+
+        // Prevent React error overlay from showing ResizeObserver errors
+        if (process && process.env && process.env.NODE_ENV === 'development') {
+          window.addEventListener('error', function(event) {
+            if (isResizeObserverError(event.message)) {
+              logSuppression();
+              event.preventDefault();
+              event.stopImmediatePropagation();
+            }
+          }, { capture: true, passive: false });
+        }
+
+        // Override window.onerror with enhanced handling
+        window.onerror = function(message, source, lineno, colno, error) {
+          if (isResizeObserverError(message)) {
+            logSuppression();
+            return true; // Suppress completely
+          }
+          return false; // Let other errors through
+        };
+
+        // Override window.onunhandledrejection with enhanced handling
+        window.onunhandledrejection = function(event) {
+          var errorMessage = event.reason && event.reason.message || 
+                            event.reason && event.reason.toString() || '';
+          if (isResizeObserverError(errorMessage)) {
+            logSuppression();
+            event.preventDefault();
+            return;
+          }
+        };
+
+        console.log('🛡️ Comprehensive early ResizeObserver suppression initialized');
+      })();
+    </script>
+    
     <div id="root"></div>
     <!--
       This HTML file is a template.

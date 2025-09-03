@@ -32,7 +32,7 @@ const defaultConfig: PerformanceConfig = {
   maxMessagesInMemory: 100,
   maxOptionsPerType: 20,
   cleanupInterval: 5 * 60 * 1000, // 5 minutes
-  enablePerformanceMonitoring: true,
+  enablePerformanceMonitoring: false,
   debounceDelay: 300
 };
 
@@ -49,7 +49,6 @@ export function usePerformanceOptimization(config: Partial<PerformanceConfig> = 
     lastCleanupTime: Date.now()
   });
 
-  const cleanupTimeoutRef = useRef<NodeJS.Timeout>();
   const contextManagerRef = useRef<ContextManager>();
 
   // 初始化上下文管理器
@@ -67,9 +66,6 @@ export function usePerformanceOptimization(config: Partial<PerformanceConfig> = 
     }
 
     return () => {
-      if (cleanupTimeoutRef.current) {
-        clearTimeout(cleanupTimeoutRef.current);
-      }
       MemoryOptimizer.stopAutoCleanup();
     };
   }, [finalConfig.enableMemoryOptimization, finalConfig.cleanupInterval]);

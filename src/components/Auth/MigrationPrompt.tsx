@@ -31,8 +31,7 @@ const MigrationPrompt: React.FC = () => {
     isMigrating,
     migrationError,
     executeMigration,
-    getMigrationStats,
-    clearLocalData
+    getMigrationStats
   } = useDataMigration()
 
   const [showPrompt, setShowPrompt] = useState(false)
