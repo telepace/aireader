@@ -23,11 +23,7 @@ import './App.css';
 /**
  * Main application component that manages the user interface and state.
  *
- * The App component initializes the authentication system and user session,
- * sets up event listeners for flushing user session traces on page unload,
- * and renders the main layout including the header and chat area. It utilizes
- * various hooks to manage UI state and model selection, ensuring a responsive
- * user experience while maintaining application state across renders.
+ * The App component initializes the authentication system and user session, sets up event listeners for flushing user session traces on page unload, and renders the main layout including the header and chat area. It utilizes various hooks to manage UI state and model selection, ensuring a responsive user experience while maintaining application state across renders. Additionally, it implements error boundaries for error handling in different sections of the application.
  */
 const App: React.FC = () => {
   const [nextStepClearSignal, setNextStepClearSignal] = useState<number>(0);
