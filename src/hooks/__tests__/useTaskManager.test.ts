@@ -55,9 +55,8 @@ describe('useTaskManager', () => {
 
   it('should respect maxConcurrent limit', () => {
     const { result } = renderHook(() => useTaskManager({ maxConcurrent: 2 }));
-
-    // Don't set a task executor, so tasks stay pending
-    // This avoids complex async behavior
+    // Setup a mock executor that never resolves
+    const mockExecutor = jest.fn(() => new Promise<void>(() => {}));
     
     // Enqueue 3 tasks
     act(() => {
