@@ -24,6 +24,14 @@ import {
 import { useDataMigration } from '../../hooks/useDataMigration'
 import { useIsAuthenticated } from '../../stores/authStore'
 
+/**
+ * Renders a migration prompt dialog for users to sync their local data to the cloud.
+ *
+ * The component checks if the user is authenticated and has pending migrations. If so, it displays a prompt to initiate the migration process.
+ * It handles migration execution, displays success or error messages based on the migration result, and allows users to skip or dismiss the prompt.
+ *
+ * @returns A React element representing the migration prompt dialog, or null if the prompt should not be shown.
+ */
 const MigrationPrompt: React.FC = () => {
   const isAuthenticated = useIsAuthenticated()
   const {
