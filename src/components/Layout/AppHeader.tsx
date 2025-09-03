@@ -2,13 +2,9 @@ import React from 'react';
 import {
   Box,
   Typography,
-  FormControl,
-  Select,
-  MenuItem,
   SelectChangeEvent,
   Button
 } from '@mui/material';
-import { UserStatus } from '../Auth';
 
 interface AppHeaderProps {
   selectedModel: string;
@@ -20,6 +16,8 @@ interface AppHeaderProps {
   onClearChat: () => void;
   availableModels: string[];
   onToggleConversationMenu?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  showConcurrentTest?: boolean;
+  onToggleConcurrentTest?: () => void;
 }
 
 /**
@@ -45,7 +43,9 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   onToggleRightSidebar,
   onClearChat,
   availableModels,
-  onToggleConversationMenu
+  onToggleConversationMenu,
+  showConcurrentTest,
+  onToggleConcurrentTest
 }) => {
   return (
     <Box
@@ -85,6 +85,23 @@ const AppHeader: React.FC<AppHeaderProps> = ({
               sx={{ borderColor: 'divider', color: 'text.primary', '&:hover': { borderColor: 'divider' } }}
             >
               会话
+            </Button>
+          )}
+          {onToggleConcurrentTest && (
+            <Button 
+              variant="outlined" 
+              size="small" 
+              onClick={onToggleConcurrentTest}
+              sx={{ 
+                borderColor: 'divider', 
+                color: showConcurrentTest ? 'primary.main' : 'text.secondary', 
+                '&:hover': { borderColor: 'divider' },
+                fontSize: '0.75rem',
+                px: 1.5,
+                opacity: 0.7
+              }}
+            >
+              并发测试
             </Button>
           )}
           {/* 模型选择暂时隐藏 */}

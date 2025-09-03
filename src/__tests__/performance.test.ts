@@ -187,10 +187,9 @@ describe('Performance Optimization Tests', () => {
 
       const stats = result.current.getContextStats(messages);
       
-      if (stats) {
-        expect(stats.totalMessages).toBe(2);
-        expect(stats.totalTokens).toBeGreaterThan(0);
-      }
+      expect(stats).toBeTruthy();
+      expect(stats?.totalMessages).toBe(2);
+      expect(stats?.totalTokens).toBeGreaterThan(0);
     });
   });
 

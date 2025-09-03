@@ -1,24 +1,22 @@
-import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import { Box, Button, CircularProgress, Paper, TextField, Typography, Tabs, Tab, keyframes, Menu, MenuItem, Collapse, Fade, Chip, Tooltip } from '@mui/material';
-import { Memory as MemoryIcon, Speed as SpeedIcon } from '@mui/icons-material';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Box, Button, CircularProgress, Paper, TextField, Typography, Tabs, Tab, keyframes, Menu, MenuItem, Collapse } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatMessage, ChatConversation, OptionItem, UserSession } from '../types/types';
-import { generateChatStream, logUserEvent, createUserSession } from '../services/api-with-tracing';
+import { generateChatStream, generateChat, logUserEvent, createUserSession } from '../services/api-with-tracing';
 import { splitContentAndOptions, NextStepOption } from '../utils/contentSplitter';
-import { generateSystemPrompt } from '../services/promptTemplateV2';
+import { generateSystemPromptAsync } from '../services/promptTemplateV2';
 import { useConversation } from '../hooks/useConversation';
-import { useTaskManager, Task } from '../hooks/useTaskManager';
-import { useCardState } from '../hooks/useCardState';
-import { useNotification } from '../hooks/useNotification';
-import { usePerformanceOptimization, useRenderOptimization } from '../hooks/usePerformanceOptimization';
-import { OptimizedMessageList } from './OptimizedChatMessage';
-import EnhancedOptionCard from './EnhancedOptionCard';
-import TaskQueuePanel from './TaskQueuePanel';
-import NotificationContainer from './NotificationContainer';
+import SimpleOptionCard from './SimpleOptionCard';
+import { useMindMap, MindMapNode } from '../hooks/useMindMap';
+import { useConceptMap } from '../hooks/useConceptMap';
+import { ConceptRecommendationContext, ConceptTree } from '../types/concept';
+import ConceptMapPanel from './ConceptMap/ConceptMapPanel';
+import ConceptTreeRenderer from './ConceptMap/ConceptTreeRenderer';
+import { logDiagnosticInfo } from '../utils/apiKeyDiagnostic';
 
 // Markdown renderers (aligned with existing style)
 
@@ -33,17 +31,40 @@ interface NextStepChatProps {
 
 // OptionItem now comes from types.ts
 
-// 使用新的模板系统生成 SYSTEM_PROMPT
+// 使用新的模板系统生成不同阶段的 SYSTEM_PROMPT
 /**
- * Generates a system prompt for the next step in a chat.
+ * Generates a system prompt for content generation (first stage).
  */
-const getSystemPrompt = () => {
+const getContentGenerationPrompt = async () => {
   try {
-    return generateSystemPrompt('nextStepChat', 'zh');
+    return await generateSystemPromptAsync('smartRecommendation', 'zh', { mode: 'content' });
   } catch (error) {
-    console.error('Failed to generate system prompt:', error);
-    // 降级到原始硬编码版本 - 简化模板避免 syntax issues
-    return '我的目标是「精读」当前讨论的内容（文章或书籍），并不断切换对象。（当我发送一大段长文字时就是复制的长文章）\n\n每次交互，请严格执行以下3件事：\n**1. 聚焦与展开** 先讲透内容的一个核心关键；全面并深度地展开讲全文内容，目标是看了你的内容，我就吸收了一本书绝大多数的精华内容，感觉只看你的内容就够了，不用再亲自看这本书了。全文能讲的越具体详实越好，但不要废话。\n\n**2. 原文深挖 (type: deepen)** 推荐3个最有价值的原文精读选项。按顺序推荐原文的某个具体部分，深度展开（按情节划分、按逻辑划分，第一、第二、第n部分）按顺序推荐第一、二..第n部分。（偏向客观的呈现内容，而不是过于主观的讨论）\n - 选项一定要围绕「原文」，原文指的是最近在讨论的书、文章、主题。比如我们当前在讨论的是某一本书，则精读选项一定也是围绕该书原文的，而不是脱离原文的主观讨论。\n - 注意，对象是整个原文，而不是我们当前讨论的原文的子话题（不要围绕子话题出所有精读选项，应该围绕原文出选项）。\n- 当讨论新书时，即精读对象变化了，不要老对比提及先前的精读对象。比如最初在精读一篇文章，后来在精读一本新书，则不要老对比之前文章的内容和新书的内容。只专注于当前的精读对象。\n- 选项标题的开头应该是"第一部分:...","第n部分:...", "重点:..."\n\n\n**3. 主题探索 (type: next)** 首次推荐6本最值得阅读的相关书籍，之后每次推荐3本。挑选对我有价值、最不可错过的探索对象，要围绕当前主题，以这些维度做优先级的排序。选项的描述要足够吸引我，能勾起我的兴趣。\n\n选项描述\n- 每个选项的描述要**讲透该选项的精髓sharp之处**，hooked读者。\n\n**格式要求** \n第2和第3步的推荐项，必须严格遵循 JSON Lines (JSONL) 格式，每行一个JSON对象，不要在代码块前后添加任何说明。\n- 第2步推荐，type 字段的值必须是 deepen\n- 第3步推荐，type 字段的值必须是 next。\n- 第一次交互推荐6本书、之后每次推荐3本书。\n\n风格\n输出以 jsonl 的方式输出 ，并且避免因为 JSONL 格式的输出要求导致内容过于严肃，要求清楚易懂\n\n\n**JSONL 输出结构:**\n\n聚焦与展开的文本内容\n\n---\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "deepen", "content": "深挖原文的选项标题", "describe": "对该选项的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n{"type": "next", "content": "推荐书籍的标题", "describe": "对这本书的详细、吸引人的描述。"}\n\n\n**约束条件**：不要向用户解释此格式。\n输出结构：只需输出聚焦与展开对应的文本。之后一定要**留出空白行符号**，再输出所有JSONL。';
+    console.error('Failed to generate content generation prompt:', error);
+    // 简单的降级版本
+    return '我的目标是「精读」当前讨论的内容（文章或书籍），并不断切换对象。\n\n你的任务是对当前讨论的内容进行**聚焦与展开**：\n\n先讲透内容的一个核心关键；全面并深度地展开讲全文内容，目标是看了你的内容，我就吸收了一本书绝大多数的精华内容。';
+  }
+};
+
+/**
+ * Generates a system prompt for next step JSONL generation (second stage).
+ */
+const getNextStepJsonlPrompt = async (conceptContext?: ConceptRecommendationContext) => {
+  try {
+    return await generateSystemPromptAsync('smartRecommendation', 'zh', { 
+      mode: 'recommendations',
+      concept_context: conceptContext 
+    });
+  } catch (error) {
+    console.error('Failed to generate next step JSONL prompt:', error);
+    // 简单的降级版本
+    let fallbackPrompt = '你是一个智能推荐助手，专门负责根据内容分析结果生成精准的推荐选项。\n\n生成两类推荐选项：\n1. 原文深挖 (type: deepen) - 推荐3个最有价值的原文精读选项\n2. 主题探索 (type: next) - 推荐3本最值得阅读的相关书籍\n\n输出格式：JSONL格式，每行一个JSON对象，使用"content"和"describe"字段。';
+    
+    // 如果有概念上下文，添加去重提示
+    if (conceptContext && conceptContext.avoidanceList.length > 0) {
+      fallbackPrompt += `\n\n⚠️ 避免推荐以下已掌握的概念：${conceptContext.avoidanceList.join(', ')}\n请确保推荐内容的新颖性和多样性。`;
+    }
+    
+    return fallbackPrompt;
   }
 };
 
@@ -72,21 +93,7 @@ const fadeInAnimation = keyframes`
   }
 `;
 
-const MAX_CONTEXT_CHARS = 80000;
 
-function trimContextForApi(all: ChatMessage[]): ChatMessage[] {
-  // keep from the end until budget met, preserving order
-  let budget = MAX_CONTEXT_CHARS;
-  const kept: ChatMessage[] = [];
-  for (let i = all.length - 1; i >= 0; i--) {
-    const m = all[i];
-    const len = (m.content || '').length + 20; // rough overhead
-    if (budget - len < 0) break;
-    kept.push(m);
-    budget -= len;
-  }
-  return kept.reverse();
-}
 
 /**
  * The NextStepChat component manages a chat interface for user interactions with a selected model.
@@ -115,21 +122,6 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     removeConversation
   } = useConversation({ selectedModel });
   
-  // 新增：任务管理系统
-  const taskManager = useTaskManager({ 
-    maxConcurrent: 3,
-    retryLimit: 2 
-  });
-  
-  const cardStateManager = useCardState();
-  
-  // 通知系统
-  const notification = useNotification({
-    maxVisible: 3,
-    defaultDuration: 4000,
-    position: 'bottom-right'
-  });
-  
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'deepen' | 'next'>('deepen');
@@ -137,26 +129,24 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
   const [reasoningText, setReasoningText] = useState('');
   const reasoningRef = useRef<HTMLDivElement>(null);
   const reasoningAutoFollowRef = useRef<boolean>(true);
-  const [, setStreamingAssistantId] = useState<string | null>(null); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [, setStreamingAssistantIds] = useState<Set<string>>(new Set());
   const [userSession, setUserSession] = useState<UserSession | null>(null);
   const [exitingIds, setExitingIds] = useState<Set<string>>(new Set());
-  
-  // 任务队列面板状态管理
-  const [queuePanelVisible, setQueuePanelVisible] = useState(false);
-  const [queueStats, setQueueStats] = useState({ 
-    total: 0, 
-    pending: 0, 
-    processing: 0, 
-    completed: 0, 
-    failed: 0, 
-    cancelled: 0, 
-    paused: 0 
-  });
+  const [processingOptions, setProcessingOptions] = useState<Set<string>>(new Set());
 
-  // 性能优化
-  const performanceOptimizer = usePerformanceOptimization();
-  const { renderCount } = useRenderOptimization('NextStepChat');
+  // 思维导图相关状态 (保留状态变量以维持功能)
   
+  // 概念管理
+  const conceptMap = useConceptMap(conversationId);
+  
+  
+  const {
+    mindMapState,
+    initializeMindMap,
+    addNode,
+    navigateToNode
+  } = useMindMap(conversationId);
+
   // 历史推荐展开状态管理
   const [showHistoricalOptions, setShowHistoricalOptions] = useState<{[key: string]: boolean}>({
     deepen: false,
@@ -173,7 +163,13 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     if (reasoningAutoFollowRef.current || atBottom) {
       // 等下一帧内容布局完成后再滚动，避免闪动
       requestAnimationFrame(() => {
-        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        // 在测试环境中 JSDOM 可能不支持 scrollTo 方法
+        if (el.scrollTo && typeof el.scrollTo === 'function') {
+          el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        } else if (el.scrollTop !== undefined) {
+          // 降级处理：直接设置 scrollTop
+          el.scrollTop = el.scrollHeight;
+        }
       });
     }
   }, [reasoningText, reasoningOpen]);
@@ -188,8 +184,197 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
   
   // 跟踪是否是第一次点击选项的状态
   const [isFirstOptionClick, setIsFirstOptionClick] = useState(true);
+  
+  // 概念树状态
+  const [conceptTree, setConceptTree] = useState<ConceptTree | null>(null);
+  const [conceptTreeLoading, setConceptTreeLoading] = useState(false);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * 使用 LLM 更新思维导图（带监控追踪）
+   */
+  const updateMindMapWithLLM = async (
+    content: string, 
+    model: string, 
+    conversationId: string, 
+    userId?: string
+  ) => {
+    console.log('🚀 开始思维导图LLM更新流程');
+    setConceptTreeLoading(true);
+    
+    try {
+      const currentNodes: MindMapNode[] = Array.from(mindMapState.nodes.values());
+      const currentFocusNode = mindMapState.nodes.get(mindMapState.currentNodeId || '');
+      
+      console.log('📝 当前节点数量:', currentNodes.length);
+      console.log('🎯 当前焦点节点:', currentFocusNode?.title || '无');
+      
+      // 构建简化的 previous_map 结构
+      const rootNode = currentNodes.find(node => node.type === 'root');
+      const previous_map = currentNodes.length > 0 ? {
+        id: rootNode?.id || 'root',
+        name: rootNode?.title || conversations.find(c => c.id === conversationId)?.title || 'root',
+        children: currentNodes
+          .filter(node => node.type !== 'root')
+          .map(node => ({
+            id: node.id,
+            name: node.title,
+            children: []
+          }))
+      } : null;
+      
+      // 获取书名
+      const book_title = conversations.find(c => c.id === conversationId)?.title || '';
+      
+      console.log('⏳ 生成思维导图prompt...');
+      const mindMapPrompt = await generateSystemPromptAsync('knowledgeGraph', 'zh');
+      
+      if (!mindMapPrompt) {
+        throw new Error('思维导图prompt生成失败');
+      }
+      
+      console.log('📄 思维导图prompt生成成功，长度:', mindMapPrompt.length);
+      
+      // 构建结构化的用户消息
+      const structuredInput = JSON.stringify({
+        previous_map,
+        book_title,
+        latest_reply: content
+      }, null, 2);
+      
+      const mindMapMessages = [
+        { id: `system-${Date.now()}`, role: 'system' as const, content: mindMapPrompt, timestamp: Date.now() },
+        { id: `user-${Date.now()}`, role: 'user' as const, content: structuredInput, timestamp: Date.now() }
+      ];
+      
+      console.log('🤖 调用带监控的 LLM API 进行思维导图更新...');
+      
+      // 使用带 tracing 的 API，这样会在 LLM 监控中显示
+      // 概念图谱更新使用 Flash 模型以提升性能
+      const response = await generateChat(
+        mindMapMessages, 
+        'google/gemini-2.5-flash',
+        conversationId,
+        userId
+      );
+      
+      console.log('🧠 思维导图 LLM 响应长度:', response?.length || 0);
+      
+      if (!response) {
+        console.warn('⚠️ 思维导图 LLM 响应为空，跳过更新');
+        return;
+      }
+      
+      // 尝试解析JSON响应并更新思维导图
+      try {
+        const cleanResponse = response.replace(/```json\n?|\n?```/g, '').trim();
+        const mindMapUpdate = JSON.parse(cleanResponse);
+        console.log('📊 解析的思维导图更新:', mindMapUpdate);
+        
+        // 检查是否是预期的树状结构
+        if (mindMapUpdate && typeof mindMapUpdate === 'object' && 
+            mindMapUpdate.id && mindMapUpdate.name && Array.isArray(mindMapUpdate.children)) {
+          
+          // 计算节点总数的递归函数
+          const countNodes = (node: any): number => {
+            let count = 1;
+            if (node.children && Array.isArray(node.children)) {
+              count += node.children.reduce((sum: number, child: any) => sum + countNodes(child), 0);
+            }
+            return count;
+          };
+          
+          // 更新概念树状态
+          const newConceptTree: ConceptTree = {
+            id: mindMapUpdate.id,
+            name: mindMapUpdate.name,
+            children: mindMapUpdate.children,
+            metadata: {
+              conversationId,
+              totalNodes: countNodes(mindMapUpdate),
+              createdAt: Date.now(),
+              updatedAt: Date.now()
+            }
+          };
+          
+          setConceptTree(newConceptTree);
+          console.log('🌳 概念树已更新:', newConceptTree);
+          
+          // 记录成功事件
+          if (userSession) {
+            logUserEvent('concept-tree-updated', {
+              sessionId: userSession.sessionId,
+              conversationId,
+              model: 'google/gemini-2.5-flash',
+              success: true,
+              totalNodes: newConceptTree.metadata?.totalNodes || 0,
+              rootName: newConceptTree.name
+            }, userId);
+          }
+        } else {
+          console.warn('⚠️ 响应格式不符合概念树结构:', mindMapUpdate);
+        }
+        
+        // 保持向后兼容 - 记录传统的mind-map事件
+        if (userSession) {
+          logUserEvent('mind-map-updated', {
+            sessionId: userSession.sessionId,
+            conversationId,
+            model: 'google/gemini-2.5-flash',
+            success: true,
+            nodeCount: mindMapUpdate.children?.length || 0,
+            bookTitle: book_title
+          }, userId);
+        }
+        
+      } catch (parseError) {
+        console.warn('📝 思维导图更新解析失败:', parseError);
+        
+        // 记录解析失败事件
+        if (userSession) {
+          logUserEvent('mind-map-parse-failed', {
+            sessionId: userSession.sessionId,
+            conversationId,
+            model: 'google/gemini-2.5-flash',
+            error: parseError instanceof Error ? parseError.message : String(parseError),
+            response: response.substring(0, 500) // 截断响应避免过长
+          }, userId);
+        }
+      }
+      
+    } catch (error) {
+      console.error('💭 思维导图更新异常:', error);
+      
+      // 记录失败事件
+      if (userSession) {
+        logUserEvent('mind-map-failed', {
+          sessionId: userSession.sessionId,
+          conversationId,
+          model: 'google/gemini-2.5-flash',
+          error: error instanceof Error ? error.message : String(error)
+        }, userId);
+      }
+      
+      throw error; // 重新抛出，让调用者处理
+    } finally {
+      setConceptTreeLoading(false);
+    }
+  };
+
+  // 初始化思维导图（当第一条用户消息发送时）
+  useEffect(() => {
+    if (messages.length > 0 && mindMapState.stats.totalNodes === 0) {
+      // 找到第一条用户消息作为根主题
+      const firstUserMessage = messages.find(m => m.role === 'user');
+      if (firstUserMessage) {
+        const rootTitle = firstUserMessage.content.length > 50 
+          ? firstUserMessage.content.slice(0, 50) + '...'
+          : firstUserMessage.content;
+        initializeMindMap(rootTitle, '探索的起始话题');
+      }
+    }
+  }, [messages, mindMapState.stats.totalNodes, initializeMindMap]);
 
   useEffect(() => {
     if (typeof clearSignal === 'number') { 
@@ -218,181 +403,14 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
     }
   }, [conversationId, selectedModel]);
 
-  // 设置任务执行器
-  useEffect(() => {
-    taskManager.setTaskExecutor(async (task: Task): Promise<ChatMessage> => {
-      const userMessage: ChatMessage = { 
-        id: uuidv4(), 
-        role: 'user', 
-        content: task.content, 
-        timestamp: Date.now() 
-      };
-
-      const currentMessages = [...messages, userMessage];
-      const trimmed = trimContextForApi(currentMessages);
-      const withSystem = ensureSystemPrompt(trimmed);
-
-      let assembled = '';
-      const assistantId = uuidv4();
-
-      return new Promise((resolve, reject) => {
-        generateChatStream(
-          withSystem,
-          selectedModel,
-          ({ content, reasoning }: { content?: string; reasoning?: string }) => {
-            if (content) {
-              assembled += content;
-              // 更新任务进度（简单的基于内容长度的估算）
-              const progress = Math.min(95, (assembled.length / 500) * 100);
-              taskManager.updateTaskProgress(task.id, progress);
-            }
-            if (reasoning) {
-              // 可以在这里处理推理内容，但对于后台任务可能不需要显示
-            }
-          },
-          (err: Error) => {
-            reject(err);
-          },
-          () => {
-            try {
-              const { main, options: incoming } = splitContentAndOptions(assembled);
-              
-              const result: ChatMessage = {
-                id: assistantId,
-                role: 'assistant',
-                content: main,
-                timestamp: Date.now()
-              };
-
-              // 如果有新的选项，也需要合并到主选项列表中
-              if (incoming.length > 0) {
-                setTimeout(() => {
-                  // 直接调用选项合并逻辑
-                  setOptions((prevOptions: OptionItem[]) => {
-                    const now = Date.now();
-                    const map = new Map(prevOptions.map((o: OptionItem) => [o.id, o] as const));
-                    for (const o of incoming) {
-                      const id = `${o.type}:${o.content.trim().toLowerCase()}`;
-                      const ex = map.get(id);
-                      if (ex) {
-                        ex.describe = o.describe;
-                        ex.lastSeenAt = now;
-                        ex.lastMessageId = assistantId;
-                      } else {
-                        map.set(id, { id, type: o.type, content: o.content, describe: o.describe, firstSeenAt: now, lastSeenAt: now, lastMessageId: assistantId, clickCount: 0 });
-                      }
-                    }
-                    return Array.from(map.values()).sort((a: OptionItem, b: OptionItem) => b.firstSeenAt - a.firstSeenAt);
-                  });
-                }, 100);
-              }
-
-              taskManager.updateTaskProgress(task.id, 100);
-              resolve(result);
-            } catch (error) {
-              reject(error);
-            }
-          },
-          conversationId,
-          userSession?.userId
-        );
-      });
-    });
-  }, [taskManager, messages, selectedModel, conversationId, userSession]);
-
-  // 监听任务完成事件
-  useEffect(() => {
-    const unsubscribeComplete = taskManager.addEventListener('taskCompleted', (task: Task) => {
-      if (task.result) {
-        // 添加用户消息（如果还没有的话）
-        setMessages(prev => {
-          const hasUserMessage = prev.some(m => 
-            m.role === 'user' && 
-            m.content === task.content &&
-            Math.abs(m.timestamp - task.createdAt) < 1000
-          );
-          
-          if (!hasUserMessage) {
-            const userMessage: ChatMessage = {
-              id: uuidv4(),
-              role: 'user',
-              content: task.content,
-              timestamp: task.createdAt
-            };
-            return [...prev, userMessage, task.result!];
-          } else {
-            return [...prev, task.result!];
-          }
-        });
-
-        // 显示完成通知
-        notification.showTaskComplete(task.content, task.result.id);
-      }
-    });
-
-    const unsubscribeUpdate = taskManager.addEventListener('taskStarted', (task: Task) => {
-      cardStateManager.syncWithTask(task);
-    });
-
-    const unsubscribeProgress = taskManager.addEventListener('taskProgress', (task: Task) => {
-      cardStateManager.syncWithTask(task);
-    });
-
-    const unsubscribeFailed = taskManager.addEventListener('taskFailed', (task: Task) => {
-      cardStateManager.syncWithTask(task);
-      // 显示失败通知
-      notification.showTaskFailed(task.content, task.error || '未知错误');
-    });
-
-    const unsubscribeCancelled = taskManager.addEventListener('taskCancelled', (task: Task) => {
-      cardStateManager.syncWithTask(task);
-    });
-
-    return () => {
-      unsubscribeComplete();
-      unsubscribeUpdate();
-      unsubscribeProgress();
-      unsubscribeFailed();
-      unsubscribeCancelled();
-    };
-  }, [taskManager, cardStateManager, setMessages]);
-
-  // 监听队列状态变化
-  useEffect(() => {
-    const updateStats = () => {
-      const newStats = taskManager.getQueueStats();
-      setQueueStats(newStats);
-      
-      // 自动显示/隐藏队列面板
-      const shouldShow = newStats.processing > 0 || newStats.pending > 0 || newStats.total > 3;
-      setQueuePanelVisible(shouldShow);
-    };
-
-    // 初始状态
-    updateStats();
-
-    // 监听任务状态变化
-    const unsubscribeAdd = taskManager.addEventListener('taskAdded', updateStats);
-    const unsubscribeStart = taskManager.addEventListener('taskStarted', updateStats);
-    const unsubscribeComplete = taskManager.addEventListener('taskCompleted', updateStats);
-    const unsubscribeFailed = taskManager.addEventListener('taskFailed', updateStats);
-    const unsubscribeCancelled = taskManager.addEventListener('taskCancelled', updateStats);
-
-    return () => {
-      unsubscribeAdd();
-      unsubscribeStart();
-      unsubscribeComplete();
-      unsubscribeFailed();
-      unsubscribeCancelled();
-    };
-  }, [taskManager]);
 
   // 持久化逻辑已移入 useConversation
 
-  const ensureSystemPrompt = (current: ChatMessage[]): ChatMessage[] => {
+  const ensureSystemPrompt = async (current: ChatMessage[], promptType: 'content' | 'jsonl' = 'content'): Promise<ChatMessage[]> => {
     const hasSystem = current.some(m => m.role === 'system');
     if (hasSystem) return current;
-    return [{ id: uuidv4(), role: 'system', content: getSystemPrompt(), timestamp: Date.now() }, ...current];
+    const prompt = promptType === 'content' ? await getContentGenerationPrompt() : await getNextStepJsonlPrompt();
+    return [{ id: uuidv4(), role: 'system', content: prompt, timestamp: Date.now() }, ...current];
   };
 
   /**
@@ -451,27 +469,6 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
 
   // 归一化逻辑已移入 useConversation
 
-  // 性能监控和统计更新
-  useEffect(() => {
-    performanceOptimizer.updateStats(messages.length, options.length, renderCount);
-  }, [messages.length, options.length, renderCount, performanceOptimizer]);
-
-  // 定期内存清理
-  useEffect(() => {
-    const interval = setInterval(() => {
-      performanceOptimizer.performCleanup(messages, options, setMessages, setOptions);
-    }, 30000); // 每30秒清理一次
-
-    return () => clearInterval(interval);
-  }, [messages.length, options.length, renderCount, performanceOptimizer]);
-
-  // 组件卸载时清理
-  useEffect(() => {
-    return () => {
-      performanceOptimizer.manualCleanup();
-    };
-  }, [performanceOptimizer]);
-
   /**
    * Merges incoming options with the existing options.
    *
@@ -513,118 +510,251 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
    * updating the assistant's message in real-time, handling errors, and processing completion signals and options.
    *
    * @param userText - The text content of the user's message.
+   * @param isFromOption - Whether this message is triggered by clicking an option (for concurrent handling)
    */
-  const sendMessageInternal = async (userText: string) => {
+  const sendMessageInternal = async (userText: string, isFromOption: boolean = false) => {
     const userMessage: ChatMessage = { id: uuidv4(), role: 'user', content: userText, timestamp: Date.now() };
     const withoutSystem = [...messages, userMessage];
-    const trimmed = performanceOptimizer.trimContext(withoutSystem);
-    const withSystem = ensureSystemPrompt(trimmed);
-    setMessages(withoutSystem); setInputMessage(''); setIsLoading(true);
-    setReasoningText(''); setReasoningOpen(true);
+    // 不再这里设置系统prompt，在两个阶段分别设置
+    
+    // 只在手动输入时才清空输入框和设置全局loading状态
+    if (!isFromOption) {
+      setInputMessage('');
+      setIsLoading(true);
+    }
+    
+    setMessages(prev => [...prev, userMessage]);
+    
+    // 对于选项触发的消息，使用独立的推理状态
+    if (!isFromOption) {
+      setReasoningText('');
+      setReasoningOpen(true);
+    }
 
     // Removed chat-message-started event - chat traces provide better insights
 
     try {
-      // create placeholder assistant message for streaming
-      const assistantId = uuidv4();
-      setMessages((prev: ChatMessage[]) => [...prev, { id: assistantId, role: 'assistant', content: '', timestamp: Date.now() }]);
-      let assembled = '';
+      // 第一阶段：内容生成
+      const contentSystemMessages = await ensureSystemPrompt(withoutSystem, 'content');
+      const contentAssistantId = uuidv4();
+      setMessages((prev: ChatMessage[]) => [...prev, { id: contentAssistantId, role: 'assistant', content: '', timestamp: Date.now() }]);
+      let contentAssembled = '';
+      
+      // 跟踪当前正在流式处理的消息
+      if (isFromOption) {
+        setStreamingAssistantIds(prev => {
+          const next = new Set(prev);
+          next.add(contentAssistantId);
+          return next;
+        });
+      }
 
+      // 第一阶段API调用 - 内容生成
       await generateChatStream(
-        withSystem,
+        contentSystemMessages,
         selectedModel,
         ({ content, reasoning }: { content?: string; reasoning?: string }) => {
           if (content) {
-            assembled += content;
-            setMessages((prev: ChatMessage[]) => prev.map((m: ChatMessage) => m.id === assistantId ? { ...m, content: assembled } : m));
+            contentAssembled += content;
+            setMessages((prev: ChatMessage[]) => prev.map((m: ChatMessage) => m.id === contentAssistantId ? { ...m, content: contentAssembled } : m));
           }
-          if (reasoning) {
+          if (reasoning && !isFromOption) {
+            // 只有手动输入的消息才显示推理过程
             setReasoningText((prev: string) => prev + reasoning);
           }
         },
         (err: Error) => {
           // Log error event
           if (userSession) {
-            logUserEvent('chat-message-failed', {
+            logUserEvent('chat-content-failed', {
               sessionId: userSession.sessionId,
               conversationId,
               model: selectedModel,
+              stage: 'content',
               error: err.message
             }, userSession.userId);
           }
-          alert(`流式生成出错: ${err.message}`);
+          
+          // 在Railway部署环境中进行API密钥诊断
+          console.error('🚨 AI内容生成失败:', err.message);
+          const diagnostic = logDiagnosticInfo();
+          
+          if (!diagnostic.isValid) {
+            const suggestionText = diagnostic.suggestions.join('\n• ');
+            alert(`AI功能配置异常，点击概念节点无反应的解决方案：
+
+${diagnostic.message}
+
+建议修复步骤：
+• ${suggestionText}
+
+请按照上述步骤配置后重新部署应用。`);
+          } else {
+            alert(`内容生成出错: ${err.message}`);
+          }
         },
-        () => {
-          // Enhanced option parsing with completion signals
+        async () => {
           try {
-            const { main, options: incoming, isContentComplete, completionMessage } = splitContentAndOptions(assembled);
-            
-            // 更新消息内容，移除 JSON 部分，只显示主内容
-            if (main !== assembled) {
-              setMessages((prev: ChatMessage[]) => 
-                prev.map((m: ChatMessage) => 
-                  m.id === assistantId ? { ...m, content: main } : m
-                )
-              );
-            }
-            
-            // 处理完成标志
-            if (isContentComplete) {
-              setContentCompleteStates(prev => {
-                const newMap = new Map(prev);
-                newMap.set(assistantId, {
-                  isComplete: true,
-                  completionMessage: completionMessage || '推荐选项已生成，点击探索',
-                  timestamp: Date.now()
-                });
-                return newMap;
+            // 第一阶段完成：内容生成完毕，设置中间状态
+            setContentCompleteStates(prev => {
+              const newMap = new Map(prev);
+              newMap.set(contentAssistantId, {
+                isComplete: true,
+                completionMessage: '内容分析完成，正在生成推荐选项...',
+                timestamp: Date.now()
               });
-              // 推理完成后，自动折叠推理窗口（短暂延迟以避免突兀）
+              return newMap;
+            });
+
+            // 只有手动输入的消息才自动折叠推理窗口
+            if (!isFromOption) {
               setTimeout(() => {
                 setReasoningOpen(false);
               }, 600);
             }
+
+            // 第二阶段前：概念图谱自动更新
+            console.log('🧠 开始概念图谱自动更新...');
+            try {
+              await updateMindMapWithLLM(contentAssembled, selectedModel, conversationId, userSession?.userId);
+            } catch (mindMapError) {
+              console.warn('概念图谱更新失败，不影响主流程:', mindMapError);
+            }
             
-            // 处理推荐选项
-            if (incoming.length > 0) {
-              // 如果正文已完成，延迟显示推荐以实现优雅过渡
-              if (isContentComplete) {
-                setTimeout(() => {
-                  mergeOptions(incoming, assistantId);
-                }, 800); // 800ms 过渡时间
-              } else {
-                mergeOptions(incoming, assistantId);
+            // 第二阶段：Next Step JSONL 生成（使用概念上下文）
+            console.log('开始第二阶段：生成推荐选项');
+            
+            // 获取概念推荐上下文
+            const conceptContext = conceptMap.getRecommendationContext();
+            console.log('概念去重上下文:', {
+              避免概念: conceptContext.avoidanceList.slice(0, 5),
+              最近概念: conceptContext.recentConcepts.slice(0, 5),
+              偏好类型: conceptContext.preferredCategories
+            });
+            
+            // 构建第二阶段的消息历史（带概念上下文的系统prompt）
+            const jsonlUserMessage: ChatMessage = { 
+              id: uuidv4(), 
+              role: 'user', 
+              content: `请根据以下内容分析结果生成推荐选项：\n\n${contentAssembled}`, 
+              timestamp: Date.now() 
+            };
+            
+            // 使用带概念上下文的系统prompt
+            const conceptAwareSystemPrompt = await getNextStepJsonlPrompt(conceptContext);
+            const jsonlMessages: ChatMessage[] = [
+              { id: uuidv4(), role: 'system', content: conceptAwareSystemPrompt, timestamp: Date.now() },
+              jsonlUserMessage
+            ];
+            
+            let jsonlAssembled = '';
+            // 使用2.5 flash模型进行第二阶段JSONL生成
+            const jsonlModel = 'google/gemini-2.5-flash';
+            
+            // 第二阶段API调用 - JSONL选项生成
+            await generateChatStream(
+              jsonlMessages,
+              jsonlModel,
+              ({ content }: { content?: string; reasoning?: string }) => {
+                if (content) {
+                  jsonlAssembled += content;
+                  console.log('第二阶段内容累积:', jsonlAssembled.length, '字符');
+                }
+              },
+              (err: Error) => {
+                console.error(`第二阶段JSONL生成出错: ${err.message}`);
+                if (userSession) {
+                  logUserEvent('chat-jsonl-failed', {
+                    sessionId: userSession.sessionId,
+                    conversationId,
+                    model: jsonlModel,
+                    stage: 'jsonl',
+                    error: err.message
+                  }, userSession.userId);
+                }
+                // 即使JSONL失败，内容分析仍然可用
+              },
+              () => {
+                try {
+                  console.log('第二阶段完成，开始解析JSONL:', jsonlAssembled);
+                  
+                  // 解析JSONL选项
+                  const { options: incoming } = splitContentAndOptions(jsonlAssembled);
+                  console.log('解析出的选项数量:', incoming.length);
+                  
+                  if (incoming.length > 0) {
+                    // 更新完成状态消息
+                    setContentCompleteStates(prev => {
+                      const newMap = new Map(prev);
+                      newMap.set(contentAssistantId, {
+                        isComplete: true,
+                        completionMessage: '推荐选项已生成，点击探索',
+                        timestamp: Date.now()
+                      });
+                      return newMap;
+                    });
+
+                    // 延迟显示推荐以实现优雅过渡
+                    setTimeout(() => {
+                      mergeOptions(incoming, contentAssistantId);
+                      console.log('选项已合并到UI');
+                    }, 800);
+                  } else {
+                    console.warn('没有解析出有效的选项');
+                  }
+
+                  // Log successful completion
+                  if (userSession) {
+                    logUserEvent('chat-message-completed', {
+                      sessionId: userSession.sessionId,
+                      conversationId,
+                      model: selectedModel,
+                      jsonlModel: jsonlModel,
+                      success: true,
+                      contentLength: contentAssembled.length,
+                      optionsGenerated: incoming.length,
+                      twoStageProcess: true
+                    }, userSession.userId);
+                  }
+                  
+                } catch (parseError) {
+                  console.warn('无法解析JSONL选项内容:', parseError);
+                  if (userSession) {
+                    logUserEvent('chat-jsonl-parse-failed', {
+                      sessionId: userSession.sessionId,
+                      conversationId,
+                      model: jsonlModel,
+                      error: parseError instanceof Error ? parseError.message : String(parseError),
+                      jsonlContent: jsonlAssembled
+                    }, userSession.userId);
+                  }
+                }
               }
-            }
-            
-            // Log successful completion
+            );
+
+          } catch (secondStageError) {
+            console.error('第二阶段处理失败:', secondStageError);
             if (userSession) {
-              logUserEvent('chat-message-completed', {
+              logUserEvent('chat-second-stage-failed', {
                 sessionId: userSession.sessionId,
                 conversationId,
                 model: selectedModel,
-                success: true,
-                responseLength: assembled.length,
-                optionsGenerated: incoming.length,
-                mainContentLength: main.length,
-                hasContentComplete: isContentComplete
+                error: secondStageError instanceof Error ? secondStageError.message : String(secondStageError)
               }, userSession.userId);
             }
-          } catch (error) {
-            console.error('Failed to parse options from response:', error);
-            // 降级处理：保持原始响应，但记录错误
-            if (userSession) {
-              logUserEvent('chat-parsing-failed', {
-                sessionId: userSession.sessionId,
-                conversationId,
-                model: selectedModel,
-                error: error instanceof Error ? error.message : String(error),
-                responseLength: assembled.length
-              }, userSession.userId);
+            // 即使第二阶段失败，内容分析仍然可用
+          } finally {
+            // Clean up streaming state for option-triggered messages
+            if (isFromOption) {
+              setStreamingAssistantIds(prev => {
+                const next = new Set(prev);
+                next.delete(contentAssistantId);
+                return next;
+              });
+            } else {
+              setIsLoading(false);
             }
           }
-          
-          setIsLoading(false);
         },
         conversationId,
         userSession?.userId
@@ -640,78 +770,121 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
         }, userSession.userId);
       }
       alert(`发送消息失败: ${e instanceof Error ? e.message : String(e)}`);
-      setIsLoading(false);
+      
+      // 清理状态
+      if (isFromOption) {
+        setStreamingAssistantIds(prev => {
+          const assistantId = Array.from(prev)[Array.from(prev).length - 1]; // 获取最后一个
+          if (assistantId) {
+            const next = new Set(prev);
+            next.delete(assistantId);
+            return next;
+          }
+          return prev;
+        });
+      } else {
+        setIsLoading(false);
+      }
     }
   };
 
-  const handleSend = async () => { if (!inputMessage.trim() || isLoading) return; await sendMessageInternal(inputMessage.trim()); };
+  const handleSend = async () => { if (!inputMessage.trim() || isLoading) return; await sendMessageInternal(inputMessage.trim(), false); };
   
   /**
-   * 新的并发处理版本 - 处理选项点击事件
-   * @param opt - 被点击的选项项目
+   * 支持并发执行的选项点击处理函数
    */
   const handleOptionClick = async (opt: OptionItem) => {
-    // ✅ 移除全局loading检查，允许并发点击
-    // if (isLoading) return; // 删除这个阻塞逻辑
+    console.log('🎯 handleOptionClick 被调用，选项:', opt.content);
     
-    // 如果是第一次点击选项，延迟200ms后丝滑滚动到底部
+    // 检查该选项是否正在处理中
+    if (processingOptions.has(opt.id)) return;
+    
+    // 标记该选项正在处理中
+    setProcessingOptions(prev => {
+      const next = new Set(prev);
+      next.add(opt.id);
+      return next;
+    });
+    
+    // 如果是第一次点击选项，丝滑滚动到底部
     if (isFirstOptionClick && messagesContainerRef.current) {
       setTimeout(() => {
-        if (messagesContainerRef.current) {
-          messagesContainerRef.current.scrollTo({
-            top: messagesContainerRef.current.scrollHeight,
-            behavior: 'smooth'
-          });
+        const container = messagesContainerRef.current;
+        if (container) {
+          if (container.scrollTo && typeof container.scrollTo === 'function') {
+            container.scrollTo({
+              top: container.scrollHeight,
+              behavior: 'smooth'
+            });
+          } else if (container.scrollTop !== undefined) {
+            // 降级处理：直接设置 scrollTop
+            container.scrollTop = container.scrollHeight;
+          }
         }
       }, 200);
       setIsFirstOptionClick(false);
     }
     
     try {
-      // 立即提供视觉反馈
-      const cardId = `${opt.type}:${opt.content.trim().toLowerCase()}`;
-      
-      // 将任务添加到队列
-      const taskId = taskManager.enqueueTask({
-        type: opt.type,
-        content: opt.content,
-        describe: opt.describe,
-        priority: opt.type === 'deepen' ? 1.2 : 1.0
-      });
-      
-      // 处理卡片点击状态
-      cardStateManager.handleCardClick(opt, taskId);
-      
+      // 添加节点到思维导图
+      if (mindMapState.currentNodeId) {
+        const nodeId = addNode(
+          opt.content,
+          opt.type === 'deepen' ? 'deepen' : 'next',
+          mindMapState.currentNodeId,
+          {
+            summary: opt.describe,
+            keywords: [],
+            explored: false
+          }
+        );
+        // 立即导航到新节点
+        if (nodeId) {
+          navigateToNode(nodeId);
+        }
+      }
+
+      // 注意：思维导图更新现在在主 LLM 生成完成后自动执行，这里不再重复调用
+      console.log('💭 思维导图更新已在主流程中完成，跳过重复调用');
+
       // 更新选项点击计数
       setOptions(prev => prev.map(o => 
         o.id === opt.id ? { ...o, clickCount: (o.clickCount || 0) + 1 } : o
       ));
       
-      // 记录用户事件
+      // 记录用户事件（简化）
       if (userSession) {
         logUserEvent('option-clicked', {
           sessionId: userSession.sessionId,
           conversationId,
           optionType: opt.type,
           optionContent: opt.content,
-          taskId: taskId,
           clickCount: (opt.clickCount || 0) + 1
         }, userSession.userId);
       }
 
-      // 短暂延迟后触发退出动画（为了视觉连贯性）
+      // 并发发送消息，使用独立的流
+      await sendMessageInternal(opt.content, true);
+      
+      // 短暂延迟后移除选项
       setTimeout(() => {
-        setExitingIds((prev: Set<string>) => {
+        setExitingIds(prev => {
           const next = new Set(prev);
           next.add(opt.id);
           return next;
         });
-      }, 600); // 给用户足够时间看到状态变化
+      }, 1000);
       
     } catch (error) {
       console.error('Failed to handle option click:', error);
-      // 可以在这里显示错误通知
       alert('处理请求时出现错误，请稍后重试');
+    } finally {
+      // 清理处理状态
+      setProcessingOptions(prev => {
+        const next = new Set(prev);
+        next.delete(opt.id);
+        return next;
+      });
     }
   };
 
@@ -768,67 +941,8 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
             py:4,
             px: { xs: 2, sm: 4 }
           }}>
-            {/* 性能监控显示 */}
-            {performanceOptimizer.config.enablePerformanceMonitoring && (
-              <Box sx={{ 
-                display: 'flex', 
-                gap: 1, 
-                mb: 2, 
-                p: 1.5, 
-                borderRadius: 1, 
-                bgcolor: 'background.default',
-                border: '1px solid',
-                borderColor: 'divider',
-                fontSize: '0.75rem'
-              }}>
-                <Chip
-                  label={`消息: ${performanceOptimizer.performanceStats.messagesCount}`}
-                  size="small"
-                  variant="outlined"
-                  sx={{ height: 20 }}
-                />
-                <Chip
-                  label={`选项: ${performanceOptimizer.performanceStats.optionsCount}`}
-                  size="small"
-                  variant="outlined"
-                  sx={{ height: 20 }}
-                />
-                <Chip
-                  label={`内存: ${performanceOptimizer.performanceStats.memoryUsage.used}MB (${performanceOptimizer.performanceStats.memoryUsage.percentage}%)`}
-                  size="small"
-                  variant="outlined"
-                  color={performanceOptimizer.performanceStats.memoryUsage.percentage > 80 ? 'warning' : 'default'}
-                  sx={{ height: 20 }}
-                />
-                <Chip
-                  label={`渲染: ${performanceOptimizer.performanceStats.renderCount}`}
-                  size="small"
-                  variant="outlined"
-                  sx={{ height: 20 }}
-                />
-              </Box>
-            )}
 
-            {/* 使用优化的消息列表组件 */}
-            <OptimizedMessageList
-              messages={messages}
-              showMetadata={performanceOptimizer.config.enablePerformanceMonitoring}
-              onMarkImportant={(messageId) => {
-                // 标记消息为重要
-                setMessages(prev => prev.map(m => 
-                  m.id === messageId 
-                    ? { ...m, metadata: { ...m.metadata, important: true } }
-                    : m
-                ));
-              }}
-              isStreaming={isLoading}
-              streamingMessageId={messages[messages.length - 1]?.id}
-              maxHeight={600}
-              enableVirtualization={messages.length > 50}
-            />
 
-            {/* 保留旧的渲染逻辑作为备用（隐藏） */}
-            <Box sx={{ display: 'none' }}>
             {messages.filter((m: ChatMessage) => m.role!=='system').map((m: ChatMessage) => {
               const isUser = m.role==='user';
               const { main } = splitContentAndOptions(m.content);
@@ -948,14 +1062,6 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                 <CircularProgress size={22} />
               </Box>
             )}
-            </Box>
-
-            {/* 新的加载指示器 */}
-            {isLoading && (
-              <Box sx={{ position: 'sticky', bottom: 8, display: 'flex', justifyContent: 'center', my: 2 }}>
-                <CircularProgress size={22} />
-              </Box>
-            )}
           </Box>
 
           <Box sx={{ 
@@ -983,9 +1089,6 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
               maxRows={4} 
               sx={{ mr: 1, flex: 1 }} 
               disabled={isLoading}
-              helperText={performanceOptimizer.config.enablePerformanceMonitoring ? 
-                `字符数: ${inputMessage.length} | 预估Token: ${Math.ceil(inputMessage.length / 3)}` : 
-                undefined}
             />
             <Button variant="contained" onClick={handleSend} disabled={isLoading || !inputMessage.trim()} sx={{ px: 2.5, fontWeight: 600, whiteSpace: 'nowrap', minWidth: 'auto', alignSelf: 'stretch' }}>发送</Button>
           </Box>
@@ -1041,9 +1144,6 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                   {current.length > 0 && (
                     <Box sx={{ mb: hasHistorical ? 2 : 0 }}>
                       {current.map((opt: OptionItem) => {
-                        const cardId = `${opt.type}:${opt.content.trim().toLowerCase()}`;
-                        const cardState = cardStateManager.cardStates.get(cardId);
-                        
                         return (
                           <Collapse
                             key={opt.id}
@@ -1059,26 +1159,11 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                               });
                             }}
                           >
-                            <EnhancedOptionCard
+                            <SimpleOptionCard
                               option={opt}
-                              state={cardState}
                               onClick={() => handleOptionClick(opt)}
-                              onCancel={() => {
-                                if (cardState?.taskId) {
-                                  taskManager.cancelTask(cardState.taskId);
-                                }
-                              }}
-                              onPause={() => {
-                                if (cardState?.taskId) {
-                                  taskManager.pauseTask(cardState.taskId);
-                                }
-                              }}
-                              onResume={() => {
-                                if (cardState?.taskId) {
-                                  taskManager.resumeTask(cardState.taskId);
-                                }
-                              }}
-                              disabled={false} // 不再全局禁用
+                              disabled={processingOptions.has(opt.id)}
+                              isProcessing={processingOptions.has(opt.id)}
                             />
                           </Collapse>
                         );
@@ -1120,9 +1205,6 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                           p: 1
                         }}>
                           {historical.map((opt: OptionItem) => {
-                            const cardId = `${opt.type}:${opt.content.trim().toLowerCase()}`;
-                            const cardState = cardStateManager.cardStates.get(cardId);
-                            
                             return (
                               <Collapse
                                 key={opt.id}
@@ -1139,26 +1221,11 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                                 }}
                               >
                                 <Box sx={{ mb: 1 }}>
-                                  <EnhancedOptionCard
+                                  <SimpleOptionCard
                                     option={opt}
-                                    state={cardState}
                                     onClick={() => handleOptionClick(opt)}
-                                    onCancel={() => {
-                                      if (cardState?.taskId) {
-                                        taskManager.cancelTask(cardState.taskId);
-                                      }
-                                    }}
-                                    onPause={() => {
-                                      if (cardState?.taskId) {
-                                        taskManager.pauseTask(cardState.taskId);
-                                      }
-                                    }}
-                                    onResume={() => {
-                                      if (cardState?.taskId) {
-                                        taskManager.resumeTask(cardState.taskId);
-                                      }
-                                    }}
-                                    disabled={false}
+                                    disabled={processingOptions.has(opt.id)}
+                                    isProcessing={processingOptions.has(opt.id)}
                                   />
                                 </Box>
                               </Collapse>
@@ -1201,31 +1268,75 @@ const NextStepChat: React.FC<NextStepChatProps> = ({ selectedModel, clearSignal,
                 </>
               );
             })()}
+
+            {/* 概念图谱嵌入式面板 - 紧贴在选项区域下方 */}
+            <Box sx={{ 
+              mt: 3,
+              borderTop: 1, 
+              borderColor: 'divider',
+              pt: 2,
+              opacity: conceptMap.conceptMap ? 1 : 0.7,
+              transition: 'opacity 0.3s ease-in-out',
+              '&:hover': {
+                '& .concept-header': {
+                  bgcolor: 'rgba(0, 0, 0, 0.025)'
+                }
+              }
+            }}>
+              <ConceptMapPanel
+                conceptMap={conceptMap.conceptMap}
+                isLoading={conceptMap.isLoading}
+                onConceptAbsorptionToggle={conceptMap.updateConceptAbsorption}
+                onClearConcepts={conceptMap.clearConcepts}
+              />
+              
+              {/* 递归概念树渲染组件 */}
+              <Box sx={{
+                mt: 2,
+                borderTop: 1,
+                borderColor: 'divider',
+                pt: 2,
+                opacity: conceptTree ? 1 : 0.7,
+                transition: 'opacity 0.3s ease-in-out'
+              }}>
+                <ConceptTreeRenderer
+                  conceptTree={conceptTree}
+                  isLoading={conceptTreeLoading}
+                  maxDepth={5}
+                  onNodeClick={(node) => {
+                    console.log('🎯 点击概念节点:', node);
+                    // 自动输入概念内容到聊天中以展开讨论
+                    const expandPrompt = `请详细解释"${node.name}"这个概念，包括：
+1. 核心定义和特点
+2. 实际应用场景
+3. 相关的重要知识点
+4. 如何深入学习这个概念
+
+请结合上下文提供全面而深入的分析。`;
+                    
+                    // 自动发送消息展开概念
+                    sendMessageInternal(expandPrompt, false);
+                    
+                    // 滚动到底部以显示新内容
+                    if (messagesContainerRef.current) {
+                      setTimeout(() => {
+                        const container = messagesContainerRef.current;
+                        if (container && container.scrollTo) {
+                          container.scrollTo({
+                            top: container.scrollHeight,
+                            behavior: 'smooth'
+                          });
+                        }
+                      }, 100);
+                    }
+                  }}
+                />
+              </Box>
+            </Box>
           </Box>
         </Box>
       </Box>
-      
-      {/* 任务队列面板 */}
-      <TaskQueuePanel
-        tasks={taskManager.tasks}
-        stats={queueStats}
-        visible={queuePanelVisible}
-        onClose={() => setQueuePanelVisible(false)}
-        onTaskCancel={(taskId) => taskManager.cancelTask(taskId)}
-        onTaskPause={(taskId) => taskManager.pauseTask(taskId)}
-        onTaskResume={(taskId) => taskManager.resumeTask(taskId)}
-        onClearCompleted={() => taskManager.clearCompleted()}
-        onToggleExpand={() => {
-          // 可以在这里添加展开/收起的逻辑
-        }}
-      />
-      
-      {/* 通知容器 */}
-      <NotificationContainer
-        notifications={notification.notifications}
-        config={notification.config}
-        onClose={notification.removeNotification}
-      />
+
     </Box>
   );
 };

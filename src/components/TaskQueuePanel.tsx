@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Paper,
@@ -10,7 +10,6 @@ import {
   Collapse,
   Chip,
   Tooltip,
-  Divider,
   Menu,
   MenuItem
 } from '@mui/material';

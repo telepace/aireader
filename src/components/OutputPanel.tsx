@@ -157,8 +157,7 @@ const OutputPanel: React.FC<OutputPanelProps> = (props) => {
     promptResult,
     isLoading,
     selectedModel,
-    onSave,
-    darkMode = false
+    onSave
   } = props;
   
   // Add ref for auto-scrolling to bottom

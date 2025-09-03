@@ -181,24 +181,26 @@ describe('Input Validation', () => {
       const promptIdentifier = 'test-user-prompt';
       
       // Chat has 30 requests/minute limit
+      const chatResults: boolean[] = [];
       for (let i = 0; i < 31; i++) {
         const result = validateApiInput('test', 'chat', chatIdentifier);
-        if (i < 30) {
-          expect(result.rateLimitExceeded).toBe(false);
-        } else {
-          expect(result.rateLimitExceeded).toBe(true);
-        }
+        chatResults.push(result.rateLimitExceeded);
       }
       
+      // Check that first 30 are allowed, last one is rate limited
+      chatResults.slice(0, 30).forEach(exceeded => expect(exceeded).toBe(false));
+      expect(chatResults[30]).toBe(true);
+      
       // Prompt has 10 requests/minute limit (different identifier to avoid interference)
+      const promptResults: boolean[] = [];
       for (let i = 0; i < 11; i++) {
         const result = validateApiInput('test', 'prompt', promptIdentifier);
-        if (i < 10) {
-          expect(result.rateLimitExceeded).toBe(false);
-        } else {
-          expect(result.rateLimitExceeded).toBe(true);
-        }
+        promptResults.push(result.rateLimitExceeded);
       }
+      
+      // Check that first 10 are allowed, last one is rate limited
+      promptResults.slice(0, 10).forEach(exceeded => expect(exceeded).toBe(false));
+      expect(promptResults[10]).toBe(true);
     });
   });
 

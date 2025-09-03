@@ -119,6 +119,39 @@ API Key Debug Info: {
 3. **调试友好**：详细的日志和调试信息
 4. **平台无关**：适用于 Railway、Vercel、Docker 等各种部署平台
 
+## ⚠️ 常见问题：点击概念节点无反应
+
+### 症状诊断
+如果在 Railway 部署的应用中点击概念节点没有任何反应（本地正常），这通常表明 API 密钥配置问题：
+
+```javascript
+// 浏览器控制台会看到：
+🎯 点击概念节点: {id: 'xxx', name: 'xxx', children: []}
+🚨 AI内容生成失败: 未找到API密钥...
+```
+
+### 快速修复步骤
+
+1. **立即检查 Railway 环境变量**
+   - 登录 [Railway Dashboard](https://railway.app)
+   - 进入项目 → Variables 标签页
+   - 确认 `REACT_APP_OPENROUTER_API_KEY` 已设置
+   - 值应该以 `sk-or-v1-` 开头
+
+2. **重新部署应用**
+   ```bash
+   # 方法1: 推送代码触发部署
+   git commit --allow-empty -m "trigger redeploy"
+   git push
+
+   # 方法2: 在 Railway Dashboard 手动重新部署
+   ```
+
+3. **验证修复结果**
+   - 访问 `https://your-app.railway.app/config.js`
+   - 确认看到正确的配置而不是占位符
+   - 在浏览器控制台查看诊断信息
+
 ## 🔍 故障排除
 
 ### 如果仍然看到 API 密钥错误：
