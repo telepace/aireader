@@ -139,7 +139,28 @@ body {
   transition: all 0.15s ease;
 }
 
-/* Clean transitions */
-* {
+/* Clean transitions - 修复：排除输入元素避免干扰 */
+*:not(input):not(textarea):not(.MuiInputBase-input):not(.MuiInputBase-root):not(.MuiTextField-root) {
   transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+/* 确保输入元素没有被意外样式化 */
+input, textarea, .MuiInputBase-input, .MuiInputBase-root input, .MuiTextField-root input {
+  transition: none !important;
+  pointer-events: auto !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  cursor: text !important;
+}
+
+/* 确保Material-UI输入组件完全可交互 */
+.MuiTextField-root, .MuiInputBase-root, .MuiOutlinedInput-root {
+  pointer-events: auto !important;
+}
+
+/* 防止任何意外的disabled样式 */
+.MuiInputBase-input:not([disabled]) {
+  cursor: text !important;
+  color: inherit !important;
+  opacity: 1 !important;
 }

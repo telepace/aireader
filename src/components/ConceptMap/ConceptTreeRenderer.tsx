@@ -28,6 +28,7 @@ interface ConceptTreeRendererProps {
   isLoading?: boolean;
   maxDepth?: number;
   onNodeClick?: (node: ConceptTreeNode) => void;
+  enableAnimations?: boolean; // 新增：控制是否启用动画
 }
 
 interface TreeNodeProps {
@@ -37,6 +38,7 @@ interface TreeNodeProps {
   isLast?: boolean;
   parentCollapsed?: boolean;
   onNodeClick?: (node: ConceptTreeNode) => void;
+  enableAnimations?: boolean; // 新增：控制动画
 }
 
 // 深度对应的颜色主题
@@ -56,7 +58,8 @@ function TreeNode({
   maxDepth, 
   isLast = false, 
   parentCollapsed = false,
-  onNodeClick 
+  onNodeClick,
+  enableAnimations = true
 }: TreeNodeProps) {
   const theme = useTheme();
   const [expanded, setExpanded] = useState(depth < 2); // 默认展开前两层
@@ -194,7 +197,7 @@ function TreeNode({
 
       {/* 子节点 */}
       {hasChildren && (
-        <Collapse in={expanded} timeout={300}>
+        <Collapse in={expanded} timeout={enableAnimations ? 150 : 0} unmountOnExit> {/* 根据设置控制动画 */}
           <Box sx={{ position: 'relative' }}>
             {/* 垂直连接线 */}
             <Box
@@ -211,13 +214,14 @@ function TreeNode({
             
             {node.children.map((child, index) => (
               <TreeNode
-                key={child.id}
+                key={`${child.id}-${depth + 1}`}
                 node={child}
                 depth={depth + 1}
                 maxDepth={maxDepth}
                 isLast={index === node.children.length - 1}
                 parentCollapsed={!expanded}
                 onNodeClick={onNodeClick}
+                enableAnimations={enableAnimations}
               />
             ))}
           </Box>
@@ -227,7 +231,7 @@ function TreeNode({
   );
 }
 
-export default function ConceptTreeRenderer({ 
+const ConceptTreeRenderer = React.memo(function ConceptTreeRenderer({ 
   conceptTree, 
   isLoading = false,
   maxDepth = 5,
@@ -356,6 +360,7 @@ export default function ConceptTreeRenderer({
           depth={0}
           maxDepth={maxDepth}
           onNodeClick={onNodeClick}
+          enableAnimations={treeStats.totalNodes < 50} // 当节点数较多时禁用动画避免闪烁
         />
       </Box>
       
@@ -384,4 +389,22 @@ export default function ConceptTreeRenderer({
       </Box>
     </Box>
   );
-}
+}, (prevProps, nextProps) => {
+  // 自定义比较逻辑，防止不必要的重新渲染
+  if (prevProps.isLoading !== nextProps.isLoading) return false;
+  if (prevProps.maxDepth !== nextProps.maxDepth) return false;
+  if (prevProps.onNodeClick !== nextProps.onNodeClick) return false;
+  
+  // 比较概念树
+  if (!prevProps.conceptTree && !nextProps.conceptTree) return true;
+  if (!prevProps.conceptTree || !nextProps.conceptTree) return false;
+  
+  // 简单比较树的ID和名称
+  if (prevProps.conceptTree.id !== nextProps.conceptTree.id) return false;
+  if (prevProps.conceptTree.name !== nextProps.conceptTree.name) return false;
+  if (prevProps.conceptTree.children.length !== nextProps.conceptTree.children.length) return false;
+  
+  return true;
+});
+
+export default ConceptTreeRenderer;

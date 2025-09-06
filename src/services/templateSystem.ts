@@ -223,7 +223,7 @@ class TemplateSystem {
   /**
    * 渲染推荐型知识图谱模板
    */
-  renderKnowledgeGraph(): string {
+  renderKnowledgeGraph(variables: PromptVariables = {}): string {
     return `你是一个负责维护"推荐型思维导图"的智能助手，专门生成具有推荐功能的层级概念结构。
 
 你将接收三个输入：
@@ -556,7 +556,7 @@ class TemplateSystem {
         return this.renderSmartRecommendation(variables as TemplateData);
       
       case 'knowledgeGraph':
-        return this.renderKnowledgeGraph();
+        return this.renderKnowledgeGraph(variables);
       
       case 'contentGeneration':
         return this.renderContentGeneration();
