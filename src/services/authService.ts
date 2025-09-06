@@ -18,11 +18,18 @@ export class AuthService {
         console.warn('⚠️ Supabase not available - using local anonymous user');
         // Return a local anonymous user without database persistence
         const anonymousToken = crypto.randomUUID();
-        return {
+        const localUser = {
           id: `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           anonymous_token: anonymousToken,
           is_anonymous: true
         } as AnonymousUser;
+        
+        // 保存本地匿名用户信息
+        localStorage.setItem('anonymous_token', anonymousToken);
+        localStorage.setItem('anonymous_user_id', localUser.id);
+        
+        console.log('✅ 本地匿名用户创建成功:', localUser.id);
+        return localUser;
       }
 
       // 生成匿名令牌
@@ -39,7 +46,21 @@ export class AuthService {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.warn('⚠️ 数据库匿名用户创建失败，切换到本地模式:', error);
+        // 数据库操作失败时，降级到本地匿名用户
+        const localUser = {
+          id: `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          anonymous_token: anonymousToken,
+          is_anonymous: true
+        } as AnonymousUser;
+        
+        localStorage.setItem('anonymous_token', anonymousToken);
+        localStorage.setItem('anonymous_user_id', localUser.id);
+        
+        console.log('✅ 本地匿名用户创建成功（降级模式）:', localUser.id);
+        return localUser;
+      }
 
       const anonymousUser: AnonymousUser = {
         id: data.id,
@@ -51,10 +72,28 @@ export class AuthService {
       localStorage.setItem('anonymous_token', anonymousToken)
       localStorage.setItem('anonymous_user_id', data.id)
 
+      console.log('✅ 数据库匿名用户创建成功:', data.id);
       return anonymousUser
     } catch (error) {
       console.error('创建匿名用户失败:', error)
-      throw new Error('无法创建匿名用户')
+      // 最后的降级措施：创建纯本地匿名用户
+      try {
+        const anonymousToken = crypto.randomUUID();
+        const fallbackUser = {
+          id: `anon_fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          anonymous_token: anonymousToken,
+          is_anonymous: true
+        } as AnonymousUser;
+        
+        localStorage.setItem('anonymous_token', anonymousToken);
+        localStorage.setItem('anonymous_user_id', fallbackUser.id);
+        
+        console.log('✅ 降级匿名用户创建成功:', fallbackUser.id);
+        return fallbackUser;
+      } catch (fallbackError) {
+        console.error('降级匿名用户创建也失败:', fallbackError);
+        throw new Error('无法创建匿名用户');
+      }
     }
   }
 

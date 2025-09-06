@@ -115,36 +115,36 @@ export function useMindMap(conversationId: string): UseMindMapReturn {
             nodes.set(id, node as MindMapNode);
           });
           
-          setMindMapState({
-            nodes,
-            edges: new Map(),
-            currentNodeId: conversationMap.currentNodeId || '',
-            rootNodeId: conversationMap.rootNodeId || '',
-            explorationPath: conversationMap.explorationPath || [],
-            layout: {
-              centerX: 400,
-              centerY: 300,
-              scale: 1.0,
-              viewBox: { x: 0, y: 0, width: 800, height: 600 }
-            },
-            stats: {
-              totalNodes: nodes.size,
-              exploredNodes: Array.from(nodes.values()).filter(n => n.metadata.explored).length,
-              recommendedNodes: Array.from(nodes.values()).filter(n => n.status === 'recommended').length,
-              potentialNodes: Array.from(nodes.values()).filter(n => n.status === 'potential').length,
-              maxDepth: calculateMaxDepth(nodes),
-              averageExplorationDepth: Array.from(nodes.values()).reduce((sum, n) => sum + (n.exploration_depth || 0), 0) / nodes.size || 0,
-              lastUpdateTime: Date.now(),
-              sessionStartTime: Date.now()
-            },
-            preferences: {
-              autoLayout: true,
-              showLabels: true,
-              animationEnabled: true,
-              compactMode: false,
-              showRecommendations: true,
-              recommendationThreshold: 0.7
+          setMindMapState(prev => {
+            // 只有当数据实际变化时才更新状态，避免不必要的重渲染
+            const currentNodeId = conversationMap.currentNodeId || '';
+            const rootNodeId = conversationMap.rootNodeId || '';
+            
+            if (prev.nodes.size === nodes.size && 
+                prev.currentNodeId === currentNodeId &&
+                prev.rootNodeId === rootNodeId) {
+              return prev;
             }
+            
+            return {
+              nodes,
+              edges: new Map(),
+              currentNodeId,
+              rootNodeId,
+              explorationPath: conversationMap.explorationPath || [],
+              layout: prev.layout, // 保持现有布局避免视觉跳跃
+              stats: {
+                totalNodes: nodes.size,
+                exploredNodes: Array.from(nodes.values()).filter(n => n.metadata.explored).length,
+                recommendedNodes: Array.from(nodes.values()).filter(n => n.status === 'recommended').length,
+                potentialNodes: Array.from(nodes.values()).filter(n => n.status === 'potential').length,
+                maxDepth: calculateMaxDepth(nodes),
+                averageExplorationDepth: Array.from(nodes.values()).reduce((sum, n) => sum + (n.exploration_depth || 0), 0) / nodes.size || 0,
+                lastUpdateTime: Date.now(),
+                sessionStartTime: prev.stats.sessionStartTime || Date.now() // 保持会话开始时间
+              },
+              preferences: prev.preferences // 保持用户偏好设置
+            };
           });
         }
       }
@@ -153,7 +153,7 @@ export function useMindMap(conversationId: string): UseMindMapReturn {
     }
   }, [conversationId]);
 
-  // 保存到本地存储
+  // 保存到本地存储 - 增加防抖机制避免频繁保存
   const saveMindMap = useCallback(() => {
     try {
       const stored = localStorage.getItem(MIND_MAP_STORAGE_KEY) || '{}';
@@ -165,13 +165,22 @@ export function useMindMap(conversationId: string): UseMindMapReturn {
         serializedNodes[id] = node;
       });
       
-      allMindMaps[conversationId] = {
+      const newData = {
         nodes: serializedNodes,
         currentNodeId: mindMapState.currentNodeId,
         explorationPath: mindMapState.explorationPath,
         stats: mindMapState.stats
       };
       
+      // 检查数据是否真的变化了，避免不必要的保存
+      const existingData = allMindMaps[conversationId];
+      if (existingData && 
+          existingData.currentNodeId === newData.currentNodeId &&
+          Object.keys(existingData.nodes || {}).length === Object.keys(newData.nodes).length) {
+        return; // 数据没有实质性变化，跳过保存
+      }
+      
+      allMindMaps[conversationId] = newData;
       localStorage.setItem(MIND_MAP_STORAGE_KEY, JSON.stringify(allMindMaps));
     } catch (error) {
       console.error('Failed to save mind map:', error);
@@ -492,6 +501,17 @@ export function useMindMap(conversationId: string): UseMindMapReturn {
 
   // 清空思维导图
   const clearMindMap = useCallback(() => {
+    try {
+      // 清理localStorage中的数据
+      const stored = localStorage.getItem(MIND_MAP_STORAGE_KEY) || '{}';
+      const allMindMaps = JSON.parse(stored);
+      delete allMindMaps[conversationId];
+      localStorage.setItem(MIND_MAP_STORAGE_KEY, JSON.stringify(allMindMaps));
+    } catch (error) {
+      console.error('Failed to clear mind map storage:', error);
+    }
+    
+    // 重置状态
     setMindMapState({
       nodes: new Map(),
       edges: new Map(),
@@ -523,7 +543,7 @@ export function useMindMap(conversationId: string): UseMindMapReturn {
         recommendationThreshold: 0.7
       }
     });
-  }, []);
+  }, [conversationId]);
 
   // === 推荐系统方法 ===
   

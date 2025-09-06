@@ -52,7 +52,7 @@ const categoryIcons = {
   support: { icon: '📚', color: '#8b5cf6', label: '支撑概念' }
 };
 
-export default function ConceptMapPanel({
+const ConceptMapPanel = React.memo(function ConceptMapPanel({
   conceptMap,
   isLoading,
   onConceptAbsorptionToggle,
@@ -61,6 +61,14 @@ export default function ConceptMapPanel({
   const [expanded, setExpanded] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<ConceptNode['category'] | null>(null);
+
+  // 调试日志 - 追踪渲染
+  console.log('🎨 ConceptMapPanel render:', {
+    hasConceptMap: !!conceptMap,
+    nodeCount: conceptMap?.nodes?.size || 0,
+    isLoading,
+    timestamp: Date.now()
+  });
 
   // 计算统计数据
   const stats = useMemo(() => {
@@ -431,4 +439,57 @@ export default function ConceptMapPanel({
       </Dialog>
     </>
   );
-}
+}, (prevProps, nextProps) => {
+  // 调试日志 - 追踪比较逻辑
+  const shouldSkipRender = (() => {
+    if (prevProps.isLoading !== nextProps.isLoading) {
+      console.log('🔄 ConceptMapPanel: isLoading changed', prevProps.isLoading, '->', nextProps.isLoading);
+      return false;
+    }
+    if (prevProps.onConceptAbsorptionToggle !== nextProps.onConceptAbsorptionToggle) {
+      console.log('🔄 ConceptMapPanel: onConceptAbsorptionToggle function changed');
+      return false;
+    }
+    if (prevProps.onClearConcepts !== nextProps.onClearConcepts) {
+      console.log('🔄 ConceptMapPanel: onClearConcepts function changed');
+      return false;
+    }
+    
+    // 深度比较conceptMap
+    if (!prevProps.conceptMap && !nextProps.conceptMap) {
+      console.log('✅ ConceptMapPanel: Both conceptMaps are null, skipping render');
+      return true;
+    }
+    if (!prevProps.conceptMap || !nextProps.conceptMap) {
+      console.log('🔄 ConceptMapPanel: conceptMap null state changed', 
+        !!prevProps.conceptMap, '->', !!nextProps.conceptMap);
+      return false;
+    }
+    
+    // 比较概念映射的关键属性
+    if (prevProps.conceptMap.nodes.size !== nextProps.conceptMap.nodes.size) {
+      console.log('🔄 ConceptMapPanel: nodes.size changed', 
+        prevProps.conceptMap.nodes.size, '->', nextProps.conceptMap.nodes.size);
+      return false;
+    }
+    if (prevProps.conceptMap.avoidanceList.length !== nextProps.conceptMap.avoidanceList.length) {
+      console.log('🔄 ConceptMapPanel: avoidanceList.length changed', 
+        prevProps.conceptMap.avoidanceList.length, '->', nextProps.conceptMap.avoidanceList.length);
+      return false;
+    }
+    
+    // 如果节点数量相同，比较最后更新时间
+    if (prevProps.conceptMap.stats.lastUpdated !== nextProps.conceptMap.stats.lastUpdated) {
+      console.log('🔄 ConceptMapPanel: stats.lastUpdated changed', 
+        prevProps.conceptMap.stats.lastUpdated, '->', nextProps.conceptMap.stats.lastUpdated);
+      return false;
+    }
+    
+    console.log('✅ ConceptMapPanel: No changes detected, skipping render');
+    return true;
+  })();
+  
+  return shouldSkipRender;
+});
+
+export default ConceptMapPanel;

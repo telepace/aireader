@@ -3,7 +3,7 @@
  * 使用简单的Markdown格式(- 标题)显示思维导图结构
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -73,8 +73,8 @@ const MarkdownTreeMap: React.FC<MarkdownTreeMapProps> = ({
     return buildTree(rootNode);
   }, [mindMapState.nodes, expandedNodes]);
 
-  // Jobs-inspired节点样式系统
-  const getNodeStyle = (node: MindMapNode, level: number) => {
+  // Jobs-inspired节点样式系统 - 使用useMemo优化
+  const getNodeStyle = useCallback((node: MindMapNode, level: number) => {
     const isActive = node.id === currentNodeId;
     const isExplored = node.metadata.explored;
     const hasChildren = node.children.length > 0;
@@ -143,21 +143,23 @@ const MarkdownTreeMap: React.FC<MarkdownTreeMapProps> = ({
       ...interactionStyles,
       icon: getTypeIcon(node.type, level)
     };
-  };
+  }, [currentNodeId, compact]);
 
   // 切换节点展开状态
-  const toggleNodeExpanded = (nodeId: string) => {
-    const newExpanded = new Set(expandedNodes);
-    if (newExpanded.has(nodeId)) {
-      newExpanded.delete(nodeId);
-    } else {
-      newExpanded.add(nodeId);
-    }
-    setExpandedNodes(newExpanded);
-  };
+  const toggleNodeExpanded = useCallback((nodeId: string) => {
+    setExpandedNodes(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(nodeId)) {
+        newExpanded.delete(nodeId);
+      } else {
+        newExpanded.add(nodeId);
+      }
+      return newExpanded;
+    });
+  }, []);
 
-  // 渲染优雅的树节点
-  const renderTreeItem = (item: TreeItem): React.ReactNode => {
+  // 渲染优雅的树节点 - 使用useCallback优化
+  const renderTreeItem = useCallback((item: TreeItem): React.ReactNode => {
     const { node, level, children } = item;
     const style = getNodeStyle(node, level);
     const hasChildren = children.length > 0;
@@ -357,7 +359,7 @@ const MarkdownTreeMap: React.FC<MarkdownTreeMapProps> = ({
         )}
       </Box>
     );
-  };
+  }, [expandedNodes, getNodeStyle, onNodeClick, onNodeExpand, toggleNodeExpanded]);
 
 
   if (!treeStructure) {

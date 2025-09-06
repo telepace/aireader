@@ -5,6 +5,8 @@ import {
   SelectChangeEvent,
   Button
 } from '@mui/material';
+import ConversationButton from './ConversationButton';
+import { ChatConversation } from '../../types/types';
 
 interface AppHeaderProps {
   selectedModel: string;
@@ -15,9 +17,18 @@ interface AppHeaderProps {
   onToggleRightSidebar: () => void;
   onClearChat: () => void;
   availableModels: string[];
-  onToggleConversationMenu?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onToggleConversationMenu?: (event: React.MouseEvent<HTMLElement>) => void;
   showConcurrentTest?: boolean;
   onToggleConcurrentTest?: () => void;
+  // 新增会话管理相关属性
+  currentConversation?: ChatConversation;
+  conversations?: ChatConversation[];
+  conversationMenuOpen?: boolean;
+  conversationMenuAnchorEl?: HTMLElement | null;
+  onConversationMenuClose?: () => void;
+  onNewConversation?: () => void;
+  onSelectConversation?: (conversation: ChatConversation) => void;
+  onDeleteConversation?: (id: string) => void;
 }
 
 /**
@@ -45,7 +56,15 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   availableModels,
   onToggleConversationMenu,
   showConcurrentTest,
-  onToggleConcurrentTest
+  onToggleConcurrentTest,
+  currentConversation,
+  conversations = [],
+  conversationMenuOpen = false,
+  conversationMenuAnchorEl,
+  onConversationMenuClose,
+  onNewConversation,
+  onSelectConversation,
+  onDeleteConversation
 }) => {
   return (
     <Box
@@ -77,15 +96,18 @@ const AppHeader: React.FC<AppHeaderProps> = ({
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-          {onToggleConversationMenu && (
-            <Button 
-              variant="outlined" 
-              size="small" 
-              onClick={(e) => onToggleConversationMenu(e)}
-              sx={{ borderColor: 'divider', color: 'text.primary', '&:hover': { borderColor: 'divider' } }}
-            >
-              会话
-            </Button>
+          {onToggleConversationMenu && onConversationMenuClose && onNewConversation && onSelectConversation && onDeleteConversation && (
+            <ConversationButton
+              currentConversation={currentConversation}
+              conversations={conversations}
+              menuOpen={conversationMenuOpen}
+              anchorEl={conversationMenuAnchorEl}
+              onMenuOpen={onToggleConversationMenu}
+              onMenuClose={onConversationMenuClose}
+              onNewConversation={onNewConversation}
+              onSelectConversation={onSelectConversation}
+              onDeleteConversation={onDeleteConversation}
+            />
           )}
           {onToggleConcurrentTest && (
             <Button 
