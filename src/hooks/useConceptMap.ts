@@ -3,11 +3,12 @@
  * 提供概念提取、存储、查询、分析等完整功能
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   ConceptMap,
   ConceptNode,
+  ConceptTree,
   ConceptRecommendationContext,
   UseConceptMapResult,
   CONCEPT_STORAGE_KEYS,
@@ -22,35 +23,48 @@ import {
 
 export function useConceptMap(conversationId: string): UseConceptMapResult {
   const [conceptMap, setConceptMap] = useState<ConceptMap | null>(null);
+  const [conceptTree, setConceptTree] = useState<ConceptTree | null>(null);
   const [isLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 初始化概念图
+  // 简化调试日志 - 只在conversationId变化时记录，避免频繁输出
+  useEffect(() => {
+    console.log('🔧 useConceptMap initialized for conversation:', conversationId);
+  }, [conversationId]); // 只在会话切换时记录
+
+  // 初始化概念图 - 使用useRef避免依赖conceptMap造成的循环更新
   const initializeConceptMap = useCallback(() => {
-    if (conceptMap) return;
-    
-    const newConceptMap: ConceptMap = {
-      id: uuidv4(),
-      conversationId,
-      nodes: new Map(),
-      stats: {
-        totalConcepts: 0,
-        absorptionRate: 0,
-        coverage: { core: 0, method: 0, application: 0, support: 0 },
-        lastUpdated: Date.now()
-      },
-      avoidanceList: [],
-      similarityThreshold: CONCEPT_DEFAULTS.SIMILARITY_THRESHOLD
-    };
-    
-    setConceptMap(newConceptMap);
-  }, [conversationId, conceptMap]);
+    setConceptMap(prev => {
+      if (prev) {
+        return prev; // 如果已经初始化，直接返回
+      }
+      
+      console.log('🔧 Creating new conceptMap for:', conversationId);
+      const newConceptMap: ConceptMap = {
+        id: uuidv4(),
+        conversationId,
+        nodes: new Map(),
+        stats: {
+          totalConcepts: 0,
+          absorptionRate: 0,
+          coverage: { core: 0, method: 0, application: 0, support: 0 },
+          lastUpdated: Date.now()
+        },
+        avoidanceList: [],
+        similarityThreshold: CONCEPT_DEFAULTS.SIMILARITY_THRESHOLD
+      };
+      
+      return newConceptMap;
+    });
+  }, [conversationId]); // 移除conceptMap依赖，避免循环更新
 
   // 从存储中加载概念
   const loadConcepts = useCallback((targetConversationId: string) => {
+    console.log('🔧 loadConcepts called for:', targetConversationId);
     try {
       const storedData = localStorage.getItem(CONCEPT_STORAGE_KEYS.CONVERSATION_CONCEPTS);
       if (!storedData) {
+        console.log('🔧 No stored data, initializing new conceptMap');
         initializeConceptMap();
         return;
       }
@@ -59,12 +73,20 @@ export function useConceptMap(conversationId: string): UseConceptMapResult {
       const conversationData = allConversationConcepts[targetConversationId];
       
       if (conversationData) {
+        console.log('🔧 Loading existing conceptMap with', Object.keys(conversationData.nodes || {}).length, 'nodes');
         const loadedMap: ConceptMap = {
           ...conversationData,
           nodes: new Map(Object.entries(conversationData.nodes))
         };
         setConceptMap(loadedMap);
+        
+        // 加载概念树
+        if (conversationData.conceptTree) {
+          console.log('🔧 Loading existing conceptTree');
+          setConceptTree(conversationData.conceptTree);
+        }
       } else {
+        console.log('🔧 No data for conversation, initializing new conceptMap');
         initializeConceptMap();
       }
     } catch (error) {
@@ -84,7 +106,8 @@ export function useConceptMap(conversationId: string): UseConceptMapResult {
       
       const serializedMap = {
         ...conceptMap,
-        nodes: Object.fromEntries(conceptMap.nodes)
+        nodes: Object.fromEntries(conceptMap.nodes),
+        conceptTree: conceptTree // 保存概念树
       };
       
       allConversationConcepts[conversationId] = serializedMap;
@@ -97,16 +120,85 @@ export function useConceptMap(conversationId: string): UseConceptMapResult {
       console.error('Failed to save concepts:', error);
       setError('保存概念数据失败');
     }
-  }, [conceptMap, conversationId]);
+  }, [conceptMap, conceptTree, conversationId]);
 
-  // 从内容中提取概念 - 简化实现，返回空数组
+  // 从内容中提取概念 - 解析LLM输出的JSON格式概念图谱
   const extractConcepts = useCallback(async (
     content: string,
     messageId: string,
     conversationId: string
   ): Promise<ConceptNode[]> => {
-    console.log('概念提取功能已禁用，返回空数组');
-    return [];
+    try {
+      console.log('🧠 开始提取概念，内容长度:', content.length);
+      
+      // 查找JSON格式的概念图谱数据
+      const jsonMatch = content.match(/\{[\s\S]*"children"\s*:\s*\[[\s\S]*\]\s*\}/);
+      if (!jsonMatch) {
+        console.log('❌ 未找到JSON格式的概念图谱数据');
+        return [];
+      }
+      
+      const jsonStr = jsonMatch[0];
+      const conceptTree = JSON.parse(jsonStr);
+      
+      console.log('✅ 解析到概念图谱:', conceptTree);
+      
+      // 递归提取所有概念节点
+      const extractNodesFromTree = (node: any): ConceptNode[] => {
+        const concepts: ConceptNode[] = [];
+        
+        // 当前节点转换为ConceptNode
+        const conceptNode: ConceptNode = {
+          id: node.id || uuidv4(),
+          name: node.name || 'Unknown',
+          category: node.type === 'method' ? 'method' : 'core',
+          description: `探索深度: ${node.exploration_depth || 0.5}`,
+          importance: node.exploration_depth || 0.5,
+          keywords: node.semantic_tags || [],
+          relations: node.related_nodes?.map((rel: any) => ({
+            target: rel.node_id || rel.name || '',
+            type: rel.relation_type || 'parallel',
+            strength: rel.strength || 0.5
+          })) || [],
+          absorbed: (node.exploration_depth || 0) > 0.7,
+          absorptionLevel: node.exploration_depth || 0.5,
+          lastReviewed: Date.now(),
+          sources: [{
+            messageId: messageId,
+            conversationId: conversationId,
+            extractedAt: Date.now()
+          }],
+          mentionCount: 1,
+          recommendationBlock: {
+            blocked: false,
+            reason: '',
+            until: undefined
+          }
+        };
+        
+        concepts.push(conceptNode);
+        
+        // 递归处理子节点
+        if (node.children && Array.isArray(node.children)) {
+          node.children.forEach((child: any) => {
+            concepts.push(...extractNodesFromTree(child));
+          });
+        }
+        
+        return concepts;
+      };
+      
+      const extractedConcepts = extractNodesFromTree(conceptTree);
+      
+      console.log('✅ 成功提取概念数量:', extractedConcepts.length);
+      console.log('概念列表:', extractedConcepts.map(c => c.name));
+      
+      return extractedConcepts;
+      
+    } catch (error) {
+      console.error('❌ 概念提取失败:', error);
+      return [];
+    }
   }, []);
 
   // 添加概念（带去重）
@@ -152,26 +244,26 @@ export function useConceptMap(conversationId: string): UseConceptMapResult {
     }));
   }, [conceptMap]);
 
-  // 更新概念吸收状态
+  // 更新概念吸收状态 - 移除conceptMap依赖，减少重渲染
   const updateConceptAbsorption = useCallback((
     conceptId: string,
     absorbed: boolean,
     level: number = 1
   ) => {
-    if (!conceptMap) return;
-    
-    const concept = conceptMap.nodes.get(conceptId);
-    if (!concept) return;
-    
-    const updatedConcept: ConceptNode = {
-      ...concept,
-      absorbed,
-      absorptionLevel: absorbed ? level : 0,
-      lastReviewed: Date.now()
-    };
-    
     setConceptMap(prev => {
-      const newNodes = new Map(prev!.nodes);
+      if (!prev) return prev;
+      
+      const concept = prev.nodes.get(conceptId);
+      if (!concept) return prev;
+      
+      const updatedConcept: ConceptNode = {
+        ...concept,
+        absorbed,
+        absorptionLevel: absorbed ? level : 0,
+        lastReviewed: Date.now()
+      };
+      
+      const newNodes = new Map(prev.nodes);
       newNodes.set(conceptId, updatedConcept);
       
       // 重新生成避免列表
@@ -179,19 +271,19 @@ export function useConceptMap(conversationId: string): UseConceptMapResult {
       const newAvoidanceList = generateAvoidanceList(allConcepts);
       
       return {
-        ...prev!,
+        ...prev,
         nodes: newNodes,
         avoidanceList: newAvoidanceList.slice(0, CONCEPT_DEFAULTS.MAX_AVOIDANCE_LIST)
       };
     });
-  }, [conceptMap]);
+  }, []);
 
-  // 获取避免推荐列表
+  // 获取避免推荐列表 - 移除依赖，使用实时状态
   const getAvoidanceList = useCallback((): string[] => {
     return conceptMap?.avoidanceList || [];
-  }, [conceptMap]);
+  }, [conceptMap?.avoidanceList]);
 
-  // 查找相似概念
+  // 查找相似概念 - 优化依赖
   const getSimilarConcepts = useCallback((
     conceptName: string,
     threshold: number = CONCEPT_DEFAULTS.SIMILARITY_THRESHOLD
@@ -215,9 +307,9 @@ export function useConceptMap(conversationId: string): UseConceptMapResult {
     }
     
     return similarConcepts.sort((a, b) => b.importance - a.importance);
-  }, [conceptMap]);
+  }, [conceptMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 按类别获取概念
+  // 按类别获取概念 - 优化依赖
   const getConceptsByCategory = useCallback((
     category: ConceptNode['category']
   ): ConceptNode[] => {
@@ -226,7 +318,7 @@ export function useConceptMap(conversationId: string): UseConceptMapResult {
     return Array.from(conceptMap.nodes.values())
       .filter(concept => concept.category === category)
       .sort((a, b) => b.importance - a.importance);
-  }, [conceptMap]);
+  }, [conceptMap]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 获取推荐上下文
   const getRecommendationContext = useCallback((): ConceptRecommendationContext => {
@@ -304,8 +396,28 @@ export function useConceptMap(conversationId: string): UseConceptMapResult {
     };
   }, [conceptMap]);
 
-  // 清空概念
+  // 设置概念树
+  const setConceptTreeData = useCallback((newConceptTree: ConceptTree | null) => {
+    setConceptTree(newConceptTree);
+  }, []);
+
+  // 防抖标志，防止频繁调用clearConcepts
+  const clearDebounceRef = useRef(false);
+  
+  // 清空概念 - 加入防抖保护避免频繁调用
   const clearConcepts = useCallback(() => {
+    // 防抖保护：如果在短时间内重复调用，直接返回
+    if (clearDebounceRef.current) {
+      console.log('🚨 clearConcepts防抖保护：跳过重复调用');
+      return;
+    }
+    
+    clearDebounceRef.current = true;
+    // 500ms后才允许再次调用
+    setTimeout(() => {
+      clearDebounceRef.current = false;
+    }, 500);
+    
     try {
       const storedData = localStorage.getItem(CONCEPT_STORAGE_KEYS.CONVERSATION_CONCEPTS) || '{}';
       const allConversationConcepts = JSON.parse(storedData);
@@ -316,25 +428,69 @@ export function useConceptMap(conversationId: string): UseConceptMapResult {
         JSON.stringify(allConversationConcepts)
       );
       
-      initializeConceptMap();
+      // 一次性重置到完整的初始化状态，避免多次状态变化
+      const newConceptMap: ConceptMap = {
+        id: uuidv4(),
+        conversationId,
+        nodes: new Map(),
+        stats: {
+          totalConcepts: 0,
+          absorptionRate: 0,
+          coverage: { core: 0, method: 0, application: 0, support: 0 },
+          lastUpdated: Date.now()
+        },
+        avoidanceList: [],
+        similarityThreshold: CONCEPT_DEFAULTS.SIMILARITY_THRESHOLD
+      };
+      
+      // 批量状态更新，减少重新渲染次数
+      setConceptMap(newConceptMap);
+      setConceptTree(null);
+      setError(null);
+      
+      console.log('✅ 概念数据已清空并重新初始化', conversationId);
     } catch (error) {
       console.error('Failed to clear concepts:', error);
       setError('清空概念数据失败');
     }
-  }, [conversationId, initializeConceptMap]);
+  }, [conversationId]);
 
-  // 自动保存
+  // 自动保存 - 移除saveConcepts依赖避免循环
   useEffect(() => {
-    if (conceptMap && conceptMap.nodes.size > 0) {
-      const timeoutId = setTimeout(saveConcepts, 1000);
+    if (conceptMap && (conceptMap.nodes.size > 0 || conceptTree)) {
+      const timeoutId = setTimeout(() => {
+        // 内联保存逻辑，避免依赖外部函数导致的循环更新
+        if (!conceptMap) return;
+        
+        try {
+          const storedData = localStorage.getItem(CONCEPT_STORAGE_KEYS.CONVERSATION_CONCEPTS) || '{}';
+          const allConversationConcepts = JSON.parse(storedData);
+          
+          const serializedMap = {
+            ...conceptMap,
+            nodes: Object.fromEntries(conceptMap.nodes),
+            conceptTree: conceptTree
+          };
+          
+          allConversationConcepts[conversationId] = serializedMap;
+          
+          localStorage.setItem(
+            CONCEPT_STORAGE_KEYS.CONVERSATION_CONCEPTS,
+            JSON.stringify(allConversationConcepts)
+          );
+        } catch (error) {
+          console.error('Failed to auto-save concepts:', error);
+        }
+      }, 1000);
       return () => clearTimeout(timeoutId);
     }
-  }, [conceptMap, saveConcepts]);
+  }, [conceptMap, conceptTree, conversationId]); // 只依赖状态，不依赖函数
 
-  // 初始化加载
+  // 初始化加载 - 只在conversationId变化时加载，避免loadConcepts依赖导致的循环更新
   useEffect(() => {
     loadConcepts(conversationId);
-  }, [conversationId, loadConcepts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId]); // 移除loadConcepts依赖，避免循环更新
 
   // 计算记忆化的统计数据
   const memoizedStats = useMemo(() => {
@@ -343,6 +499,7 @@ export function useConceptMap(conversationId: string): UseConceptMapResult {
 
   return {
     conceptMap,
+    conceptTree,
     isLoading,
     error,
     extractConcepts,
@@ -356,7 +513,8 @@ export function useConceptMap(conversationId: string): UseConceptMapResult {
     getAbsorptionStats: () => memoizedStats,
     saveConcepts,
     loadConcepts,
-    clearConcepts
+    clearConcepts,
+    setConceptTreeData
   };
 }
 

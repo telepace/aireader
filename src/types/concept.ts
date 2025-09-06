@@ -100,6 +100,7 @@ export interface ConceptRecommendationContext {
 export interface UseConceptMapResult {
   // 状态
   conceptMap: ConceptMap | null;
+  conceptTree: ConceptTree | null;
   isLoading: boolean;
   error: string | null;
   
@@ -128,6 +129,9 @@ export interface UseConceptMapResult {
   saveConcepts: () => void;
   loadConcepts: (conversationId: string) => void;
   clearConcepts: () => void;
+  
+  // 概念树操作
+  setConceptTreeData: (conceptTree: ConceptTree | null) => void;
 }
 
 // 存储键名常量
