@@ -28,6 +28,7 @@ import ConceptTreeV2 from './ConceptTreeV2';
 
 interface ConceptMapContainerProps {
   conversationId: string;
+  onConceptClick?: (conceptName: string) => void;
 }
 
 interface TabPanelProps {
@@ -53,7 +54,7 @@ const TabPanel = memo<TabPanelProps>(({ children, value, index }) => (
 
 TabPanel.displayName = 'TabPanel';
 
-const ConceptMapContainer = memo<ConceptMapContainerProps>(({ conversationId }) => {
+const ConceptMapContainer = memo<ConceptMapContainerProps>(({ conversationId, onConceptClick }) => {
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState(0);
   
@@ -66,7 +67,7 @@ const ConceptMapContainer = memo<ConceptMapContainerProps>(({ conversationId }) 
     clearConcepts
   } = useConceptMap(conversationId);
 
-  // 计算整体状态
+  // 计算整体状态 - 优化显示逻辑，始终显示tabs以避免UI闪烁
   const containerState = useMemo(() => {
     const hasConceptData = conceptMap && conceptMap.nodes.size > 0;
     const hasTreeData = conceptTree && conceptTree.children && conceptTree.children.length > 0;
@@ -76,7 +77,7 @@ const ConceptMapContainer = memo<ConceptMapContainerProps>(({ conversationId }) 
       hasConceptData,
       hasTreeData,
       isEmpty,
-      showTabs: hasConceptData || hasTreeData
+      showTabs: true // 始终显示tabs，避免异步加载时的UI闪烁
     };
   }, [conceptMap, conceptTree]);
 
@@ -199,6 +200,7 @@ const ConceptMapContainer = memo<ConceptMapContainerProps>(({ conversationId }) 
                 conceptTree={conceptTree}
                 isLoading={isLoading}
                 maxDepth={4}
+                onConceptClick={onConceptClick}
               />
             </TabPanel>
           </>

@@ -17,6 +17,7 @@ import { ConceptRecommendationContext, ConceptTree } from '../types/concept';
 import ConceptMapContainer from './ConceptMap/ConceptMapContainer';
 import { logDiagnosticInfo } from '../utils/apiKeyDiagnostic';
 import OverallProgressBar from './ProgressIndicator';
+import { createTestConceptTree } from '../utils/testConceptData';
 
 // Markdown renderers (aligned with existing style)
 
@@ -1037,6 +1038,49 @@ ${diagnostic.message}
   };
   
   /**
+   * 处理概念点击事件，发送解释请求消息
+   */
+  const handleConceptClick = async (conceptName: string) => {
+    console.log('🌳 概念点击处理:', conceptName);
+    
+    if (isLoading) {
+      console.log('⚠️ 正在处理其他请求，暂时忽略概念点击');
+      return;
+    }
+    
+    // 构建概念解释请求消息
+    const conceptMessage = `请详细解释"${conceptName}"这个概念，包括其定义、背景、应用场景和相关知识点。`;
+    
+    await sendMessageInternal(conceptMessage, false);
+  };
+  
+  /**
+   * 测试函数：加载测试概念树数据
+   */
+  const loadTestConceptTree = useCallback(() => {
+    if (conceptMap?.setConceptTreeData) {
+      const testTree = createTestConceptTree(conversationId);
+      conceptMap.setConceptTreeData(testTree);
+      console.log('🧪 测试概念树数据已加载:', testTree);
+    } else {
+      console.warn('⚠️ conceptMap 或 setConceptTreeData 未准备好');
+    }
+  }, [conceptMap, conversationId]);
+
+  // 移除自动加载测试数据的逻辑，避免与真实数据冲突
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     if (conceptMap?.setConceptTreeData) {
+  //       const testTree = createTestConceptTree(conversationId);
+  //       conceptMap.setConceptTreeData(testTree);
+  //       console.log('🧪 自动加载测试概念树数据:', testTree);
+  //     }
+  //   }, 2000); // 2秒后加载测试数据
+  //   
+  //   return () => clearTimeout(timer);
+  // }, [conceptMap, conversationId]);
+  
+  /**
    * 支持并发执行的选项点击处理函数
    */
   const handleOptionClick = async (opt: OptionItem) => {
@@ -1156,13 +1200,15 @@ ${diagnostic.message}
         <MenuItem disableRipple onClick={() => { 
           createNewConversation(); 
           setShowHistoricalOptions({ deepen: false, next: false }); 
-          clearConceptStates(); // 清理概念相关状态
+          // 移除对概念状态的过度清理，让概念数据能正确持久化
+          // clearConceptStates(); 
         }}>新建会话</MenuItem>
         {conversations.map((c: ChatConversation) => (
           <MenuItem key={c.id} onClick={() => { 
             chooseConversation(c); 
             setShowHistoricalOptions({ deepen: false, next: false }); 
-            clearConceptStates(); // 切换对话时清理概念状态，让useConceptMap重新加载
+            // 优化：减少概念状态清理，让useConceptMap自然处理会话切换
+            // clearConceptStates(); 
           }} sx={{ display:'flex', justifyContent:'space-between', gap: 1 }}>
             <Box sx={{ maxWidth: 200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
               {c.title || c.messages?.find((m: ChatMessage) => m.role==='user')?.content?.slice(0,20) || '会话'}
@@ -1619,6 +1665,7 @@ ${diagnostic.message}
               {/* 重构后的概念图谱容器 - 整合概念图谱和概念树，性能优化 */}
               <ConceptMapContainer
                 conversationId={conversationId}
+                onConceptClick={handleConceptClick}
               />
             </Box>
           </Box>
