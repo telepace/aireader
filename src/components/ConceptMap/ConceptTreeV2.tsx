@@ -27,6 +27,7 @@ interface ConceptTreeV2Props {
   conceptTree: ConceptTree | null;
   isLoading?: boolean;
   maxDepth?: number;
+  onConceptClick?: (conceptName: string) => void;
 }
 
 interface TreeNodeV2Props {
@@ -34,6 +35,7 @@ interface TreeNodeV2Props {
   depth: number;
   maxDepth: number;
   isLast?: boolean;
+  onConceptClick?: (conceptName: string) => void;
 }
 
 // 深度颜色配置 - 简化版
@@ -43,7 +45,7 @@ const getNodeColor = (depth: number): string => {
 };
 
 // 单个树节点组件 - 简化版
-const TreeNodeV2 = memo<TreeNodeV2Props>(({ node, depth, maxDepth, isLast = false }) => {
+const TreeNodeV2 = memo<TreeNodeV2Props>(({ node, depth, maxDepth, isLast = false, onConceptClick }) => {
   const [expanded, setExpanded] = useState(depth < 2); // 默认只展开前两层
   const hasChildren = node.children && node.children.length > 0;
   const nodeColor = getNodeColor(depth);
@@ -55,13 +57,24 @@ const TreeNodeV2 = memo<TreeNodeV2Props>(({ node, depth, maxDepth, isLast = fals
       {/* 当前节点 */}
       <Paper
         elevation={0}
+        onClick={() => {
+          if (onConceptClick) {
+            console.log('🖱️ 概念树节点被点击:', {
+              name: node.name,
+              depth: depth,
+              hasChildren: hasChildren
+            });
+            onConceptClick(node.name);
+          }
+        }}
         sx={{
           mb: 0.5,
           p: 1.5,
           borderLeft: `3px solid ${nodeColor}`,
           bgcolor: alpha(nodeColor, 0.03),
+          cursor: onConceptClick ? 'pointer' : 'default',
           '&:hover': {
-            bgcolor: alpha(nodeColor, 0.08)
+            bgcolor: alpha(nodeColor, onConceptClick ? 0.12 : 0.08)
           }
         }}
       >
@@ -122,7 +135,10 @@ const TreeNodeV2 = memo<TreeNodeV2Props>(({ node, depth, maxDepth, isLast = fals
           {hasChildren && (
             <IconButton
               size="small"
-              onClick={() => setExpanded(!expanded)}
+              onClick={(e) => {
+                e.stopPropagation(); // 防止触发节点点击事件
+                setExpanded(!expanded);
+              }}
               sx={{ 
                 color: nodeColor,
                 '&:hover': { bgcolor: alpha(nodeColor, 0.1) }
@@ -157,6 +173,7 @@ const TreeNodeV2 = memo<TreeNodeV2Props>(({ node, depth, maxDepth, isLast = fals
                 depth={depth + 1}
                 maxDepth={maxDepth}
                 isLast={index === node.children.length - 1}
+                onConceptClick={onConceptClick}
               />
             ))}
           </Box>
@@ -172,7 +189,8 @@ TreeNodeV2.displayName = 'TreeNodeV2';
 const ConceptTreeV2 = memo<ConceptTreeV2Props>(({ 
   conceptTree, 
   isLoading = false,
-  maxDepth = 4 
+  maxDepth = 4,
+  onConceptClick
 }) => {
   const theme = useTheme();
 
@@ -290,6 +308,7 @@ const ConceptTreeV2 = memo<ConceptTreeV2Props>(({
         }}
         depth={0}
         maxDepth={maxDepth}
+        onConceptClick={onConceptClick}
       />
     </Box>
   );
