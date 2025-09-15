@@ -186,8 +186,8 @@ const TreeNodeV2 = memo<TreeNodeV2Props>(({ node, depth, maxDepth, isLast = fals
 TreeNodeV2.displayName = 'TreeNodeV2';
 
 // 主组件 - 简化版
-const ConceptTreeV2 = memo<ConceptTreeV2Props>(({ 
-  conceptTree, 
+const ConceptTreeV2 = memo<ConceptTreeV2Props>(({
+  conceptTree,
   isLoading = false,
   maxDepth = 4,
   onConceptClick

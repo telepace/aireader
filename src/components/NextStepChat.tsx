@@ -1030,30 +1030,30 @@ ${diagnostic.message}
     }
   };
 
-  const handleSend = async () => { 
-    if (!inputMessage.trim() || isLoading) return; 
+  const handleSend = async () => {
+    if (!inputMessage.trim() || isLoading) return;
     const messageToSend = inputMessage.trim();
     setInputMessage(''); // 立即清空输入框
-    await sendMessageInternal(messageToSend, false); 
+    await sendMessageInternal(messageToSend, false);
   };
-  
+
   /**
    * 处理概念点击事件，发送解释请求消息
    */
   const handleConceptClick = async (conceptName: string) => {
     console.log('🌳 概念点击处理:', conceptName);
-    
+
     if (isLoading) {
       console.log('⚠️ 正在处理其他请求，暂时忽略概念点击');
       return;
     }
-    
+
     // 构建概念解释请求消息
     const conceptMessage = `请详细解释"${conceptName}"这个概念，包括其定义、背景、应用场景和相关知识点。`;
-    
+
     await sendMessageInternal(conceptMessage, false);
   };
-  
+
   /**
    * 测试函数：加载测试概念树数据
    */
@@ -1076,7 +1076,7 @@ ${diagnostic.message}
   //       console.log('🧪 自动加载测试概念树数据:', testTree);
   //     }
   //   }, 2000); // 2秒后加载测试数据
-  //   
+  //
   //   return () => clearTimeout(timer);
   // }, [conceptMap, conversationId]);
   
@@ -1197,18 +1197,18 @@ ${diagnostic.message}
         transformOrigin={{ vertical: 'top', horizontal: 'left' }}
         slotProps={{ paper: { sx: { mt: 1, width: 300, maxHeight: 320, border: '1px solid', borderColor: 'divider' } } }}
       >
-        <MenuItem disableRipple onClick={() => { 
-          createNewConversation(); 
-          setShowHistoricalOptions({ deepen: false, next: false }); 
+        <MenuItem disableRipple onClick={() => {
+          createNewConversation();
+          setShowHistoricalOptions({ deepen: false, next: false });
           // 移除对概念状态的过度清理，让概念数据能正确持久化
-          // clearConceptStates(); 
+          // clearConceptStates();
         }}>新建会话</MenuItem>
         {conversations.map((c: ChatConversation) => (
-          <MenuItem key={c.id} onClick={() => { 
-            chooseConversation(c); 
-            setShowHistoricalOptions({ deepen: false, next: false }); 
+          <MenuItem key={c.id} onClick={() => {
+            chooseConversation(c);
+            setShowHistoricalOptions({ deepen: false, next: false });
             // 优化：减少概念状态清理，让useConceptMap自然处理会话切换
-            // clearConceptStates(); 
+            // clearConceptStates();
           }} sx={{ display:'flex', justifyContent:'space-between', gap: 1 }}>
             <Box sx={{ maxWidth: 200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
               {c.title || c.messages?.find((m: ChatMessage) => m.role==='user')?.content?.slice(0,20) || '会话'}

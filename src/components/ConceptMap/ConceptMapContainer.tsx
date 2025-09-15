@@ -196,7 +196,7 @@ const ConceptMapContainer = memo<ConceptMapContainerProps>(({ conversationId, on
             </TabPanel>
             
             <TabPanel value={activeTab} index={1}>
-              <ConceptTreeV2 
+              <ConceptTreeV2
                 conceptTree={conceptTree}
                 isLoading={isLoading}
                 maxDepth={4}
