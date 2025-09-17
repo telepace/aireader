@@ -71,10 +71,14 @@ export function useConversation({ selectedModel }: UseConversationOptions): UseC
     const existing = listConversations().find(c => c.id === conversationId);
     const isEmptyState = (messages?.length ?? 0) === 0 && (options?.length ?? 0) === 0;
     const existingHasContent = !!existing && ((existing.messages?.length ?? 0) > 0 || (existing.options?.length ?? 0) > 0);
+    
+    // 优化持久化逻辑：允许空会话保存，确保新窗口中的会话能被正确记录
     if (isEmptyState && existingHasContent && !allowEmptyPersist.current) {
-      // 避免将已有内容的会话被空状态覆盖
+      // 避免将已有内容的会话被空状态覆盖，但允许新会话的创建
+      console.log('🔒 避免覆盖已有会话内容:', conversationId);
       return;
     }
+    
     const conv: ChatConversation = {
       id: conversationId,
       messages,
@@ -84,8 +88,18 @@ export function useConversation({ selectedModel }: UseConversationOptions): UseC
       options,
       title: messages.find((m: ChatMessage) => m.role === 'user')?.content?.slice(0, 20) || existing?.title || '新会话'
     };
+    
+    // 确保即使是空会话也能被保存（解决新窗口会话不保存的问题）
     upsertConversation(conv);
     allowEmptyPersist.current = false; // 重置
+    
+    console.log('💾 会话已保存:', {
+      id: conversationId,
+      title: conv.title,
+      messagesCount: messages.length,
+      optionsCount: options.length,
+      isEmpty: isEmptyState
+    });
   }, [messages, options, conversationId, selectedModel, hydrated]);
 
   const normalizeStoredOptions = useCallback((stored: any[] | undefined | null): OptionItem[] => {

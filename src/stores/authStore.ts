@@ -20,6 +20,9 @@ interface AuthState {
     messageCount: number
     conversationCount: number
   }
+  
+  // 内部状态 - 防止重复初始化
+  authListener: any
 
   // 操作
   initializeAuth: () => Promise<void>
@@ -49,18 +52,32 @@ export const useAuthStore = create<AuthState>()(
         messageCount: 0,
         conversationCount: 0
       },
+      authListener: null,
 
       // ================================================
       // 认证初始化
       // ================================================
       initializeAuth: async () => {
-        if (get().isInitialized) return
+        const state = get();
+        
+        // 防止重复初始化 - React严格模式保护
+        if (state.isInitialized || state.isLoading) {
+          console.log('🔒 Auth already initialized or initializing, skipping...');
+          return;
+        }
 
+        console.log('🚀 Initializing authentication system...');
         set({ isLoading: true })
 
         try {
+          // 清理现有的认证监听器
+          if (state.authListener) {
+            console.log('🧹 Cleaning up existing auth listener');
+            state.authListener.data.subscription.unsubscribe();
+          }
+
           // 监听认证状态变化
-          supabase.auth.onAuthStateChange(async (event, session) => {
+          const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
             console.log('Auth state changed:', event, session?.user?.id)
 
             if (event === 'SIGNED_IN' && session?.user) {
@@ -68,7 +85,10 @@ export const useAuthStore = create<AuthState>()(
             } else if (event === 'SIGNED_OUT') {
               await get().handleSignOut()
             }
-          })
+          });
+
+          // 保存监听器引用
+          set({ authListener });
 
           // 获取当前用户
           const currentUser = await AuthService.getCurrentUser()
@@ -86,6 +106,7 @@ export const useAuthStore = create<AuthState>()(
           }
 
           set({ isInitialized: true })
+          console.log('✅ Authentication system initialized successfully');
         } catch (error) {
           console.error('初始化认证失败:', error)
           // 降级到创建匿名用户

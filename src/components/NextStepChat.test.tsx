@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import NextStepChat from './NextStepChat';
+import { UseConversationResult } from '../hooks/useConversation';
 
 // 从NextStepChat模块导入splitContentAndOptions函数用于测试
 // 我们需要通过模块来访问这个函数，因为它不是导出的
@@ -80,13 +81,30 @@ jest.mock('../services/api', () => ({
   },
 }));
 
+// Mock conversation object for tests
+const createMockConversation = (): UseConversationResult => ({
+  conversationId: 'test-conversation-id',
+  setConversationId: jest.fn(),
+  messages: [],
+  setMessages: jest.fn(),
+  options: [],
+  setOptions: jest.fn(),
+  convMenuOpen: false,
+  setConvMenuOpen: jest.fn(),
+  conversations: [],
+  createNewConversation: jest.fn(),
+  chooseConversation: jest.fn(),
+  removeConversation: jest.fn(),
+  normalizeStoredOptions: jest.fn(() => [])
+});
+
 describe('NextStepChat conversation persistence', () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
   test('saves conversation with messages to LocalStorage after sending', async () => {
-    render(<NextStepChat selectedModel="openai/o4-mini" />);
+    render(<NextStepChat selectedModel="openai/o4-mini" conversation={createMockConversation()} />);
 
     const input = screen.getByPlaceholderText('输入一本你一直想读的书、或一个你想研究的话题');
     fireEvent.change(input, { target: { value: '你好' } });
@@ -108,7 +126,7 @@ describe('NextStepChat conversation persistence', () => {
   });
 
   test('handles concurrent option clicks without button cooldown', async () => {
-    render(<NextStepChat selectedModel="openai/o4-mini" />);
+    render(<NextStepChat selectedModel="openai/o4-mini" conversation={createMockConversation()} />);
 
     const input = screen.getByPlaceholderText('输入一本你一直想读的书、或一个你想研究的话题');
     

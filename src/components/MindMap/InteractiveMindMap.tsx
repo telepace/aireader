@@ -3,7 +3,7 @@
  * 使用SVG实现节点和连线的绘制，支持缩放、拖拽、点击等交互
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { Box, Tooltip } from '@mui/material';
 import { MindMapState, MindMapNode, MindMapEvent, MindMapConfig } from '../../types/mindMap';
 
@@ -455,8 +455,8 @@ const InteractiveMindMap: React.FC<InteractiveMindMapProps> = ({
     renderStatusIndicator
   ]);
 
-  // 计算SVG视图盒
-  const getViewBox = useCallback(() => {
+  // 计算SVG视图盒 - 使用useMemo优化
+  const viewBox = useMemo(() => {
     const nodes = Array.from(mindMapState.nodes.values());
     if (nodes.length === 0) return { x: 0, y: 0, width: 800, height: 600 };
     
@@ -474,8 +474,7 @@ const InteractiveMindMap: React.FC<InteractiveMindMapProps> = ({
     };
   }, [mindMapState.nodes]);
 
-  const viewBox = getViewBox();
-  const nodes = Array.from(mindMapState.nodes.values());
+  const nodes = useMemo(() => Array.from(mindMapState.nodes.values()), [mindMapState.nodes]);
 
   return (
     <Box

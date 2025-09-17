@@ -54,7 +54,13 @@
         }
 
         // Prevent React error overlay from showing ResizeObserver errors
-        if (process && process.env && process.env.NODE_ENV === 'development') {
+        // Check for development mode safely
+        var isDevelopment = typeof window !== 'undefined' && 
+                           window.location && 
+                           (window.location.hostname === 'localhost' || 
+                            window.location.hostname === '127.0.0.1');
+        
+        if (isDevelopment) {
           window.addEventListener('error', function(event) {
             if (isResizeObserverError(event.message)) {
               logSuppression();

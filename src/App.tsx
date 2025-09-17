@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import { useUIState } from './hooks/useUIState';
 import { useModelSelection } from './hooks/useModelSelection';
+import { useConversation } from './hooks/useConversation';
 import { createUserSession, flushTraces } from './services/api-with-tracing';
 import AppHeader from './components/Layout/AppHeader';
 import NextStepChat from './components/NextStepChat';
@@ -41,13 +42,17 @@ const App: React.FC = () => {
 
   const { selectedModel, setSelectedModel, availableModels } = useModelSelection();
   
+  // 会话管理状态
+  const conversation = useConversation({ selectedModel });
+  const currentConversation = conversation.conversations.find(c => c.id === conversation.conversationId);
+  
   // 认证系统初始化
   const { initializeAuth, isInitialized } = useAuthStore();
 
-  // Initialize authentication system
+  // Initialize authentication system - 移除依赖防止React严格模式重复执行
   useEffect(() => {
     initializeAuth();
-  }, [initializeAuth]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initialize user session on app load (without logging app-loaded event)
   useEffect(() => {
@@ -318,6 +323,15 @@ const App: React.FC = () => {
               }}
               showConcurrentTest={showConcurrentTest}
               onToggleConcurrentTest={() => setShowConcurrentTest(!showConcurrentTest)}
+              // 新增会话相关属性
+              currentConversation={currentConversation}
+              conversations={conversation.conversations}
+              conversationMenuOpen={conversation.convMenuOpen}
+              conversationMenuAnchorEl={convMenuAnchorEl}
+              onConversationMenuClose={() => conversation.setConvMenuOpen(false)}
+              onNewConversation={conversation.createNewConversation}
+              onSelectConversation={conversation.chooseConversation}
+              onDeleteConversation={conversation.removeConversation}
             />
           </LocalErrorBoundary>
           
@@ -351,7 +365,8 @@ const App: React.FC = () => {
                   selectedModel={selectedModel} 
                   clearSignal={nextStepClearSignal} 
                   externalToggleConversationMenuSignal={toggleConvMenuSignal} 
-                  conversationMenuAnchorEl={convMenuAnchorEl} 
+                  conversationMenuAnchorEl={convMenuAnchorEl}
+                  conversation={conversation}
                 />
               )}
               
